@@ -348,7 +348,11 @@ public class SweetEditor extends View {
             mInputConnection.closeConnection();
         }
         SweetEditorInputConnection inputConnection = new SweetEditorInputConnection(this, true);
-        inputConnection.configureEditorInfo(outAttrs);
+        if (!inputConnection.configureEditorInfo(outAttrs)) {
+            inputConnection.closeConnection();
+            mInputConnection = null;
+            return null;
+        }
         mInputConnection = inputConnection;
         return inputConnection;
     }
@@ -472,6 +476,15 @@ public class SweetEditor extends View {
         }
     }
 
+    @Override
+    protected void onFocusChanged(boolean gainFocus, int direction, @Nullable Rect previouslyFocusedRect) {
+        super.onFocusChanged(gainFocus, direction, previouslyFocusedRect);
+        if (!gainFocus && mInputConnection != null) {
+            mInputConnection.closeConnection();
+            mInputConnection = null;
+        }
+    }
+
     // ==================== Document Loading ====================
 
     /**
@@ -489,7 +502,6 @@ public class SweetEditor extends View {
             mDecorationProviderManager.onDocumentLoaded();
         }
         mEventBus.publish(new DocumentLoadedEvent());
-        restartInputConnection();
         dispatchEditorActionResult(result);
     }
 
@@ -1955,17 +1967,6 @@ public class SweetEditor extends View {
         return mRenderer.isPerfOverlayEnabled();
     }
 
-    void restartInputConnection() {
-        if (mInputConnection != null) {
-            mInputConnection.closeConnection();
-            mInputConnection = null;
-        }
-        InputMethodManager imm = getInputMethodManager();
-        if (imm != null && isFocused()) {
-            imm.restartInput(this);
-        }
-    }
-
     @SuppressWarnings("deprecation")
     private void notifyImeViewClicked() {
         InputMethodManager imm = getInputMethodManager();
@@ -1985,33 +1986,72 @@ public class SweetEditor extends View {
             if (mContextMenuController != null) {
                 mContextMenuController.onTextChanged();
             }
-            // Suppress completion trigger during linked editing to avoid conflict with Enter/Tab keys
-            if (!mEditorCore.isInLinkedEditing()) {
-                // Completion trigger: based on first change (primary change)
-                TextChange primaryChange = editResult.changes.get(0);
-                if (mCompletionProviderManager != null && primaryChange.newText.length() == 1) {
-                    String ch = primaryChange.newText;
-                    if (mCompletionProviderManager.isTriggerCharacter(ch)) {
-                        mCompletionProviderManager.triggerCompletion(
-                                CompletionContext.TriggerKind.CHARACTER, ch);
-                    } else if (mCompletionPopupController != null && mCompletionPopupController.isShowing()) {
-                        mCompletionProviderManager.triggerCompletion(
-                                CompletionContext.TriggerKind.RETRIGGER, null);
-                    }
-                } else if (mCompletionPopupController != null && mCompletionPopupController.isShowing()) {
-                    if (mCompletionProviderManager != null) {
-                        mCompletionProviderManager.triggerCompletion(
-                                CompletionContext.TriggerKind.RETRIGGER, null);
-                    }
-                }
-            }
         }
+    }
+
+    private void updateCompletion(@NonNull EditorActionResult result) {
+        if (mCompletionProviderManager == null) {
+            return;
+        }
+        boolean compositionActive = result.imeState != null
+                && result.imeState.sessionId != 0
+                && result.imeState.compositionRange != null
+                && result.imeState.compositionRange.startUtf16 >= 0
+                && result.imeState.compositionRange.endUtf16 >= 0;
+        boolean contextChanged = result.contentChanged || result.compositionChanged
+                || result.cursorChanged || result.selectionChanged;
+        if (!contextChanged) return;
+        boolean completionActive = mCompletionProviderManager.isActive();
+        if (mEditorCore.isInLinkedEditing()) {
+            mCompletionProviderManager.dismiss();
+            return;
+        }
+
+        if (compositionActive) {
+            mCompletionProviderManager.triggerCompletion(CompletionContext.TriggerKind.RETRIGGER, null);
+            return;
+        }
+        if (!result.contentChanged) {
+            mCompletionProviderManager.dismiss();
+            return;
+        }
+        if (result.changes.isEmpty()) {
+            mCompletionProviderManager.dismiss();
+            return;
+        }
+
+        TextChange primaryChange = result.changes.get(0);
+        String triggerText = primaryChange.newText.length() == 1
+                ? primaryChange.newText
+                : result.compositionChanged
+                        ? lastCodePoint(primaryChange.newText)
+                        : "";
+        if (!triggerText.isEmpty() && mCompletionProviderManager.isTriggerCharacter(triggerText)) {
+            mCompletionProviderManager.triggerCompletion(CompletionContext.TriggerKind.CHARACTER, triggerText);
+        } else if (completionActive) {
+            mCompletionProviderManager.triggerCompletion(CompletionContext.TriggerKind.RETRIGGER, null);
+        } else {
+            mCompletionProviderManager.invalidate();
+        }
+    }
+
+    @NonNull
+    private static String lastCodePoint(@NonNull String text) {
+        if (text.isEmpty()) return "";
+        return text.substring(text.offsetByCodePoints(text.length(), -1));
     }
 
     /**
      * Completion commit callback: textEdit is the only source of replacement range semantics.
      */
     private void applyCompletionItem(@NonNull CompletionItem item) {
+        if (mEditorCore.isInLinkedEditing()) {
+            mCompletionProviderManager.dismiss();
+            return;
+        }
+        if (!mCompletionProviderManager.consumeDisplayedGeneration()) {
+            return;
+        }
         boolean isSnippet = item.insertTextFormat == CompletionItem.INSERT_TEXT_FORMAT_SNIPPET;
         String text = item.insertText != null ? item.insertText : item.label;
 
@@ -2140,6 +2180,7 @@ public class SweetEditor extends View {
         if (result.contentChanged) {
             dispatchTextChanged(result);
         }
+        updateCompletion(result);
         if (result.cursorChanged) {
             mEventBus.publish(new CursorChangedEvent(result.cursorAfter));
         }
@@ -2170,9 +2211,17 @@ public class SweetEditor extends View {
     }
 
     void dispatchEditorActionResult(@Nullable EditorActionResult result) {
+        dispatchEditorActionResult(result, null);
+    }
+
+    void dispatchEditorActionResult(@Nullable EditorActionResult result,
+                                    @Nullable SweetEditorInputConnection imeResultTarget) {
         if (result == null) {
             return;
         }
+        SweetEditorInputConnection inputConnection = imeResultTarget != null
+                ? imeResultTarget
+                : mInputConnection;
         if (result.gestureType != GestureType.UNDEFINED) {
             if (result.gestureType == GestureType.TAP) {
                 requestFocus();
@@ -2193,8 +2242,8 @@ public class SweetEditor extends View {
         }
         updateAnimationSchedule(result);
         dispatchStateEvents(result);
-        if (mInputConnection != null) {
-            mInputConnection.onEditorActionResult(result);
+        if (inputConnection != null) {
+            inputConnection.onEditorActionResult(result);
         }
         if (result.needsRedraw) {
             flush();
@@ -2213,7 +2262,9 @@ public class SweetEditor extends View {
             }
         }
         // Completion panel keyboard interception (Enter/Escape/Up/Down)
-        if (mCompletionPopupController != null && mCompletionPopupController.isShowing()) {
+        if ((mInputConnection == null || !mInputConnection.hasActiveComposition())
+                && mCompletionPopupController != null
+                && mCompletionPopupController.isShowing()) {
             if (mCompletionPopupController.handleAndroidKeyCode(event.getKeyCode())) {
                 return true;
             }
@@ -2264,6 +2315,10 @@ public class SweetEditor extends View {
             }
         }
         return false;
+    }
+
+    boolean isCurrentInputConnection(SweetEditorInputConnection inputConnection) {
+        return mInputConnection == inputConnection;
     }
 
     void logInputPerf(long startNanos, String tag) {

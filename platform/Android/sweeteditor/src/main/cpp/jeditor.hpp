@@ -447,10 +447,6 @@ public:
     return env->NewStringUTF(selected.c_str());
   }
 
-  static jboolean hasPreedit(jlong handle) {
-    return toJBoolean(editor_ime_has_preedit(static_cast<intptr_t>(handle)));
-  }
-
   using ImeMessageHandler = const uint8_t* (*)(intptr_t, const uint8_t*, size_t, size_t*);
 
   static jobject imeHandleMessage(JNIEnv* env, jlong handle, jobject data, jint size, ImeMessageHandler handler) {
@@ -466,44 +462,50 @@ public:
     return wrapBinaryPayload(env, payload, out_size);
   }
 
-  static jobject imeHandleCommandMessage(JNIEnv* env, jclass clazz, jlong handle, jobject data, jint size) {
-    return imeHandleMessage(env, handle, data, size, editor_ime_handle_command_message);
-  }
-
-  static jobject imeHandleTextUpdateMessage(JNIEnv* env, jclass clazz, jlong handle, jobject data, jint size) {
-    return imeHandleMessage(env, handle, data, size, editor_ime_handle_text_update_message);
-  }
-
-  static jint imeGetKeyboardScriptClass(jlong handle) {
-    return static_cast<jint>(editor_ime_get_keyboard_script_class(static_cast<intptr_t>(handle)));
-  }
-
-  static jobject getImeSyncSnapshot(JNIEnv* env, jclass clazz, jlong handle) {
+  static jobject imeBeginSession(JNIEnv* env, jclass clazz, jlong handle, jint mutationModel) {
     if (handle == 0) return nullptr;
     size_t out_size = 0;
-    return wrapBinaryPayload(env, editor_ime_get_sync_snapshot(static_cast<intptr_t>(handle), &out_size), out_size);
+    return wrapBinaryPayload(env,
+                             editor_ime_begin_session(static_cast<intptr_t>(handle),
+                                                      static_cast<int>(mutationModel),
+                                                      &out_size),
+                             out_size);
   }
 
-  static jobject getImeCommandInputContext(JNIEnv* env, jclass clazz, jlong handle,
-                                    jlong beforeLength, jlong afterLength) {
+  static jobject imeEndSession(JNIEnv* env, jclass clazz, jlong handle, jlong sessionId) {
     if (handle == 0) return nullptr;
     size_t out_size = 0;
-    const uint8_t* payload = editor_ime_get_command_input_context(static_cast<intptr_t>(handle),
-                                                         static_cast<size_t>(beforeLength),
-                                                         static_cast<size_t>(afterLength),
-                                                         &out_size);
-    return wrapBinaryPayload(env, payload, out_size);
+    return wrapBinaryPayload(env,
+                             editor_ime_end_session(static_cast<intptr_t>(handle),
+                                                    static_cast<uint64_t>(sessionId),
+                                                    &out_size),
+                             out_size);
   }
 
-  static jobject getImeTextUpdateInputContext(JNIEnv* env, jclass clazz, jlong handle,
-                                              jint scope, jlong beforeLength, jlong afterLength) {
+  static jobject imeApplyCommands(JNIEnv* env, jclass clazz, jlong handle, jobject data, jint size) {
+    return imeHandleMessage(env, handle, data, size, editor_ime_apply_commands);
+  }
+
+  static jobject imeGetState(JNIEnv* env, jclass clazz, jlong handle, jlong sessionId) {
     if (handle == 0) return nullptr;
     size_t out_size = 0;
-    const uint8_t* payload = editor_ime_get_text_update_input_context(static_cast<intptr_t>(handle),
-                                                                      static_cast<int>(scope),
-                                                                      static_cast<size_t>(beforeLength),
-                                                                      static_cast<size_t>(afterLength),
-                                                                      &out_size);
+    return wrapBinaryPayload(env,
+                             editor_ime_get_state(static_cast<intptr_t>(handle),
+                                                  static_cast<uint64_t>(sessionId),
+                                                  &out_size),
+                             out_size);
+  }
+
+  static jobject imeGetContext(JNIEnv* env, jclass clazz, jlong handle, jlong sessionId,
+                               jint source, jlong startUtf16, jlong lengthUtf16) {
+    if (handle == 0) return nullptr;
+    size_t out_size = 0;
+    const uint8_t* payload = editor_ime_get_context(static_cast<intptr_t>(handle),
+                                                    static_cast<uint64_t>(sessionId),
+                                                    static_cast<int>(source),
+                                                    static_cast<int64_t>(startUtf16),
+                                                    static_cast<int64_t>(lengthUtf16),
+                                                    &out_size);
     return wrapBinaryPayload(env, payload, out_size);
   }
 
@@ -1237,13 +1239,11 @@ public:
       {"nativeInsertLineAbove", "(J)Ljava/nio/ByteBuffer;", (void*) insertLineAbove},
       {"nativeInsertLineBelow", "(J)Ljava/nio/ByteBuffer;", (void*) insertLineBelow},
       {"nativeGetSelectedText", "(J)Ljava/lang/String;", (void*) getSelectedText},
-      {"nativeHasPreedit", "(J)Z", (void*) hasPreedit},
-      {"nativeImeHandleCommandMessage", "(JLjava/nio/ByteBuffer;I)Ljava/nio/ByteBuffer;", (void*) imeHandleCommandMessage},
-      {"nativeImeHandleTextUpdateMessage", "(JLjava/nio/ByteBuffer;I)Ljava/nio/ByteBuffer;", (void*) imeHandleTextUpdateMessage},
-      {"nativeImeGetKeyboardScriptClass", "(J)I", (void*) imeGetKeyboardScriptClass},
-      {"nativeGetImeSyncSnapshot", "(J)Ljava/nio/ByteBuffer;", (void*) getImeSyncSnapshot},
-      {"nativeGetImeCommandInputContext", "(JJJ)Ljava/nio/ByteBuffer;", (void*) getImeCommandInputContext},
-      {"nativeGetImeTextUpdateInputContext", "(JIJJ)Ljava/nio/ByteBuffer;", (void*) getImeTextUpdateInputContext},
+      {"nativeImeBeginSession", "(JI)Ljava/nio/ByteBuffer;", (void*) imeBeginSession},
+      {"nativeImeEndSession", "(JJ)Ljava/nio/ByteBuffer;", (void*) imeEndSession},
+      {"nativeImeApplyCommands", "(JLjava/nio/ByteBuffer;I)Ljava/nio/ByteBuffer;", (void*) imeApplyCommands},
+      {"nativeImeGetState", "(JJ)Ljava/nio/ByteBuffer;", (void*) imeGetState},
+      {"nativeImeGetContext", "(JJIJJ)Ljava/nio/ByteBuffer;", (void*) imeGetContext},
       {"nativeSetReadOnly", "(JZ)Ljava/nio/ByteBuffer;", (void*) setReadOnly},
       {"nativeIsReadOnly", "(J)Z", (void*) isReadOnly},
       {"nativeSetAutoIndentMode", "(JI)Ljava/nio/ByteBuffer;", (void*) setAutoIndentMode},

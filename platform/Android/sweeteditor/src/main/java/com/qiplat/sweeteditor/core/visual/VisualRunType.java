@@ -28,7 +28,7 @@ public enum VisualRunType {
             case 6: return FOLD_PLACEHOLDER;
             case 7: return CODELENS;
             case 8: return LINK;
-            default: return TEXT;
+            default: throw new IllegalArgumentException("Unknown VisualRunType value: " + value);
         }
     }
 }

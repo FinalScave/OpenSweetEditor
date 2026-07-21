@@ -16,7 +16,7 @@ public enum FoldArrowMode {
             case 0: return AUTO;
             case 1: return ALWAYS;
             case 2: return HIDDEN;
-            default: return AUTO;
+            default: throw new IllegalArgumentException("Unknown FoldArrowMode value: " + value);
         }
     }
 }

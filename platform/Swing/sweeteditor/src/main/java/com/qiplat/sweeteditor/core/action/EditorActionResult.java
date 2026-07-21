@@ -4,7 +4,8 @@ import com.qiplat.sweeteditor.core.foundation.PointF;
 import com.qiplat.sweeteditor.core.foundation.TextChange;
 import com.qiplat.sweeteditor.core.foundation.TextPosition;
 import com.qiplat.sweeteditor.core.foundation.TextRange;
-import com.qiplat.sweeteditor.core.ime.ImeSyncSnapshot;
+import com.qiplat.sweeteditor.core.ime.ImeHostAction;
+import com.qiplat.sweeteditor.core.ime.ImeState;
 import com.qiplat.sweeteditor.core.interaction.EventType;
 import com.qiplat.sweeteditor.core.interaction.GestureType;
 import com.qiplat.sweeteditor.core.interaction.HitTarget;
@@ -25,7 +26,6 @@ public final class EditorActionResult {
     public boolean pointerCursorChanged = false;
     public boolean compositionChanged = false;
     public boolean decorationChanged = false;
-    public boolean needsImeSync = false;
     public int animationFlags = 0;
     public int nextAnimationDelayMs = 0;
     public int interactionFlags = 0;
@@ -44,7 +44,8 @@ public final class EditorActionResult {
     public float scaleAfter = 1f;
     public PointerCursorType pointerCursorBefore = PointerCursorType.TEXT;
     public PointerCursorType pointerCursorAfter = PointerCursorType.TEXT;
-    public ImeSyncSnapshot imeSync = new ImeSyncSnapshot();
+    public ImeHostAction imeHostAction = ImeHostAction.NONE;
+    public ImeState imeState = new ImeState();
     public GestureType gestureType = GestureType.UNDEFINED;
     public EventType gestureEventType = EventType.UNDEFINED;
     public PointF tapPoint = new PointF();
@@ -55,7 +56,7 @@ public final class EditorActionResult {
     public EditorActionResult() {
     }
 
-    public EditorActionResult(boolean handled, boolean needsRedraw, EditorActionSource source, TextChangeKind textChangeKind, boolean contentChanged, boolean cursorChanged, boolean selectionChanged, boolean scrollChanged, boolean scaleChanged, boolean pointerCursorChanged, boolean compositionChanged, boolean decorationChanged, boolean needsImeSync, int animationFlags, int nextAnimationDelayMs, int interactionFlags, java.util.List<TextChange> changes, TextPosition cursorBefore, TextPosition cursorAfter, boolean hasSelectionBefore, boolean hasSelectionAfter, TextRange selectionBefore, TextRange selectionAfter, float scrollXBefore, float scrollYBefore, float scrollXAfter, float scrollYAfter, float scaleBefore, float scaleAfter, PointerCursorType pointerCursorBefore, PointerCursorType pointerCursorAfter, ImeSyncSnapshot imeSync, GestureType gestureType, EventType gestureEventType, PointF tapPoint, HitTarget hitTarget, int modifiers, int command) {
+    public EditorActionResult(boolean handled, boolean needsRedraw, EditorActionSource source, TextChangeKind textChangeKind, boolean contentChanged, boolean cursorChanged, boolean selectionChanged, boolean scrollChanged, boolean scaleChanged, boolean pointerCursorChanged, boolean compositionChanged, boolean decorationChanged, int animationFlags, int nextAnimationDelayMs, int interactionFlags, java.util.List<TextChange> changes, TextPosition cursorBefore, TextPosition cursorAfter, boolean hasSelectionBefore, boolean hasSelectionAfter, TextRange selectionBefore, TextRange selectionAfter, float scrollXBefore, float scrollYBefore, float scrollXAfter, float scrollYAfter, float scaleBefore, float scaleAfter, PointerCursorType pointerCursorBefore, PointerCursorType pointerCursorAfter, ImeHostAction imeHostAction, ImeState imeState, GestureType gestureType, EventType gestureEventType, PointF tapPoint, HitTarget hitTarget, int modifiers, int command) {
         this.handled = handled;
         this.needsRedraw = needsRedraw;
         this.source = source;
@@ -68,7 +69,6 @@ public final class EditorActionResult {
         this.pointerCursorChanged = pointerCursorChanged;
         this.compositionChanged = compositionChanged;
         this.decorationChanged = decorationChanged;
-        this.needsImeSync = needsImeSync;
         this.animationFlags = animationFlags;
         this.nextAnimationDelayMs = nextAnimationDelayMs;
         this.interactionFlags = interactionFlags;
@@ -87,7 +87,8 @@ public final class EditorActionResult {
         this.scaleAfter = scaleAfter;
         this.pointerCursorBefore = pointerCursorBefore;
         this.pointerCursorAfter = pointerCursorAfter;
-        this.imeSync = imeSync;
+        this.imeHostAction = imeHostAction;
+        this.imeState = imeState;
         this.gestureType = gestureType;
         this.gestureEventType = gestureEventType;
         this.tapPoint = tapPoint;

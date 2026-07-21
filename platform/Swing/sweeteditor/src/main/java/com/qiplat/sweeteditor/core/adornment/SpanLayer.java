@@ -16,7 +16,7 @@ public enum SpanLayer {
             case 0: return SYNTAX;
             case 1: return SEMANTIC;
             case 2: return OVERLAY;
-            default: return SYNTAX;
+            default: throw new IllegalArgumentException("Unknown SpanLayer value: " + value);
         }
     }
 }

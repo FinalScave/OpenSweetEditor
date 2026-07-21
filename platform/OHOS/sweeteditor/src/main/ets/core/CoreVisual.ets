@@ -13,7 +13,7 @@ export function foldStateFromValue(value: number): FoldState {
     case 0: return FoldState.NONE;
     case 1: return FoldState.EXPANDED;
     case 2: return FoldState.COLLAPSED;
-    default: return FoldState.NONE;
+    default: throw new Error('Unknown FoldState value: ' + value);
   }
 }
 
@@ -26,7 +26,7 @@ export function guideDirectionFromValue(value: number): GuideDirection {
   switch (value) {
     case 0: return GuideDirection.VERTICAL;
     case 1: return GuideDirection.HORIZONTAL;
-    default: return GuideDirection.VERTICAL;
+    default: throw new Error('Unknown GuideDirection value: ' + value);
   }
 }
 
@@ -41,7 +41,7 @@ export function guideStyleFromValue(value: number): GuideStyle {
     case 0: return GuideStyle.SOLID;
     case 1: return GuideStyle.DASHED;
     case 2: return GuideStyle.DOUBLE;
-    default: return GuideStyle.SOLID;
+    default: throw new Error('Unknown GuideStyle value: ' + value);
   }
 }
 
@@ -58,7 +58,7 @@ export function guideTypeFromValue(value: number): GuideType {
     case 1: return GuideType.BRACKET;
     case 2: return GuideType.FLOW;
     case 3: return GuideType.SEPARATOR;
-    default: return GuideType.INDENT;
+    default: throw new Error('Unknown GuideType value: ' + value);
   }
 }
 
@@ -73,7 +73,7 @@ export function pointerCursorTypeFromValue(value: number): PointerCursorType {
     case 0: return PointerCursorType.DEFAULT;
     case 1: return PointerCursorType.TEXT;
     case 2: return PointerCursorType.HAND;
-    default: return PointerCursorType.DEFAULT;
+    default: throw new Error('Unknown PointerCursorType value: ' + value);
   }
 }
 
@@ -110,7 +110,7 @@ export function rangeEffectKindFromValue(value: number): RangeEffectKind {
     case 11: return RangeEffectKind.DIAGNOSTIC_WARNING;
     case 12: return RangeEffectKind.DIAGNOSTIC_INFO;
     case 13: return RangeEffectKind.DIAGNOSTIC_HINT;
-    default: return RangeEffectKind.SELECTION;
+    default: throw new Error('Unknown RangeEffectKind value: ' + value);
   }
 }
 
@@ -125,7 +125,7 @@ export function visualLineKindFromValue(value: number): VisualLineKind {
     case 0: return VisualLineKind.CONTENT;
     case 1: return VisualLineKind.PHANTOM;
     case 2: return VisualLineKind.CODELENS;
-    default: return VisualLineKind.CONTENT;
+    default: throw new Error('Unknown VisualLineKind value: ' + value);
   }
 }
 
@@ -152,7 +152,7 @@ export function visualRunTypeFromValue(value: number): VisualRunType {
     case 6: return VisualRunType.FOLD_PLACEHOLDER;
     case 7: return VisualRunType.CODELENS;
     case 8: return VisualRunType.LINK;
-    default: return VisualRunType.TEXT;
+    default: throw new Error('Unknown VisualRunType value: ' + value);
   }
 }
 

@@ -41,11 +41,13 @@ public class CompletionProviderManager {
 
     @Nullable private CompletionUpdateListener listener;
     private volatile int generation = 0;
+    private int displayedGeneration = -1;
+    private boolean requestActive = false;
     private final List<CompletionItem> mergedItems = new ArrayList<>();
 
     private CompletionContext.TriggerKind lastTriggerKind = CompletionContext.TriggerKind.INVOKED;
     @Nullable private String lastTriggerChar;
-    private final Runnable refreshRunnable = () -> executeRefresh(lastTriggerKind, lastTriggerChar);
+    private final Runnable refreshRunnable = () -> executeRefresh(lastTriggerKind, lastTriggerChar, generation);
 
     public CompletionProviderManager(@NonNull SweetEditor editor) {
         this.editor = editor;
@@ -76,12 +78,16 @@ public class CompletionProviderManager {
      */
     public void triggerCompletion(@NonNull CompletionContext.TriggerKind triggerKind,
                                   @Nullable String triggerCharacter) {
-        if (providers.isEmpty()) return;
+        invalidate();
+        if (providers.isEmpty()) {
+            if (listener != null) listener.onCompletionDismissed();
+            return;
+        }
 
+        requestActive = true;
         lastTriggerKind = triggerKind;
         lastTriggerChar = triggerCharacter;
 
-        mainHandler.removeCallbacks(refreshRunnable);
         long delay = triggerKind == CompletionContext.TriggerKind.INVOKED ? DEBOUNCE_INVOKED_MS : DEBOUNCE_CHARACTER_MS;
         if (delay > 0) {
             mainHandler.postDelayed(refreshRunnable, delay);
@@ -94,13 +100,23 @@ public class CompletionProviderManager {
      * Cancel current completion request and dismiss the panel.
      */
     public void dismiss() {
+        invalidate();
+        if (listener != null) {
+            listener.onCompletionDismissed();
+        }
+    }
+
+    public void invalidate() {
         mainHandler.removeCallbacks(refreshRunnable);
         generation++;
         cancelAllReceivers();
         mergedItems.clear();
-        if (listener != null) {
-            listener.onCompletionDismissed();
-        }
+        displayedGeneration = -1;
+        requestActive = false;
+    }
+
+    public boolean isActive() {
+        return requestActive;
     }
 
     /**
@@ -119,22 +135,26 @@ public class CompletionProviderManager {
      * Externally push candidate list directly (bypassing provider flow).
      */
     public void showItems(@NonNull List<CompletionItem> items) {
-        mainHandler.removeCallbacks(refreshRunnable);
-        generation++;
-        cancelAllReceivers();
-        mergedItems.clear();
+        invalidate();
+        requestActive = !items.isEmpty();
+        displayedGeneration = requestActive ? generation : -1;
         mergedItems.addAll(items);
         if (listener != null) {
             listener.onCompletionItemsUpdated(Collections.unmodifiableList(new ArrayList<>(mergedItems)));
         }
     }
 
+    public boolean consumeDisplayedGeneration() {
+        boolean current = requestActive && displayedGeneration == generation;
+        invalidate();
+        return current;
+    }
+
     // ==================== Internal Implementation ====================
 
     private void executeRefresh(@NonNull CompletionContext.TriggerKind triggerKind,
-                                @Nullable String triggerCharacter) {
-        final int currentGen = ++generation;
-        cancelAllReceivers();
+                                @Nullable String triggerCharacter, int requestGeneration) {
+        if (!requestActive || requestGeneration != generation) return;
         mergedItems.clear();
 
         CompletionContext context = buildContext(triggerKind, triggerCharacter);
@@ -144,7 +164,7 @@ public class CompletionProviderManager {
         }
 
         for (CompletionProvider provider : providers) {
-            ManagedReceiver receiver = new ManagedReceiver(provider, currentGen);
+            ManagedReceiver receiver = new ManagedReceiver(requestGeneration);
             activeReceivers.put(provider, receiver);
             try {
                 provider.provideCompletions(context, receiver);
@@ -182,9 +202,8 @@ public class CompletionProviderManager {
                 editor.getMetadata());
     }
 
-    private void onProviderResult(@NonNull CompletionProvider provider,
-                                  @NonNull CompletionResult result, int receiverGeneration) {
-        if (receiverGeneration != generation) return;
+    private void onProviderResult(@NonNull CompletionResult result, int receiverGeneration) {
+        if (!requestActive || receiverGeneration != generation) return;
 
         mergedItems.addAll(result.items);
         // Sort by sortKey (null values go to the end)
@@ -197,6 +216,7 @@ public class CompletionProviderManager {
         if (mergedItems.isEmpty()) {
             if (listener != null) listener.onCompletionDismissed();
         } else {
+            displayedGeneration = generation;
             if (listener != null) {
                 listener.onCompletionItemsUpdated(Collections.unmodifiableList(new ArrayList<>(mergedItems)));
             }
@@ -206,12 +226,10 @@ public class CompletionProviderManager {
     // ==================== ManagedReceiver ====================
 
     private class ManagedReceiver implements CompletionReceiver {
-        private final CompletionProvider provider;
         private final int receiverGeneration;
         private volatile boolean cancelled = false;
 
-        ManagedReceiver(CompletionProvider provider, int receiverGeneration) {
-            this.provider = provider;
+        ManagedReceiver(int receiverGeneration) {
             this.receiverGeneration = receiverGeneration;
         }
 
@@ -222,7 +240,7 @@ public class CompletionProviderManager {
         @Override
         public boolean accept(@NonNull CompletionResult result) {
             if (cancelled || receiverGeneration != generation) return false;
-            mainHandler.post(() -> onProviderResult(provider, result, receiverGeneration));
+            mainHandler.post(() -> onProviderResult(result, receiverGeneration));
             return true;
         }
 

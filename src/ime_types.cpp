@@ -2,20 +2,31 @@
 
 namespace NS_SWEETEDITOR {
 
-  bool ImeSyncSnapshot::requestsPlatformUpdate() const {
-    return clear_system_mark
-        || has_preedit_range
-        || has_system_mark_range
-        || context_policy != ImeContextPolicy::NONE;
+  bool ImeOffsetRange::operator==(const ImeOffsetRange& other) const {
+    return coordinate_space == other.coordinate_space
+        && start_utf16 == other.start_utf16
+        && end_utf16 == other.end_utf16;
+  }
+
+  bool ImeOffsetRange::operator!=(const ImeOffsetRange& other) const {
+    return !(*this == other);
+  }
+
+  bool ImeSelection::operator==(const ImeSelection& other) const {
+    return coordinate_space == other.coordinate_space
+        && anchor_utf16 == other.anchor_utf16
+        && active_utf16 == other.active_utf16
+        && affinity == other.affinity;
+  }
+
+  bool ImeSelection::operator!=(const ImeSelection& other) const {
+    return !(*this == other);
   }
 
   bool CompositionState::operator==(const CompositionState& other) const {
-    return kind == other.kind
-        && start_position == other.start_position
-        && anchor_range == other.anchor_range
-        && original_text == other.original_text
-        && preedit_text == other.preedit_text
-        && preedit_columns == other.preedit_columns;
+    return current_range == other.current_range
+        && baseline_text_raw == other.baseline_text_raw
+        && baseline_caret == other.baseline_caret;
   }
 
   bool CompositionState::operator!=(const CompositionState& other) const {

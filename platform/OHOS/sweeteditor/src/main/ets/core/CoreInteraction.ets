@@ -38,7 +38,7 @@ export function eventTypeFromValue(value: number): EventType {
     case 13: return EventType.DIRECT_SCROLL;
     case 14: return EventType.DIRECT_GESTURE_BEGIN;
     case 15: return EventType.DIRECT_GESTURE_END;
-    default: return EventType.UNDEFINED;
+    default: throw new Error('Unknown EventType value: ' + value);
   }
 }
 
@@ -65,7 +65,7 @@ export function gestureTypeFromValue(value: number): GestureType {
     case 6: return GestureType.FAST_SCROLL;
     case 7: return GestureType.DRAG_SELECT;
     case 8: return GestureType.CONTEXT_MENU;
-    default: return GestureType.UNDEFINED;
+    default: throw new Error('Unknown GestureType value: ' + value);
   }
 }
 
@@ -92,7 +92,7 @@ export function hitTargetTypeFromValue(value: number): HitTargetType {
     case 6: return HitTargetType.GUTTER_ICON;
     case 7: return HitTargetType.FOLD_GUTTER;
     case 8: return HitTargetType.FOLD_PLACEHOLDER;
-    default: return HitTargetType.NONE;
+    default: throw new Error('Unknown HitTargetType value: ' + value);
   }
 }
 

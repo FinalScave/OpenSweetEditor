@@ -3,7 +3,7 @@ import { AnimationFlag, EditorActionResult, EditorActionSource, InteractionFlag,
 import { BracketGuide, CodeLensItem, Diagnostic, DiagnosticSeverity, DocumentHighlight, DocumentHighlightKind, FlowGuide, FoldRegion, GutterIcon, IndentGuide, InlayHint, InlayType, LinkSpan, PhantomText, SeparatorGuide, SeparatorStyle, SpanLayer, StyleSpan, TextStyle, diagnosticSeverityFromValue, documentHighlightKindFromValue, inlayTypeFromValue, separatorStyleFromValue, spanLayerFromValue } from './CoreAdornments';
 import { AutoIndentMode, CurrentLineRenderMode, EditorOptions, EditorRangeEffectStyles, EditorRenderColors, FoldArrowMode, HandleConfig, HandleHitArea, RangeEffectStyle, RangeEffectUnderlineStyle, ScrollbarConfig, ScrollbarMode, ScrollbarTrackTapMode, WhitespaceRenderMode, WrapMode, autoIndentModeFromValue, currentLineRenderModeFromValue, foldArrowModeFromValue, rangeEffectUnderlineStyleFromValue, scrollbarModeFromValue, scrollbarTrackTapModeFromValue, whitespaceRenderModeFromValue, wrapModeFromValue } from './CoreConfig';
 import { IntRange, PointF, Rect, Size, TextChange, TextEdit, TextPosition, TextRange } from './CoreFoundation';
-import { ImeCommandKind, ImeCommandMessage, ImeContextPolicy, ImeInputContext, ImeInputContextKind, ImeMarkedRange, ImeMarkedRangeRole, ImeOffsetRange, ImeScriptClass, ImeSyncSnapshot, ImeTextPatch, ImeTextUnit, ImeTextUpdateKind, ImeTextUpdateMessage, ImeTextUpdateScope, imeCommandKindFromValue, imeContextPolicyFromValue, imeInputContextKindFromValue, imeMarkedRangeRoleFromValue, imeScriptClassFromValue, imeTextUnitFromValue, imeTextUpdateKindFromValue, imeTextUpdateScopeFromValue } from './CoreIme';
+import { CaretAffinity, ImeCommand, ImeCommandBatch, ImeCommandKind, ImeCoordinateSpace, ImeHostAction, ImeMutationModel, ImeOffsetRange, ImeResultCode, ImeSelection, ImeState, ImeTextContext, ImeTextSource, ImeTextUnit, ImeTextUpdateBatch, ImeTextUpdateStep, caretAffinityFromValue, imeCommandKindFromValue, imeCoordinateSpaceFromValue, imeHostActionFromValue, imeMutationModelFromValue, imeResultCodeFromValue, imeTextSourceFromValue, imeTextUnitFromValue } from './CoreIme';
 import { EventType, GestureEvent, GestureType, HitTarget, HitTargetType, eventTypeFromValue, gestureTypeFromValue, hitTargetTypeFromValue } from './CoreInteraction';
 import { EditorBuiltinCommand, KeyBinding, KeyChord, KeyCode, KeyModifier, editorBuiltinCommandFromValue } from './CoreKeymap';
 import { LinkedEditingModel, TabStopGroup } from './CoreLinkedEditing';
@@ -317,6 +317,42 @@ export class CoreProtocol {
       values.push(CoreProtocol.readGutterIconRenderItem(reader));
     }
     return values;
+  }
+
+  private static writeImeCommandList(writer: BinaryWriter, values: ImeCommand[]): void {
+    const count = values ? values.length : 0;
+    writer.writeInt32(count);
+    for (let i = 0; i < count; i++) {
+      CoreProtocol.writeImeCommand(writer, values[i]);
+    }
+  }
+
+  private static sizeOfImeCommandList(values: ImeCommand[]): number {
+    let size = 4;
+    if (values) {
+      for (const value of values) {
+        size += CoreProtocol.sizeOfImeCommand(value);
+      }
+    }
+    return size;
+  }
+
+  private static writeImeTextUpdateStepList(writer: BinaryWriter, values: ImeTextUpdateStep[]): void {
+    const count = values ? values.length : 0;
+    writer.writeInt32(count);
+    for (let i = 0; i < count; i++) {
+      CoreProtocol.writeImeTextUpdateStep(writer, values[i]);
+    }
+  }
+
+  private static sizeOfImeTextUpdateStepList(values: ImeTextUpdateStep[]): number {
+    let size = 4;
+    if (values) {
+      for (const value of values) {
+        size += CoreProtocol.sizeOfImeTextUpdateStep(value);
+      }
+    }
+    return size;
   }
 
   private static writeIndentGuideList(writer: BinaryWriter, values: IndentGuide[]): void {
@@ -669,7 +705,6 @@ export class CoreProtocol {
       pointerCursorChanged: reader.readInt32() !== 0,
       compositionChanged: reader.readInt32() !== 0,
       decorationChanged: reader.readInt32() !== 0,
-      needsImeSync: reader.readInt32() !== 0,
       animationFlags: reader.readInt32(),
       nextAnimationDelayMs: reader.readInt32(),
       interactionFlags: reader.readInt32(),
@@ -688,7 +723,8 @@ export class CoreProtocol {
       scaleAfter: reader.readFloat32(),
       pointerCursorBefore: pointerCursorTypeFromValue(reader.readInt32()),
       pointerCursorAfter: pointerCursorTypeFromValue(reader.readInt32()),
-      imeSync: CoreProtocol.readImeSyncSnapshot(reader),
+      imeHostAction: imeHostActionFromValue(reader.readInt32()),
+      imeState: CoreProtocol.readImeState(reader),
       gestureType: gestureTypeFromValue(reader.readInt32()),
       gestureEventType: eventTypeFromValue(reader.readInt32()),
       tapPoint: CoreProtocol.readPointF(reader),
@@ -1268,86 +1304,45 @@ export class CoreProtocol {
     return size;
   }
 
-  static writeImeCommandMessage(writer: BinaryWriter, value: ImeCommandMessage): void {
+  static writeImeCommand(writer: BinaryWriter, value: ImeCommand): void {
     writer.writeInt32(value.kind as number);
-    writer.writeInt64(value.contextId);
-    writer.writeInt32(value.contextRevision);
-    writer.writeInt32(value.documentStartOffset);
-    CoreProtocol.writeImeOffsetRange(writer, value.range);
-    CoreProtocol.writeImeOffsetRange(writer, value.selection);
+    CoreProtocol.writeImeOffsetRange(writer, value.targetRange);
+    CoreProtocol.writeImeSelection(writer, value.selectionAfter);
     writer.writeUtf8String(value.text);
-    writer.writeInt32(value.cursorOffset);
-    writer.writeInt32(value.deleteBefore);
-    writer.writeInt32(value.deleteAfter);
+    writer.writeInt64(value.deleteBefore);
+    writer.writeInt64(value.deleteAfter);
     writer.writeInt32(value.textUnit as number);
-    writer.writeInt32(value.markedRole as number);
-    writer.writeInt32(value.scriptClass as number);
   }
 
-  static sizeOfImeCommandMessage(value: ImeCommandMessage): number {
+  static sizeOfImeCommand(value: ImeCommand): number {
     let size = 0;
     size += 4;
-    size += 8;
-    size += 4;
-    size += 4;
-    size += CoreProtocol.sizeOfImeOffsetRange(value.range);
-    size += CoreProtocol.sizeOfImeOffsetRange(value.selection);
+    size += CoreProtocol.sizeOfImeOffsetRange(value.targetRange);
+    size += CoreProtocol.sizeOfImeSelection(value.selectionAfter);
     size += CoreProtocol.sizeOfUtf8String(value.text);
-    size += 4;
-    size += 4;
-    size += 4;
-    size += 4;
-    size += 4;
+    size += 8;
+    size += 8;
     size += 4;
     return size;
   }
 
-  private static readImeInputContext(reader: BinaryReader): ImeInputContext {
-    return {
-      id: reader.readInt64(),
-      revision: reader.readInt32(),
-      documentStartOffset: reader.readInt32(),
-      text: reader.readUtf8String(),
-      selection: CoreProtocol.readImeOffsetRange(reader),
-      hasPreeditRange: reader.readInt32() !== 0,
-      preeditRange: CoreProtocol.readImeOffsetRange(reader),
-      hasSystemMarkRange: reader.readInt32() !== 0,
-      systemMarkRange: CoreProtocol.readImeOffsetRange(reader),
-      kind: imeInputContextKindFromValue(reader.readInt32())
-    };
+  static writeImeCommandBatch(writer: BinaryWriter, value: ImeCommandBatch): void {
+    writer.writeInt64(value.sessionId);
+    CoreProtocol.writeImeCommandList(writer, value.commands);
   }
 
-  static decodeImeInputContext(buffer: ArrayBuffer | undefined): ImeInputContext {
-    return CoreProtocol.readImeInputContext(CoreProtocol.readerFor(buffer));
-  }
-
-  private static readImeMarkedRange(reader: BinaryReader): ImeMarkedRange {
-    return {
-      role: imeMarkedRangeRoleFromValue(reader.readInt32()),
-      range: CoreProtocol.readImeOffsetRange(reader)
-    };
-  }
-
-  static decodeImeMarkedRange(buffer: ArrayBuffer | undefined): ImeMarkedRange {
-    return CoreProtocol.readImeMarkedRange(CoreProtocol.readerFor(buffer));
-  }
-
-  static writeImeMarkedRange(writer: BinaryWriter, value: ImeMarkedRange): void {
-    writer.writeInt32(value.role as number);
-    CoreProtocol.writeImeOffsetRange(writer, value.range);
-  }
-
-  static sizeOfImeMarkedRange(value: ImeMarkedRange): number {
+  static sizeOfImeCommandBatch(value: ImeCommandBatch): number {
     let size = 0;
-    size += 4;
-    size += CoreProtocol.sizeOfImeOffsetRange(value.range);
+    size += 8;
+    size += CoreProtocol.sizeOfImeCommandList(value.commands);
     return size;
   }
 
   private static readImeOffsetRange(reader: BinaryReader): ImeOffsetRange {
     return {
-      start: reader.readInt32(),
-      end: reader.readInt32()
+      coordinateSpace: imeCoordinateSpaceFromValue(reader.readInt32()),
+      startUtf16: reader.readInt64(),
+      endUtf16: reader.readInt64()
     };
   }
 
@@ -1356,83 +1351,106 @@ export class CoreProtocol {
   }
 
   static writeImeOffsetRange(writer: BinaryWriter, value: ImeOffsetRange): void {
-    writer.writeInt32(value.start);
-    writer.writeInt32(value.end);
+    writer.writeInt32(value.coordinateSpace as number);
+    writer.writeInt64(value.startUtf16);
+    writer.writeInt64(value.endUtf16);
   }
 
   static sizeOfImeOffsetRange(value: ImeOffsetRange): number {
     let size = 0;
     size += 4;
-    size += 4;
+    size += 8;
+    size += 8;
     return size;
   }
 
-  private static readImeSyncSnapshot(reader: BinaryReader): ImeSyncSnapshot {
+  private static readImeSelection(reader: BinaryReader): ImeSelection {
     return {
-      cursor: CoreProtocol.readTextPosition(reader),
-      selection: CoreProtocol.readTextRange(reader),
-      hasSelection: reader.readInt32() !== 0,
-      hasPreeditRange: reader.readInt32() !== 0,
-      preeditRange: CoreProtocol.readTextRange(reader),
-      hasSystemMarkRange: reader.readInt32() !== 0,
-      systemMarkRange: CoreProtocol.readTextRange(reader),
-      contextPolicy: imeContextPolicyFromValue(reader.readInt32()),
-      clearSystemMark: reader.readInt32() !== 0
+      coordinateSpace: imeCoordinateSpaceFromValue(reader.readInt32()),
+      anchorUtf16: reader.readInt64(),
+      activeUtf16: reader.readInt64(),
+      affinity: caretAffinityFromValue(reader.readInt32())
     };
   }
 
-  static decodeImeSyncSnapshot(buffer: ArrayBuffer | undefined): ImeSyncSnapshot {
-    return CoreProtocol.readImeSyncSnapshot(CoreProtocol.readerFor(buffer));
+  static decodeImeSelection(buffer: ArrayBuffer | undefined): ImeSelection {
+    return CoreProtocol.readImeSelection(CoreProtocol.readerFor(buffer));
   }
 
-  private static readImeTextPatch(reader: BinaryReader): ImeTextPatch {
-    return {
-      range: CoreProtocol.readImeOffsetRange(reader),
-      text: reader.readUtf8String()
-    };
+  static writeImeSelection(writer: BinaryWriter, value: ImeSelection): void {
+    writer.writeInt32(value.coordinateSpace as number);
+    writer.writeInt64(value.anchorUtf16);
+    writer.writeInt64(value.activeUtf16);
+    writer.writeInt32(value.affinity as number);
   }
 
-  static decodeImeTextPatch(buffer: ArrayBuffer | undefined): ImeTextPatch {
-    return CoreProtocol.readImeTextPatch(CoreProtocol.readerFor(buffer));
-  }
-
-  static writeImeTextPatch(writer: BinaryWriter, value: ImeTextPatch): void {
-    CoreProtocol.writeImeOffsetRange(writer, value.range);
-    writer.writeUtf8String(value.text);
-  }
-
-  static sizeOfImeTextPatch(value: ImeTextPatch): number {
+  static sizeOfImeSelection(value: ImeSelection): number {
     let size = 0;
-    size += CoreProtocol.sizeOfImeOffsetRange(value.range);
-    size += CoreProtocol.sizeOfUtf8String(value.text);
-    return size;
-  }
-
-  static writeImeTextUpdateMessage(writer: BinaryWriter, value: ImeTextUpdateMessage): void {
-    writer.writeInt32(value.kind as number);
-    writer.writeInt32(value.scope as number);
-    writer.writeInt64(value.contextId);
-    writer.writeInt32(value.contextRevision);
-    writer.writeInt32(value.documentStartOffset);
-    writer.writeUtf8String(value.text);
-    CoreProtocol.writeImeTextPatch(writer, value.patch);
-    CoreProtocol.writeImeOffsetRange(writer, value.selection);
-    CoreProtocol.writeImeMarkedRange(writer, value.markedRange);
-    writer.writeInt32(value.scriptClass as number);
-  }
-
-  static sizeOfImeTextUpdateMessage(value: ImeTextUpdateMessage): number {
-    let size = 0;
-    size += 4;
     size += 4;
     size += 8;
+    size += 8;
     size += 4;
-    size += 4;
-    size += CoreProtocol.sizeOfUtf8String(value.text);
-    size += CoreProtocol.sizeOfImeTextPatch(value.patch);
-    size += CoreProtocol.sizeOfImeOffsetRange(value.selection);
-    size += CoreProtocol.sizeOfImeMarkedRange(value.markedRange);
-    size += 4;
+    return size;
+  }
+
+  private static readImeState(reader: BinaryReader): ImeState {
+    return {
+      resultCode: imeResultCodeFromValue(reader.readInt32()),
+      sessionId: reader.readInt64(),
+      stateRevision: reader.readInt64(),
+      selection: CoreProtocol.readImeSelection(reader),
+      compositionRange: CoreProtocol.readImeOffsetRange(reader)
+    };
+  }
+
+  static decodeImeState(buffer: ArrayBuffer | undefined): ImeState {
+    return CoreProtocol.readImeState(CoreProtocol.readerFor(buffer));
+  }
+
+  private static readImeTextContext(reader: BinaryReader): ImeTextContext {
+    return {
+      resultCode: imeResultCodeFromValue(reader.readInt32()),
+      sliceStartUtf16: reader.readInt64(),
+      totalLengthUtf16: reader.readInt64(),
+      text: reader.readUtf8String(),
+      selection: CoreProtocol.readImeSelection(reader),
+      compositionRange: CoreProtocol.readImeOffsetRange(reader)
+    };
+  }
+
+  static decodeImeTextContext(buffer: ArrayBuffer | undefined): ImeTextContext {
+    return CoreProtocol.readImeTextContext(CoreProtocol.readerFor(buffer));
+  }
+
+  static writeImeTextUpdateBatch(writer: BinaryWriter, value: ImeTextUpdateBatch): void {
+    writer.writeInt64(value.sessionId);
+    writer.writeInt64(value.expectedStateRevision);
+    CoreProtocol.writeImeTextUpdateStepList(writer, value.steps);
+  }
+
+  static sizeOfImeTextUpdateBatch(value: ImeTextUpdateBatch): number {
+    let size = 0;
+    size += 8;
+    size += 8;
+    size += CoreProtocol.sizeOfImeTextUpdateStepList(value.steps);
+    return size;
+  }
+
+  static writeImeTextUpdateStep(writer: BinaryWriter, value: ImeTextUpdateStep): void {
+    writer.writeUtf8String(value.oldText);
+    CoreProtocol.writeImeOffsetRange(writer, value.patchRange);
+    writer.writeUtf8String(value.replacementText);
+    CoreProtocol.writeImeSelection(writer, value.selectionAfter);
+    CoreProtocol.writeImeOffsetRange(writer, value.compositionAfter);
+  }
+
+  static sizeOfImeTextUpdateStep(value: ImeTextUpdateStep): number {
+    let size = 0;
+    size += CoreProtocol.sizeOfUtf8String(value.oldText);
+    size += CoreProtocol.sizeOfImeOffsetRange(value.patchRange);
+    size += CoreProtocol.sizeOfUtf8String(value.replacementText);
+    size += CoreProtocol.sizeOfImeSelection(value.selectionAfter);
+    size += CoreProtocol.sizeOfImeOffsetRange(value.compositionAfter);
     return size;
   }
 
@@ -2429,15 +2447,27 @@ export class CoreProtocol {
     return writer.getBuffer();
   }
 
-  static encodeImeCommandMessage(value: ImeCommandMessage): ArrayBuffer {
-    const writer = new BinaryWriter(CoreProtocol.sizeOfImeCommandMessage(value));
-    CoreProtocol.writeImeCommandMessage(writer, value);
+  static encodeImeCommand(value: ImeCommand): ArrayBuffer {
+    const writer = new BinaryWriter(CoreProtocol.sizeOfImeCommand(value));
+    CoreProtocol.writeImeCommand(writer, value);
     return writer.getBuffer();
   }
 
-  static encodeImeTextUpdateMessage(value: ImeTextUpdateMessage): ArrayBuffer {
-    const writer = new BinaryWriter(CoreProtocol.sizeOfImeTextUpdateMessage(value));
-    CoreProtocol.writeImeTextUpdateMessage(writer, value);
+  static encodeImeCommandBatch(value: ImeCommandBatch): ArrayBuffer {
+    const writer = new BinaryWriter(CoreProtocol.sizeOfImeCommandBatch(value));
+    CoreProtocol.writeImeCommandBatch(writer, value);
+    return writer.getBuffer();
+  }
+
+  static encodeImeTextUpdateBatch(value: ImeTextUpdateBatch): ArrayBuffer {
+    const writer = new BinaryWriter(CoreProtocol.sizeOfImeTextUpdateBatch(value));
+    CoreProtocol.writeImeTextUpdateBatch(writer, value);
+    return writer.getBuffer();
+  }
+
+  static encodeImeTextUpdateStep(value: ImeTextUpdateStep): ArrayBuffer {
+    const writer = new BinaryWriter(CoreProtocol.sizeOfImeTextUpdateStep(value));
+    CoreProtocol.writeImeTextUpdateStep(writer, value);
     return writer.getBuffer();
   }
 

@@ -16,7 +16,7 @@ public enum ScrollbarMode {
             case 0: return ALWAYS;
             case 1: return TRANSIENT;
             case 2: return NEVER;
-            default: return ALWAYS;
+            default: throw new IllegalArgumentException("Unknown ScrollbarMode value: " + value);
         }
     }
 }

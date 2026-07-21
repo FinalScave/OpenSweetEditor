@@ -79,7 +79,7 @@ enum EditorBuiltinCommand {
       case 32: return paste;
       case 33: return cut;
       case 34: return triggerCompletion;
-      default: return none;
+      default: throw ArgumentError.value(value, 'value', 'Unknown EditorBuiltinCommand value');
     }
   }
 }

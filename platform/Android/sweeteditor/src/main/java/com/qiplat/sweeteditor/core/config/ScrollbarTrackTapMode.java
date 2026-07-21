@@ -14,7 +14,7 @@ public enum ScrollbarTrackTapMode {
         switch (value) {
             case 0: return JUMP;
             case 1: return DISABLED;
-            default: return JUMP;
+            default: throw new IllegalArgumentException("Unknown ScrollbarTrackTapMode value: " + value);
         }
     }
 }

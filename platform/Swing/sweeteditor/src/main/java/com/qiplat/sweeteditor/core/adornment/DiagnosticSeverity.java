@@ -18,7 +18,7 @@ public enum DiagnosticSeverity {
             case 1: return DIAG_WARNING;
             case 2: return DIAG_INFO;
             case 3: return DIAG_HINT;
-            default: return DIAG_ERROR;
+            default: throw new IllegalArgumentException("Unknown DiagnosticSeverity value: " + value);
         }
     }
 }

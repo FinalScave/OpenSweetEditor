@@ -13,7 +13,7 @@ export function diagnosticSeverityFromValue(value: number): DiagnosticSeverity {
     case 1: return DiagnosticSeverity.DIAG_WARNING;
     case 2: return DiagnosticSeverity.DIAG_INFO;
     case 3: return DiagnosticSeverity.DIAG_HINT;
-    default: return DiagnosticSeverity.DIAG_ERROR;
+    default: throw new Error('Unknown DiagnosticSeverity value: ' + value);
   }
 }
 
@@ -28,7 +28,7 @@ export function documentHighlightKindFromValue(value: number): DocumentHighlight
     case 0: return DocumentHighlightKind.TEXT;
     case 1: return DocumentHighlightKind.READ;
     case 2: return DocumentHighlightKind.WRITE;
-    default: return DocumentHighlightKind.TEXT;
+    default: throw new Error('Unknown DocumentHighlightKind value: ' + value);
   }
 }
 
@@ -43,7 +43,7 @@ export function inlayTypeFromValue(value: number): InlayType {
     case 0: return InlayType.TEXT;
     case 1: return InlayType.ICON;
     case 2: return InlayType.COLOR;
-    default: return InlayType.TEXT;
+    default: throw new Error('Unknown InlayType value: ' + value);
   }
 }
 
@@ -56,7 +56,7 @@ export function separatorStyleFromValue(value: number): SeparatorStyle {
   switch (value) {
     case 0: return SeparatorStyle.SINGLE;
     case 1: return SeparatorStyle.DOUBLE;
-    default: return SeparatorStyle.SINGLE;
+    default: throw new Error('Unknown SeparatorStyle value: ' + value);
   }
 }
 
@@ -71,7 +71,7 @@ export function spanLayerFromValue(value: number): SpanLayer {
     case 0: return SpanLayer.SYNTAX;
     case 1: return SpanLayer.SEMANTIC;
     case 2: return SpanLayer.OVERLAY;
-    default: return SpanLayer.SYNTAX;
+    default: throw new Error('Unknown SpanLayer value: ' + value);
   }
 }
 

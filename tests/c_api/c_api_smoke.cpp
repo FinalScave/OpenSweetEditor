@@ -56,12 +56,32 @@ namespace {
     return out;
   }
 
-  const uint8_t* sendImeCommand(intptr_t editor_handle, ImeCommandMessage message, size_t* out_size) {
-    Vector<uint8_t> data = protocol::ProtocolWriter::encode(message);
-    return editor_ime_handle_command_message(editor_handle,
-                                             data.data(),
-                                             data.size(),
-                                             out_size);
+  const uint8_t* sendImeCommand(intptr_t editor_handle, uint64_t session_id,
+                                ImeCommand command, size_t* out_size) {
+    Vector<uint8_t> data = protocol::ProtocolWriter::encode(
+        ImeCommandBatch {session_id, {std::move(command)}});
+    return editor_ime_apply_commands(editor_handle, data.data(), data.size(), out_size);
+  }
+
+  ImeState beginCommandSession(intptr_t editor_handle) {
+    size_t size = 0;
+    const uint8_t* payload = editor_ime_begin_session(
+        editor_handle,
+        static_cast<int>(ImeMutationModel::COMMAND),
+        &size);
+    ImeState state;
+    REQUIRE(payload != nullptr);
+    protocol::ProtocolReader reader(payload, size);
+    int32_t result_code = 0;
+    REQUIRE(reader.readI32(result_code));
+    state.result_code = static_cast<ImeResultCode>(result_code);
+    REQUIRE(reader.readU64(state.session_id));
+    REQUIRE(reader.readU64(state.state_revision));
+    REQUIRE(reader.read(state.selection));
+    REQUIRE(reader.read(state.composition_range));
+    REQUIRE(reader.done());
+    free_binary_data(reinterpret_cast<intptr_t>(payload));
+    return state;
   }
 
   struct SizeData {
@@ -201,7 +221,7 @@ namespace {
     if (!readI32(ignore_i32)) return payload;
     if (!readI32(payload.source)) return payload;
     if (!readI32(payload.text_change_kind)) return payload;
-    for (int i = 0; i < 9; ++i) {
+    for (int i = 0; i < 8; ++i) {
       if (!readI32(ignore_i32)) return payload;
     }
     if (!readU32(payload.animation_flags)) return payload;
@@ -226,7 +246,7 @@ namespace {
       if (!readF32(ignore_f32)) return payload;
     }
     readF32(payload.view_scale);
-    for (int i = 0; i < 21; ++i) {
+    for (int i = 0; i < 19; ++i) {
       if (!readI32(ignore_i32)) return payload;
     }
     readI32(payload.gesture_type);
@@ -276,7 +296,6 @@ namespace {
 TEST_CASE("C API null handles return safe defaults") {
   CHECK(editor_can_undo(0) == 0);
   CHECK(editor_can_redo(0) == 0);
-  CHECK(editor_ime_has_preedit(0) == 0);
   CHECK(editor_is_line_visible(0, 0) == 1);
 
   size_t metrics_size = 0;
@@ -301,15 +320,15 @@ TEST_CASE("C API null handles return safe defaults") {
   editor_set_selection(0, 0, 0, 0, 0, &no_change_size);
   CHECK(no_change_size == 0);
   size_t null_ime_size = 0;
-  ImeCommandMessage null_preedit;
-  null_preedit.kind = ImeCommandKind::SET_PREEDIT_TEXT;
+  ImeCommand null_preedit;
+  null_preedit.kind = ImeCommandKind::UPDATE_COMPOSITION;
   null_preedit.text = "a";
-  const uint8_t* null_ime = sendImeCommand(0, null_preedit, &null_ime_size);
+  const uint8_t* null_ime = sendImeCommand(0, 1, null_preedit, &null_ime_size);
   CHECK(null_ime == nullptr);
   CHECK(null_ime_size == 0);
-  ImeCommandMessage null_cancel;
-  null_cancel.kind = ImeCommandKind::CANCEL_PREEDIT;
-  null_ime = sendImeCommand(0, null_cancel, &null_ime_size);
+  ImeCommand null_cancel;
+  null_cancel.kind = ImeCommandKind::CANCEL_COMPOSITION;
+  null_ime = sendImeCommand(0, 1, null_cancel, &null_ime_size);
   CHECK(null_ime == nullptr);
   CHECK(null_ime_size == 0);
   editor_fold_all(0, &no_change_size);
@@ -406,28 +425,28 @@ TEST_CASE("C API basic edit, composition and linked editing flow") {
   action_payload = editor_set_cursor_position(editor, 0, 4, &action_size);
   REQUIRE(action_payload != nullptr);
   free_binary_data(reinterpret_cast<intptr_t>(action_payload));
+  ImeState ime_state = beginCommandSession(editor);
+  REQUIRE(ime_state.result_code == ImeResultCode::OK);
   size_t ime_size = 0;
-  ImeCommandMessage preedit_message;
-  preedit_message.kind = ImeCommandKind::SET_PREEDIT_TEXT;
+  ImeCommand preedit_message;
+  preedit_message.kind = ImeCommandKind::UPDATE_COMPOSITION;
   preedit_message.text = "q";
-  preedit_message.script_class = ImeScriptClass::LATIN;
-  const uint8_t* ime_result = sendImeCommand(editor, preedit_message, &ime_size);
+  const uint8_t* ime_result = sendImeCommand(
+      editor, ime_state.session_id, preedit_message, &ime_size);
   REQUIRE(ime_result != nullptr);
   CHECK(ime_size > 0);
   free_binary_data(reinterpret_cast<intptr_t>(ime_result));
-  CHECK(editor_ime_has_preedit(editor) == 1);
   CHECK(getLineTextUtf8(document, 0) == "Xabcq");
 
   size_t comp_size = 0;
-  ImeCommandMessage commit_message;
+  ImeCommand commit_message;
   commit_message.kind = ImeCommandKind::COMMIT_TEXT;
   commit_message.text = "z";
-  commit_message.script_class = ImeScriptClass::LATIN;
-  const uint8_t* comp_result = sendImeCommand(editor, commit_message, &comp_size);
+  const uint8_t* comp_result = sendImeCommand(
+      editor, ime_state.session_id, commit_message, &comp_size);
   REQUIRE(comp_result != nullptr);
   CHECK(comp_size > 0);
   free_binary_data(reinterpret_cast<intptr_t>(comp_result));
-  CHECK(editor_ime_has_preedit(editor) == 0);
   CHECK(getLineTextUtf8(document, 0) == "Xabcz");
 
   action_payload = editor_set_cursor_position(editor, 0, 5, &action_size);

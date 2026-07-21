@@ -85,7 +85,7 @@ namespace NS_SWEETEDITOR {
   };
 
   /// Visual side of a caret at a soft-wrap boundary.
-  enum class CaretAffinity : uint8_t {
+  enum class SE_PROTOCOL_ENUM(ime, DOWNSTREAM) CaretAffinity : uint8_t {
     DOWNSTREAM = 0,
     UPSTREAM = 1,
   };
@@ -377,6 +377,8 @@ namespace NS_SWEETEDITOR {
   struct TextEditResult {
     /// Whether the edit request was handled.
     bool handled {false};
+    /// Whether the current editing text changed, including provisional IME text.
+    bool editing_content_changed {false};
     /// Semantic kind of document text changes.
     TextChangeKind change_kind {TextChangeKind::NONE};
     /// List of all changes (normal edit: 1; atomic batch/undo/redo: maybe many)

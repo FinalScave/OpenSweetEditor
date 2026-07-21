@@ -16,7 +16,7 @@ public enum DocumentHighlightKind {
             case 0: return TEXT;
             case 1: return READ;
             case 2: return WRITE;
-            default: return TEXT;
+            default: throw new IllegalArgumentException("Unknown DocumentHighlightKind value: " + value);
         }
     }
 }

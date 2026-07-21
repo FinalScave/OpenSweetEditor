@@ -2,17 +2,30 @@
 
 part of 'editor_core.dart';
 
+enum CaretAffinity {
+  downstream(0),
+  upstream(1);
+
+  const CaretAffinity(this.value);
+  final int value;
+
+  static CaretAffinity fromValue(int value) {
+    switch (value) {
+      case 0: return downstream;
+      case 1: return upstream;
+      default: throw ArgumentError.value(value, 'value', 'Unknown CaretAffinity value');
+    }
+  }
+}
+
 enum ImeCommandKind {
   setSelection(0),
-  setPreeditText(1),
-  commitText(2),
-  finishPreedit(3),
-  cancelPreedit(4),
-  setMarkedRange(5),
-  clearMarkedRange(6),
-  replaceText(7),
-  deleteSurroundingText(8),
-  setKeyboardScript(9);
+  beginComposition(1),
+  updateComposition(2),
+  commitText(3),
+  finishComposition(4),
+  cancelComposition(5),
+  deleteSurrounding(6);
 
   const ImeCommandKind(this.value);
   final int value;
@@ -20,278 +33,239 @@ enum ImeCommandKind {
   static ImeCommandKind fromValue(int value) {
     switch (value) {
       case 0: return setSelection;
-      case 1: return setPreeditText;
-      case 2: return commitText;
-      case 3: return finishPreedit;
-      case 4: return cancelPreedit;
-      case 5: return setMarkedRange;
-      case 6: return clearMarkedRange;
-      case 7: return replaceText;
-      case 8: return deleteSurroundingText;
-      case 9: return setKeyboardScript;
-      default: return setSelection;
+      case 1: return beginComposition;
+      case 2: return updateComposition;
+      case 3: return commitText;
+      case 4: return finishComposition;
+      case 5: return cancelComposition;
+      case 6: return deleteSurrounding;
+      default: throw ArgumentError.value(value, 'value', 'Unknown ImeCommandKind value');
     }
   }
 }
 
-enum ImeContextPolicy {
-  none(0),
-  limitedForCandidates(1);
+enum ImeCoordinateSpace {
+  document(0),
+  editingBuffer(1),
+  contextSlice(2),
+  composition(3);
 
-  const ImeContextPolicy(this.value);
+  const ImeCoordinateSpace(this.value);
   final int value;
 
-  static ImeContextPolicy fromValue(int value) {
+  static ImeCoordinateSpace fromValue(int value) {
+    switch (value) {
+      case 0: return document;
+      case 1: return editingBuffer;
+      case 2: return contextSlice;
+      case 3: return composition;
+      default: throw ArgumentError.value(value, 'value', 'Unknown ImeCoordinateSpace value');
+    }
+  }
+}
+
+enum ImeHostAction {
+  none(0),
+  closeSession(1),
+  restartSession(2);
+
+  const ImeHostAction(this.value);
+  final int value;
+
+  static ImeHostAction fromValue(int value) {
     switch (value) {
       case 0: return none;
-      case 1: return limitedForCandidates;
-      default: return none;
+      case 1: return closeSession;
+      case 2: return restartSession;
+      default: throw ArgumentError.value(value, 'value', 'Unknown ImeHostAction value');
     }
   }
 }
 
-enum ImeInputContextKind {
-  none(0),
-  selectionOnly(1),
-  documentWindow(2),
-  transientInput(3);
+enum ImeMutationModel {
+  command(0),
+  textUpdate(1);
 
-  const ImeInputContextKind(this.value);
+  const ImeMutationModel(this.value);
   final int value;
 
-  static ImeInputContextKind fromValue(int value) {
+  static ImeMutationModel fromValue(int value) {
     switch (value) {
-      case 0: return none;
-      case 1: return selectionOnly;
-      case 2: return documentWindow;
-      case 3: return transientInput;
-      default: return none;
+      case 0: return command;
+      case 1: return textUpdate;
+      default: throw ArgumentError.value(value, 'value', 'Unknown ImeMutationModel value');
     }
   }
 }
 
-enum ImeMarkedRangeRole {
-  none(0),
-  preedit(1),
-  systemMark(2);
+enum ImeResultCode {
+  ok(0),
+  sessionMismatch(1),
+  rejected(2),
+  readOnly(3);
 
-  const ImeMarkedRangeRole(this.value);
+  const ImeResultCode(this.value);
   final int value;
 
-  static ImeMarkedRangeRole fromValue(int value) {
+  static ImeResultCode fromValue(int value) {
     switch (value) {
-      case 0: return none;
-      case 1: return preedit;
-      case 2: return systemMark;
-      default: return none;
+      case 0: return ok;
+      case 1: return sessionMismatch;
+      case 2: return rejected;
+      case 3: return readOnly;
+      default: throw ArgumentError.value(value, 'value', 'Unknown ImeResultCode value');
     }
   }
 }
 
-enum ImeScriptClass {
-  unknown(0),
-  latin(1),
-  cjk(2),
-  kana(3),
-  hangul(4);
+enum ImeTextSource {
+  editing(0),
+  committed(1),
+  editingBuffer(2);
 
-  const ImeScriptClass(this.value);
+  const ImeTextSource(this.value);
   final int value;
 
-  static ImeScriptClass fromValue(int value) {
+  static ImeTextSource fromValue(int value) {
     switch (value) {
-      case 0: return unknown;
-      case 1: return latin;
-      case 2: return cjk;
-      case 3: return kana;
-      case 4: return hangul;
-      default: return unknown;
+      case 0: return editing;
+      case 1: return committed;
+      case 2: return editingBuffer;
+      default: throw ArgumentError.value(value, 'value', 'Unknown ImeTextSource value');
     }
   }
 }
 
 enum ImeTextUnit {
-  grapheme(0),
-  codePoint(1);
+  utf16CodeUnit(0),
+  unicodeCodePoint(1);
 
   const ImeTextUnit(this.value);
   final int value;
 
   static ImeTextUnit fromValue(int value) {
     switch (value) {
-      case 0: return grapheme;
-      case 1: return codePoint;
-      default: return grapheme;
+      case 0: return utf16CodeUnit;
+      case 1: return unicodeCodePoint;
+      default: throw ArgumentError.value(value, 'value', 'Unknown ImeTextUnit value');
     }
   }
 }
 
-enum ImeTextUpdateKind {
-  snapshot(0),
-  patch(1);
-
-  const ImeTextUpdateKind(this.value);
-  final int value;
-
-  static ImeTextUpdateKind fromValue(int value) {
-    switch (value) {
-      case 0: return snapshot;
-      case 1: return patch;
-      default: return snapshot;
-    }
-  }
-}
-
-enum ImeTextUpdateScope {
-  documentWindow(0),
-  transientInput(1);
-
-  const ImeTextUpdateScope(this.value);
-  final int value;
-
-  static ImeTextUpdateScope fromValue(int value) {
-    switch (value) {
-      case 0: return documentWindow;
-      case 1: return transientInput;
-      default: return documentWindow;
-    }
-  }
-}
-
-class ImeCommandMessage {
-  const ImeCommandMessage({
+class ImeCommand {
+  const ImeCommand({
     this.kind = ImeCommandKind.setSelection,
-    this.contextId = 0,
-    this.contextRevision = 0,
-    this.documentStartOffset = 0,
-    this.range = const ImeOffsetRange(),
-    this.selection = const ImeOffsetRange(),
+    this.targetRange = const ImeOffsetRange(),
+    this.selectionAfter = const ImeSelection(),
     this.text = '',
-    this.cursorOffset = 1,
     this.deleteBefore = 0,
     this.deleteAfter = 0,
-    this.textUnit = ImeTextUnit.grapheme,
-    this.markedRole = ImeMarkedRangeRole.none,
-    this.scriptClass = ImeScriptClass.unknown,
+    this.textUnit = ImeTextUnit.utf16CodeUnit,
   });
 
   final ImeCommandKind kind;
-  final int contextId;
-  final int contextRevision;
-  final int documentStartOffset;
-  final ImeOffsetRange range;
-  final ImeOffsetRange selection;
+  final ImeOffsetRange targetRange;
+  final ImeSelection selectionAfter;
   final String text;
-  final int cursorOffset;
   final int deleteBefore;
   final int deleteAfter;
   final ImeTextUnit textUnit;
-  final ImeMarkedRangeRole markedRole;
-  final ImeScriptClass scriptClass;
 }
 
-class ImeInputContext {
-  const ImeInputContext({
-    this.id = 0,
-    this.revision = 0,
-    this.documentStartOffset = 0,
-    this.text = '',
-    this.selection = const ImeOffsetRange(),
-    this.hasPreeditRange = false,
-    this.preeditRange = const ImeOffsetRange(),
-    this.hasSystemMarkRange = false,
-    this.systemMarkRange = const ImeOffsetRange(),
-    this.kind = ImeInputContextKind.none,
+class ImeCommandBatch {
+  const ImeCommandBatch({
+    this.sessionId = 0,
+    this.commands = const [],
   });
 
-  final int id;
-  final int revision;
-  final int documentStartOffset;
-  final String text;
-  final ImeOffsetRange selection;
-  final bool hasPreeditRange;
-  final ImeOffsetRange preeditRange;
-  final bool hasSystemMarkRange;
-  final ImeOffsetRange systemMarkRange;
-  final ImeInputContextKind kind;
-}
-
-class ImeMarkedRange {
-  const ImeMarkedRange({
-    this.role = ImeMarkedRangeRole.none,
-    this.range = const ImeOffsetRange(),
-  });
-
-  final ImeMarkedRangeRole role;
-  final ImeOffsetRange range;
+  final int sessionId;
+  final List<ImeCommand> commands;
 }
 
 class ImeOffsetRange {
   const ImeOffsetRange({
-    this.start = 0,
-    this.end = 0,
+    this.coordinateSpace = ImeCoordinateSpace.document,
+    this.startUtf16 = -1,
+    this.endUtf16 = -1,
   });
 
-  final int start;
-  final int end;
+  final ImeCoordinateSpace coordinateSpace;
+  final int startUtf16;
+  final int endUtf16;
 }
 
-class ImeSyncSnapshot {
-  const ImeSyncSnapshot({
-    this.cursor = const TextPosition(),
-    this.selection = const TextRange(),
-    this.hasSelection = false,
-    this.hasPreeditRange = false,
-    this.preeditRange = const TextRange(),
-    this.hasSystemMarkRange = false,
-    this.systemMarkRange = const TextRange(),
-    this.contextPolicy = ImeContextPolicy.none,
-    this.clearSystemMark = false,
+class ImeSelection {
+  const ImeSelection({
+    this.coordinateSpace = ImeCoordinateSpace.document,
+    this.anchorUtf16 = -1,
+    this.activeUtf16 = -1,
+    this.affinity = CaretAffinity.downstream,
   });
 
-  final TextPosition cursor;
-  final TextRange selection;
-  final bool hasSelection;
-  final bool hasPreeditRange;
-  final TextRange preeditRange;
-  final bool hasSystemMarkRange;
-  final TextRange systemMarkRange;
-  final ImeContextPolicy contextPolicy;
-  final bool clearSystemMark;
+  final ImeCoordinateSpace coordinateSpace;
+  final int anchorUtf16;
+  final int activeUtf16;
+  final CaretAffinity affinity;
 }
 
-class ImeTextPatch {
-  const ImeTextPatch({
-    this.range = const ImeOffsetRange(),
+class ImeState {
+  const ImeState({
+    this.resultCode = ImeResultCode.ok,
+    this.sessionId = 0,
+    this.stateRevision = 0,
+    this.selection = const ImeSelection(),
+    this.compositionRange = const ImeOffsetRange(),
+  });
+
+  final ImeResultCode resultCode;
+  final int sessionId;
+  final int stateRevision;
+  final ImeSelection selection;
+  final ImeOffsetRange compositionRange;
+}
+
+class ImeTextContext {
+  const ImeTextContext({
+    this.resultCode = ImeResultCode.ok,
+    this.sliceStartUtf16 = 0,
+    this.totalLengthUtf16 = 0,
     this.text = '',
+    this.selection = const ImeSelection(),
+    this.compositionRange = const ImeOffsetRange(),
   });
 
-  final ImeOffsetRange range;
+  final ImeResultCode resultCode;
+  final int sliceStartUtf16;
+  final int totalLengthUtf16;
   final String text;
+  final ImeSelection selection;
+  final ImeOffsetRange compositionRange;
 }
 
-class ImeTextUpdateMessage {
-  const ImeTextUpdateMessage({
-    this.kind = ImeTextUpdateKind.snapshot,
-    this.scope = ImeTextUpdateScope.documentWindow,
-    this.contextId = 0,
-    this.contextRevision = 0,
-    this.documentStartOffset = 0,
-    this.text = '',
-    this.patch = const ImeTextPatch(),
-    this.selection = const ImeOffsetRange(),
-    this.markedRange = const ImeMarkedRange(),
-    this.scriptClass = ImeScriptClass.unknown,
+class ImeTextUpdateBatch {
+  const ImeTextUpdateBatch({
+    this.sessionId = 0,
+    this.expectedStateRevision = 0,
+    this.steps = const [],
   });
 
-  final ImeTextUpdateKind kind;
-  final ImeTextUpdateScope scope;
-  final int contextId;
-  final int contextRevision;
-  final int documentStartOffset;
-  final String text;
-  final ImeTextPatch patch;
-  final ImeOffsetRange selection;
-  final ImeMarkedRange markedRange;
-  final ImeScriptClass scriptClass;
+  final int sessionId;
+  final int expectedStateRevision;
+  final List<ImeTextUpdateStep> steps;
+}
+
+class ImeTextUpdateStep {
+  const ImeTextUpdateStep({
+    this.oldText = '',
+    this.patchRange = const ImeOffsetRange(),
+    this.replacementText = '',
+    this.selectionAfter = const ImeSelection(),
+    this.compositionAfter = const ImeOffsetRange(),
+  });
+
+  final String oldText;
+  final ImeOffsetRange patchRange;
+  final String replacementText;
+  final ImeSelection selectionAfter;
+  final ImeOffsetRange compositionAfter;
 }

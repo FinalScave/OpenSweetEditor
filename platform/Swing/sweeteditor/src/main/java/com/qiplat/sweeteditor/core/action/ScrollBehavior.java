@@ -16,7 +16,7 @@ public enum ScrollBehavior {
             case 0: return GOTO_TOP;
             case 1: return GOTO_CENTER;
             case 2: return GOTO_BOTTOM;
-            default: return GOTO_TOP;
+            default: throw new IllegalArgumentException("Unknown ScrollBehavior value: " + value);
         }
     }
 }

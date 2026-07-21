@@ -1,5 +1,5 @@
 import { PointF, TextChange, TextPosition, TextRange } from './CoreFoundation';
-import { ImeSyncSnapshot } from './CoreIme';
+import { ImeHostAction, ImeState } from './CoreIme';
 import { EventType, GestureType, HitTarget } from './CoreInteraction';
 import { KeyModifier } from './CoreKeymap';
 import { PointerCursorType } from './CoreVisual';
@@ -38,7 +38,7 @@ export function editorActionSourceFromValue(value: number): EditorActionSource {
     case 8: return EditorActionSource.FOLDING;
     case 9: return EditorActionSource.SEARCH;
     case 10: return EditorActionSource.LINKED_EDITING;
-    default: return EditorActionSource.NONE;
+    default: throw new Error('Unknown EditorActionSource value: ' + value);
   }
 }
 
@@ -60,7 +60,7 @@ export function scrollBehaviorFromValue(value: number): ScrollBehavior {
     case 0: return ScrollBehavior.GOTO_TOP;
     case 1: return ScrollBehavior.GOTO_CENTER;
     case 2: return ScrollBehavior.GOTO_BOTTOM;
-    default: return ScrollBehavior.GOTO_TOP;
+    default: throw new Error('Unknown ScrollBehavior value: ' + value);
   }
 }
 
@@ -85,7 +85,7 @@ export function textChangeKindFromValue(value: number): TextChangeKind {
     case 5: return TextChangeKind.UNDO;
     case 6: return TextChangeKind.REDO;
     case 7: return TextChangeKind.MIXED;
-    default: return TextChangeKind.NONE;
+    default: throw new Error('Unknown TextChangeKind value: ' + value);
   }
 }
 
@@ -102,7 +102,6 @@ export interface EditorActionResult {
   pointerCursorChanged: boolean;
   compositionChanged: boolean;
   decorationChanged: boolean;
-  needsImeSync: boolean;
   animationFlags: number;
   nextAnimationDelayMs: number;
   interactionFlags: number;
@@ -121,7 +120,8 @@ export interface EditorActionResult {
   scaleAfter: number;
   pointerCursorBefore: PointerCursorType;
   pointerCursorAfter: PointerCursorType;
-  imeSync: ImeSyncSnapshot;
+  imeHostAction: ImeHostAction;
+  imeState: ImeState;
   gestureType: GestureType;
   gestureEventType: EventType;
   tapPoint: PointF;

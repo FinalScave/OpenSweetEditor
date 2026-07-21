@@ -16,7 +16,7 @@ public enum WrapMode {
             case 0: return NONE;
             case 1: return CHAR_BREAK;
             case 2: return WORD_BREAK;
-            default: return NONE;
+            default: throw new IllegalArgumentException("Unknown WrapMode value: " + value);
         }
     }
 }

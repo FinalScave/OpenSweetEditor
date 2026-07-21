@@ -14,7 +14,7 @@ public enum AutoIndentMode {
         switch (value) {
             case 0: return NONE;
             case 1: return KEEP_INDENT;
-            default: return NONE;
+            default: throw new IllegalArgumentException("Unknown AutoIndentMode value: " + value);
         }
     }
 }

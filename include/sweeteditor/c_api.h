@@ -309,7 +309,6 @@ EDITOR_API const uint8_t* editor_get_layout_metrics(intptr_t editor_handle, size
 ///   bool_i32 pointer_cursor_changed
 ///   bool_i32 composition_changed
 ///   bool_i32 decoration_changed
-///   bool_i32 needs_ime_sync
 ///   u32 animation_flags
 ///   u32 next_animation_delay_ms
 ///   u32 interaction_flags
@@ -328,7 +327,8 @@ EDITOR_API const uint8_t* editor_get_layout_metrics(intptr_t editor_handle, size
 ///   f32 scale_after
 ///   enum_i32 pointer_cursor_before
 ///   enum_i32 pointer_cursor_after
-///   ImeSyncSnapshot ime_sync
+///   enum_i32 ime_host_action
+///   ImeState ime_state
 ///   enum_i32 gesture_type
 ///   enum_i32 gesture_event_type
 ///   PointF tap_point
@@ -340,7 +340,7 @@ EDITOR_API const uint8_t* editor_get_layout_metrics(intptr_t editor_handle, size
 ///   when animation_flags is nonzero, next_animation_delay_ms=0 requests the next display frame
 ///   and a positive value requests editor_tick_animations after that delay
 ///   TextChange is TextRange range followed by U8String new_text
-///   ImeSyncSnapshot is TextPosition cursor, TextRange selection, bool_i32 has_selection, bool_i32 has_preedit_range, TextRange preedit_range, bool_i32 has_system_mark_range, TextRange system_mark_range, enum_i32 context_policy, bool_i32 clear_system_mark
+///   ImeState is enum_i32 result_code, u64 session_id, u64 state_revision, ImeSelection selection, ImeOffsetRange composition_range
 ///   HitTarget is enum_i32 type, i32 line, i32 column, i32 icon_id, i32 color_value
 /// This is the only result payload for core state-changing APIs. Platforms should use needs_redraw from this payload
 /// to decide whether to flush editor state and schedule repaint.
@@ -972,41 +972,33 @@ EDITOR_API const uint8_t* editor_cancel_linked_editing(intptr_t editor_handle, s
 
 #pragma region [IME]
 
-/// Get whether preedit is currently active
-/// @return 1=preedit active, 0=no preedit
-EDITOR_API int editor_ime_has_preedit(intptr_t editor_handle);
+/// Begin an IME session.
+/// @param mutation_model ImeMutationModel enum value.
+/// @return ImeState binary payload, returns NULL when editor handle is invalid.
+EDITOR_API const uint8_t* editor_ime_begin_session(intptr_t editor_handle, int mutation_model, size_t* out_size);
 
-/// Handle a platform IME command message.
+/// End an IME session using Finish semantics.
+EDITOR_API const uint8_t* editor_ime_end_session(intptr_t editor_handle, uint64_t session_id, size_t* out_size);
+
+/// Apply one callback-scoped command batch.
 /// @param data Binary payload encoded by CoreProtocol.
 /// @param size Binary payload size in bytes.
 /// @return EditorActionResult binary payload, returns NULL when editor handle is invalid or payload is invalid.
-EDITOR_API const uint8_t* editor_ime_handle_command_message(intptr_t editor_handle, const uint8_t* data, size_t size, size_t* out_size);
+EDITOR_API const uint8_t* editor_ime_apply_commands(intptr_t editor_handle, const uint8_t* data, size_t size, size_t* out_size);
 
-/// Handle a platform IME text update message.
+/// Apply one callback-scoped text update batch.
 /// @param data Binary payload encoded by CoreProtocol.
 /// @param size Binary payload size in bytes.
 /// @return EditorActionResult binary payload, returns NULL when editor handle is invalid or payload is invalid.
-EDITOR_API const uint8_t* editor_ime_handle_text_update_message(intptr_t editor_handle, const uint8_t* data, size_t size, size_t* out_size);
+EDITOR_API const uint8_t* editor_ime_apply_text_updates(intptr_t editor_handle, const uint8_t* data, size_t size, size_t* out_size);
 
-/// Get the current IME keyboard script class.
-EDITOR_API int editor_ime_get_keyboard_script_class(intptr_t editor_handle);
+/// Get the current state for an IME session.
+EDITOR_API const uint8_t* editor_ime_get_state(intptr_t editor_handle, uint64_t session_id, size_t* out_size);
 
-/// Get the current IME synchronization snapshot.
-/// @return ImeSyncSnapshot binary payload, returns NULL when editor handle is invalid
-EDITOR_API const uint8_t* editor_ime_get_sync_snapshot(intptr_t editor_handle, size_t* out_size);
-
-/// Get an input context for command-style IME APIs.
-/// @param before_length UTF-16 code unit count requested before the cursor or selection.
-/// @param after_length UTF-16 code unit count requested after the cursor or selection.
-/// @return ImeInputContext binary payload, returns NULL when editor handle is invalid.
-EDITOR_API const uint8_t* editor_ime_get_command_input_context(intptr_t editor_handle, size_t before_length, size_t after_length, size_t* out_size);
-
-/// Get an input context for text-update IME APIs.
-/// @param scope ImeTextUpdateScope enum value.
-/// @param before_length UTF-16 code unit count requested before the cursor or selection.
-/// @param after_length UTF-16 code unit count requested after the cursor or selection.
-/// @return ImeInputContext binary payload, returns NULL when editor handle is invalid.
-EDITOR_API const uint8_t* editor_ime_get_text_update_input_context(intptr_t editor_handle, int scope, size_t before_length, size_t after_length, size_t* out_size);
+/// Read a slice from an IME text source.
+EDITOR_API const uint8_t* editor_ime_get_context(intptr_t editor_handle, uint64_t session_id,
+                                                int source, int64_t start_utf16,
+                                                int64_t length_utf16, size_t* out_size);
 
 #pragma endregion
 

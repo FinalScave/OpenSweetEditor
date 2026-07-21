@@ -18,7 +18,7 @@ public enum EventType: Int32 {
     case DIRECT_GESTURE_BEGIN = 14
     case DIRECT_GESTURE_END = 15
 
-    public static func fromValue(_ value: Int32) -> EventType {
+    public static func fromValue(_ value: Int32) -> EventType? {
         switch value {
         case 0: return .UNDEFINED
         case 1: return .TOUCH_DOWN
@@ -36,7 +36,7 @@ public enum EventType: Int32 {
         case 13: return .DIRECT_SCROLL
         case 14: return .DIRECT_GESTURE_BEGIN
         case 15: return .DIRECT_GESTURE_END
-        default: return .UNDEFINED
+        default: return nil
         }
     }
 }
@@ -52,7 +52,7 @@ public enum GestureType: Int32 {
     case DRAG_SELECT = 7
     case CONTEXT_MENU = 8
 
-    public static func fromValue(_ value: Int32) -> GestureType {
+    public static func fromValue(_ value: Int32) -> GestureType? {
         switch value {
         case 0: return .UNDEFINED
         case 1: return .TAP
@@ -63,7 +63,7 @@ public enum GestureType: Int32 {
         case 6: return .FAST_SCROLL
         case 7: return .DRAG_SELECT
         case 8: return .CONTEXT_MENU
-        default: return .UNDEFINED
+        default: return nil
         }
     }
 }
@@ -79,7 +79,7 @@ public enum HitTargetType: Int32 {
     case FOLD_GUTTER = 7
     case FOLD_PLACEHOLDER = 8
 
-    public static func fromValue(_ value: Int32) -> HitTargetType {
+    public static func fromValue(_ value: Int32) -> HitTargetType? {
         switch value {
         case 0: return .NONE
         case 1: return .INLAY_HINT_TEXT
@@ -90,7 +90,7 @@ public enum HitTargetType: Int32 {
         case 6: return .GUTTER_ICON
         case 7: return .FOLD_GUTTER
         case 8: return .FOLD_PLACEHOLDER
-        default: return .NONE
+        default: return nil
         }
     }
 }

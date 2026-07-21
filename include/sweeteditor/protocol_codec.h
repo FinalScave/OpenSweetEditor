@@ -716,90 +716,79 @@ public:
     return true;
   }
 
-  inline bool read(ImeCommandMessage& out) {
+  inline bool read(ImeCommand& out) {
     int32_t out_kind_value{};
     if (!readI32(out_kind_value)) return false;
     out.kind = static_cast<ImeCommandKind>(out_kind_value);
-    uint64_t out_context_id_value{};
-    if (!readU64(out_context_id_value)) return false;
-    out.context_id = static_cast<uint64_t>(out_context_id_value);
-    int32_t out_context_revision_value{};
-    if (!readI32(out_context_revision_value)) return false;
-    out.context_revision = static_cast<int32_t>(out_context_revision_value);
-    int32_t out_document_start_offset_value{};
-    if (!readI32(out_document_start_offset_value)) return false;
-    out.document_start_offset = static_cast<int32_t>(out_document_start_offset_value);
-    if (!read(out.range)) return false;
-    if (!read(out.selection)) return false;
+    if (!read(out.target_range)) return false;
+    if (!read(out.selection_after)) return false;
     if (!readUtf8String(out.text)) return false;
-    int32_t out_cursor_offset_value{};
-    if (!readI32(out_cursor_offset_value)) return false;
-    out.cursor_offset = static_cast<int32_t>(out_cursor_offset_value);
-    int32_t out_delete_before_value{};
-    if (!readI32(out_delete_before_value)) return false;
-    out.delete_before = static_cast<int32_t>(out_delete_before_value);
-    int32_t out_delete_after_value{};
-    if (!readI32(out_delete_after_value)) return false;
-    out.delete_after = static_cast<int32_t>(out_delete_after_value);
+    int64_t out_delete_before_value{};
+    if (!readI64(out_delete_before_value)) return false;
+    out.delete_before = static_cast<int64_t>(out_delete_before_value);
+    int64_t out_delete_after_value{};
+    if (!readI64(out_delete_after_value)) return false;
+    out.delete_after = static_cast<int64_t>(out_delete_after_value);
     int32_t out_text_unit_value{};
     if (!readI32(out_text_unit_value)) return false;
     out.text_unit = static_cast<ImeTextUnit>(out_text_unit_value);
-    int32_t out_marked_role_value{};
-    if (!readI32(out_marked_role_value)) return false;
-    out.marked_role = static_cast<ImeMarkedRangeRole>(out_marked_role_value);
-    int32_t out_script_class_value{};
-    if (!readI32(out_script_class_value)) return false;
-    out.script_class = static_cast<ImeScriptClass>(out_script_class_value);
     return true;
   }
 
-  inline bool read(ImeMarkedRange& out) {
-    int32_t out_role_value{};
-    if (!readI32(out_role_value)) return false;
-    out.role = static_cast<ImeMarkedRangeRole>(out_role_value);
-    if (!read(out.range)) return false;
+  inline bool read(ImeCommandBatch& out) {
+    uint64_t out_session_id_value{};
+    if (!readU64(out_session_id_value)) return false;
+    out.session_id = static_cast<uint64_t>(out_session_id_value);
+    if (!readList(out.commands)) return false;
     return true;
   }
 
   inline bool read(ImeOffsetRange& out) {
-    int32_t out_start_value{};
-    if (!readI32(out_start_value)) return false;
-    out.start = static_cast<int32_t>(out_start_value);
-    int32_t out_end_value{};
-    if (!readI32(out_end_value)) return false;
-    out.end = static_cast<int32_t>(out_end_value);
+    int32_t out_coordinate_space_value{};
+    if (!readI32(out_coordinate_space_value)) return false;
+    out.coordinate_space = static_cast<ImeCoordinateSpace>(out_coordinate_space_value);
+    int64_t out_start_utf16_value{};
+    if (!readI64(out_start_utf16_value)) return false;
+    out.start_utf16 = static_cast<int64_t>(out_start_utf16_value);
+    int64_t out_end_utf16_value{};
+    if (!readI64(out_end_utf16_value)) return false;
+    out.end_utf16 = static_cast<int64_t>(out_end_utf16_value);
     return true;
   }
 
-  inline bool read(ImeTextPatch& out) {
-    if (!read(out.range)) return false;
-    if (!readUtf8String(out.text)) return false;
+  inline bool read(ImeSelection& out) {
+    int32_t out_coordinate_space_value{};
+    if (!readI32(out_coordinate_space_value)) return false;
+    out.coordinate_space = static_cast<ImeCoordinateSpace>(out_coordinate_space_value);
+    int64_t out_anchor_utf16_value{};
+    if (!readI64(out_anchor_utf16_value)) return false;
+    out.anchor_utf16 = static_cast<int64_t>(out_anchor_utf16_value);
+    int64_t out_active_utf16_value{};
+    if (!readI64(out_active_utf16_value)) return false;
+    out.active_utf16 = static_cast<int64_t>(out_active_utf16_value);
+    int32_t out_affinity_value{};
+    if (!readI32(out_affinity_value)) return false;
+    out.affinity = static_cast<CaretAffinity>(out_affinity_value);
     return true;
   }
 
-  inline bool read(ImeTextUpdateMessage& out) {
-    int32_t out_kind_value{};
-    if (!readI32(out_kind_value)) return false;
-    out.kind = static_cast<ImeTextUpdateKind>(out_kind_value);
-    int32_t out_scope_value{};
-    if (!readI32(out_scope_value)) return false;
-    out.scope = static_cast<ImeTextUpdateScope>(out_scope_value);
-    uint64_t out_context_id_value{};
-    if (!readU64(out_context_id_value)) return false;
-    out.context_id = static_cast<uint64_t>(out_context_id_value);
-    int32_t out_context_revision_value{};
-    if (!readI32(out_context_revision_value)) return false;
-    out.context_revision = static_cast<int32_t>(out_context_revision_value);
-    int32_t out_document_start_offset_value{};
-    if (!readI32(out_document_start_offset_value)) return false;
-    out.document_start_offset = static_cast<int32_t>(out_document_start_offset_value);
-    if (!readUtf8String(out.text)) return false;
-    if (!read(out.patch)) return false;
-    if (!read(out.selection)) return false;
-    if (!read(out.marked_range)) return false;
-    int32_t out_script_class_value{};
-    if (!readI32(out_script_class_value)) return false;
-    out.script_class = static_cast<ImeScriptClass>(out_script_class_value);
+  inline bool read(ImeTextUpdateBatch& out) {
+    uint64_t out_session_id_value{};
+    if (!readU64(out_session_id_value)) return false;
+    out.session_id = static_cast<uint64_t>(out_session_id_value);
+    uint64_t out_expected_state_revision_value{};
+    if (!readU64(out_expected_state_revision_value)) return false;
+    out.expected_state_revision = static_cast<uint64_t>(out_expected_state_revision_value);
+    if (!readList(out.steps)) return false;
+    return true;
+  }
+
+  inline bool read(ImeTextUpdateStep& out) {
+    if (!readUtf8String(out.old_text)) return false;
+    if (!read(out.patch_range)) return false;
+    if (!readUtf8String(out.replacement_text)) return false;
+    if (!read(out.selection_after)) return false;
+    if (!read(out.composition_after)) return false;
     return true;
   }
 
@@ -1029,7 +1018,6 @@ public:
     if (!writeI32(value.pointer_cursor_changed ? 1 : 0)) return false;
     if (!writeI32(value.composition_changed ? 1 : 0)) return false;
     if (!writeI32(value.decoration_changed ? 1 : 0)) return false;
-    if (!writeI32(value.needs_ime_sync ? 1 : 0)) return false;
     if (!writeU32(static_cast<uint32_t>(value.animation_flags))) return false;
     if (!writeU32(static_cast<uint32_t>(value.next_animation_delay_ms))) return false;
     if (!writeU32(static_cast<uint32_t>(value.interaction_flags))) return false;
@@ -1048,7 +1036,8 @@ public:
     if (!writeF32(static_cast<float>(value.scale_after))) return false;
     if (!writeI32(static_cast<int32_t>(value.pointer_cursor_before))) return false;
     if (!writeI32(static_cast<int32_t>(value.pointer_cursor_after))) return false;
-    if (!write(value.ime_sync)) return false;
+    if (!writeI32(static_cast<int32_t>(value.ime_host_action))) return false;
+    if (!write(value.ime_state)) return false;
     if (!writeI32(static_cast<int32_t>(value.gesture_type))) return false;
     if (!writeI32(static_cast<int32_t>(value.gesture_event_type))) return false;
     if (!write(value.tap_point)) return false;
@@ -1465,79 +1454,70 @@ public:
     return true;
   }
 
-  inline bool write(const ImeCommandMessage& value) {
+  inline bool write(const ImeCommand& value) {
     if (!writeI32(static_cast<int32_t>(value.kind))) return false;
-    if (!writeU64(static_cast<uint64_t>(value.context_id))) return false;
-    if (!writeI32(static_cast<int32_t>(value.context_revision))) return false;
-    if (!writeI32(static_cast<int32_t>(value.document_start_offset))) return false;
-    if (!write(value.range)) return false;
-    if (!write(value.selection)) return false;
+    if (!write(value.target_range)) return false;
+    if (!write(value.selection_after)) return false;
     if (!writeUtf8String(value.text)) return false;
-    if (!writeI32(static_cast<int32_t>(value.cursor_offset))) return false;
-    if (!writeI32(static_cast<int32_t>(value.delete_before))) return false;
-    if (!writeI32(static_cast<int32_t>(value.delete_after))) return false;
+    if (!writeI64(static_cast<int64_t>(value.delete_before))) return false;
+    if (!writeI64(static_cast<int64_t>(value.delete_after))) return false;
     if (!writeI32(static_cast<int32_t>(value.text_unit))) return false;
-    if (!writeI32(static_cast<int32_t>(value.marked_role))) return false;
-    if (!writeI32(static_cast<int32_t>(value.script_class))) return false;
     return true;
   }
 
-  inline bool write(const ImeInputContext& value) {
-    if (!writeU64(static_cast<uint64_t>(value.id))) return false;
-    if (!writeI32(static_cast<int32_t>(value.revision))) return false;
-    if (!writeI32(static_cast<int32_t>(value.document_start_offset))) return false;
-    if (!writeUtf8String(value.text)) return false;
-    if (!write(value.selection)) return false;
-    if (!writeI32(value.has_preedit_range ? 1 : 0)) return false;
-    if (!write(value.preedit_range)) return false;
-    if (!writeI32(value.has_system_mark_range ? 1 : 0)) return false;
-    if (!write(value.system_mark_range)) return false;
-    if (!writeI32(static_cast<int32_t>(value.kind))) return false;
-    return true;
-  }
-
-  inline bool write(const ImeMarkedRange& value) {
-    if (!writeI32(static_cast<int32_t>(value.role))) return false;
-    if (!write(value.range)) return false;
+  inline bool write(const ImeCommandBatch& value) {
+    if (!writeU64(static_cast<uint64_t>(value.session_id))) return false;
+    if (!writeList(value.commands)) return false;
     return true;
   }
 
   inline bool write(const ImeOffsetRange& value) {
-    if (!writeI32(static_cast<int32_t>(value.start))) return false;
-    if (!writeI32(static_cast<int32_t>(value.end))) return false;
+    if (!writeI32(static_cast<int32_t>(value.coordinate_space))) return false;
+    if (!writeI64(static_cast<int64_t>(value.start_utf16))) return false;
+    if (!writeI64(static_cast<int64_t>(value.end_utf16))) return false;
     return true;
   }
 
-  inline bool write(const ImeSyncSnapshot& value) {
-    if (!write(value.cursor)) return false;
+  inline bool write(const ImeSelection& value) {
+    if (!writeI32(static_cast<int32_t>(value.coordinate_space))) return false;
+    if (!writeI64(static_cast<int64_t>(value.anchor_utf16))) return false;
+    if (!writeI64(static_cast<int64_t>(value.active_utf16))) return false;
+    if (!writeI32(static_cast<int32_t>(value.affinity))) return false;
+    return true;
+  }
+
+  inline bool write(const ImeState& value) {
+    if (!writeI32(static_cast<int32_t>(value.result_code))) return false;
+    if (!writeU64(static_cast<uint64_t>(value.session_id))) return false;
+    if (!writeU64(static_cast<uint64_t>(value.state_revision))) return false;
     if (!write(value.selection)) return false;
-    if (!writeI32(value.has_selection ? 1 : 0)) return false;
-    if (!writeI32(value.has_preedit_range ? 1 : 0)) return false;
-    if (!write(value.preedit_range)) return false;
-    if (!writeI32(value.has_system_mark_range ? 1 : 0)) return false;
-    if (!write(value.system_mark_range)) return false;
-    if (!writeI32(static_cast<int32_t>(value.context_policy))) return false;
-    if (!writeI32(value.clear_system_mark ? 1 : 0)) return false;
+    if (!write(value.composition_range)) return false;
     return true;
   }
 
-  inline bool write(const ImeTextPatch& value) {
-    if (!write(value.range)) return false;
+  inline bool write(const ImeTextContext& value) {
+    if (!writeI32(static_cast<int32_t>(value.result_code))) return false;
+    if (!writeI64(static_cast<int64_t>(value.slice_start_utf16))) return false;
+    if (!writeI64(static_cast<int64_t>(value.total_length_utf16))) return false;
     if (!writeUtf8String(value.text)) return false;
-    return true;
-  }
-
-  inline bool write(const ImeTextUpdateMessage& value) {
-    if (!writeI32(static_cast<int32_t>(value.kind))) return false;
-    if (!writeI32(static_cast<int32_t>(value.scope))) return false;
-    if (!writeU64(static_cast<uint64_t>(value.context_id))) return false;
-    if (!writeI32(static_cast<int32_t>(value.context_revision))) return false;
-    if (!writeI32(static_cast<int32_t>(value.document_start_offset))) return false;
-    if (!writeUtf8String(value.text)) return false;
-    if (!write(value.patch)) return false;
     if (!write(value.selection)) return false;
-    if (!write(value.marked_range)) return false;
-    if (!writeI32(static_cast<int32_t>(value.script_class))) return false;
+    if (!write(value.composition_range)) return false;
+    return true;
+  }
+
+  inline bool write(const ImeTextUpdateBatch& value) {
+    if (!writeU64(static_cast<uint64_t>(value.session_id))) return false;
+    if (!writeU64(static_cast<uint64_t>(value.expected_state_revision))) return false;
+    if (!writeList(value.steps)) return false;
+    return true;
+  }
+
+  inline bool write(const ImeTextUpdateStep& value) {
+    if (!writeUtf8String(value.old_text)) return false;
+    if (!write(value.patch_range)) return false;
+    if (!writeUtf8String(value.replacement_text)) return false;
+    if (!write(value.selection_after)) return false;
+    if (!write(value.composition_after)) return false;
     return true;
   }
 

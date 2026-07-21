@@ -20,7 +20,7 @@ public enum EditorActionSource: Int32 {
     case SEARCH = 9
     case LINKED_EDITING = 10
 
-    public static func fromValue(_ value: Int32) -> EditorActionSource {
+    public static func fromValue(_ value: Int32) -> EditorActionSource? {
         switch value {
         case 0: return .NONE
         case 1: return .SETUP
@@ -33,7 +33,7 @@ public enum EditorActionSource: Int32 {
         case 8: return .FOLDING
         case 9: return .SEARCH
         case 10: return .LINKED_EDITING
-        default: return .NONE
+        default: return nil
         }
     }
 }
@@ -50,12 +50,12 @@ public enum ScrollBehavior: Int32 {
     case GOTO_CENTER = 1
     case GOTO_BOTTOM = 2
 
-    public static func fromValue(_ value: Int32) -> ScrollBehavior {
+    public static func fromValue(_ value: Int32) -> ScrollBehavior? {
         switch value {
         case 0: return .GOTO_TOP
         case 1: return .GOTO_CENTER
         case 2: return .GOTO_BOTTOM
-        default: return .GOTO_TOP
+        default: return nil
         }
     }
 }
@@ -70,7 +70,7 @@ public enum TextChangeKind: Int32 {
     case REDO = 6
     case MIXED = 7
 
-    public static func fromValue(_ value: Int32) -> TextChangeKind {
+    public static func fromValue(_ value: Int32) -> TextChangeKind? {
         switch value {
         case 0: return .NONE
         case 1: return .INSERTION
@@ -80,7 +80,7 @@ public enum TextChangeKind: Int32 {
         case 5: return .UNDO
         case 6: return .REDO
         case 7: return .MIXED
-        default: return .NONE
+        default: return nil
         }
     }
 }
@@ -98,7 +98,6 @@ public struct EditorActionResult {
     public var pointer_cursor_changed: Bool = false
     public var composition_changed: Bool = false
     public var decoration_changed: Bool = false
-    public var needs_ime_sync: Bool = false
     public var animation_flags: Int32 = 0
     public var next_animation_delay_ms: Int32 = 0
     public var interaction_flags: Int32 = 0
@@ -117,7 +116,8 @@ public struct EditorActionResult {
     public var scale_after: Float = 1
     public var pointer_cursor_before: PointerCursorType = .TEXT
     public var pointer_cursor_after: PointerCursorType = .TEXT
-    public var ime_sync: ImeSyncSnapshot = ImeSyncSnapshot()
+    public var ime_host_action: ImeHostAction = .NONE
+    public var ime_state: ImeState = ImeState()
     public var gesture_type: GestureType = .UNDEFINED
     public var gesture_event_type: EventType = .UNDEFINED
     public var tap_point: PointF = PointF()
@@ -125,7 +125,7 @@ public struct EditorActionResult {
     public var modifiers: Int32 = KeyModifier.NONE
     public var command: Int32 = 0
 
-    public init(handled: Bool = false, needs_redraw: Bool = false, source: EditorActionSource = .NONE, text_change_kind: TextChangeKind = .NONE, content_changed: Bool = false, cursor_changed: Bool = false, selection_changed: Bool = false, scroll_changed: Bool = false, scale_changed: Bool = false, pointer_cursor_changed: Bool = false, composition_changed: Bool = false, decoration_changed: Bool = false, needs_ime_sync: Bool = false, animation_flags: Int32 = 0, next_animation_delay_ms: Int32 = 0, interaction_flags: Int32 = 0, changes: [TextChange] = [], cursor_before: TextPosition = TextPosition(), cursor_after: TextPosition = TextPosition(), has_selection_before: Bool = false, has_selection_after: Bool = false, selection_before: TextRange = TextRange(), selection_after: TextRange = TextRange(), scroll_x_before: Float = 0, scroll_y_before: Float = 0, scroll_x_after: Float = 0, scroll_y_after: Float = 0, scale_before: Float = 1, scale_after: Float = 1, pointer_cursor_before: PointerCursorType = .TEXT, pointer_cursor_after: PointerCursorType = .TEXT, ime_sync: ImeSyncSnapshot = ImeSyncSnapshot(), gesture_type: GestureType = .UNDEFINED, gesture_event_type: EventType = .UNDEFINED, tap_point: PointF = PointF(), hit_target: HitTarget = HitTarget(), modifiers: Int32 = KeyModifier.NONE, command: Int32 = 0) {
+    public init(handled: Bool = false, needs_redraw: Bool = false, source: EditorActionSource = .NONE, text_change_kind: TextChangeKind = .NONE, content_changed: Bool = false, cursor_changed: Bool = false, selection_changed: Bool = false, scroll_changed: Bool = false, scale_changed: Bool = false, pointer_cursor_changed: Bool = false, composition_changed: Bool = false, decoration_changed: Bool = false, animation_flags: Int32 = 0, next_animation_delay_ms: Int32 = 0, interaction_flags: Int32 = 0, changes: [TextChange] = [], cursor_before: TextPosition = TextPosition(), cursor_after: TextPosition = TextPosition(), has_selection_before: Bool = false, has_selection_after: Bool = false, selection_before: TextRange = TextRange(), selection_after: TextRange = TextRange(), scroll_x_before: Float = 0, scroll_y_before: Float = 0, scroll_x_after: Float = 0, scroll_y_after: Float = 0, scale_before: Float = 1, scale_after: Float = 1, pointer_cursor_before: PointerCursorType = .TEXT, pointer_cursor_after: PointerCursorType = .TEXT, ime_host_action: ImeHostAction = .NONE, ime_state: ImeState = ImeState(), gesture_type: GestureType = .UNDEFINED, gesture_event_type: EventType = .UNDEFINED, tap_point: PointF = PointF(), hit_target: HitTarget = HitTarget(), modifiers: Int32 = KeyModifier.NONE, command: Int32 = 0) {
         self.handled = handled
         self.needs_redraw = needs_redraw
         self.source = source
@@ -138,7 +138,6 @@ public struct EditorActionResult {
         self.pointer_cursor_changed = pointer_cursor_changed
         self.composition_changed = composition_changed
         self.decoration_changed = decoration_changed
-        self.needs_ime_sync = needs_ime_sync
         self.animation_flags = animation_flags
         self.next_animation_delay_ms = next_animation_delay_ms
         self.interaction_flags = interaction_flags
@@ -157,7 +156,8 @@ public struct EditorActionResult {
         self.scale_after = scale_after
         self.pointer_cursor_before = pointer_cursor_before
         self.pointer_cursor_after = pointer_cursor_after
-        self.ime_sync = ime_sync
+        self.ime_host_action = ime_host_action
+        self.ime_state = ime_state
         self.gesture_type = gesture_type
         self.gesture_event_type = gesture_event_type
         self.tap_point = tap_point

@@ -64,7 +64,6 @@ namespace SweetEditor {
         public bool PointerCursorChanged { get; set; } = false;
         public bool CompositionChanged { get; set; } = false;
         public bool DecorationChanged { get; set; } = false;
-        public bool NeedsImeSync { get; set; } = false;
         public int AnimationFlags { get; set; } = 0;
         public int NextAnimationDelayMs { get; set; } = 0;
         public int InteractionFlags { get; set; } = 0;
@@ -83,7 +82,8 @@ namespace SweetEditor {
         public float ScaleAfter { get; set; } = 1f;
         public PointerCursorType PointerCursorBefore { get; set; } = PointerCursorType.TEXT;
         public PointerCursorType PointerCursorAfter { get; set; } = PointerCursorType.TEXT;
-        public ImeSyncSnapshot ImeSync { get; set; } = new ImeSyncSnapshot();
+        public ImeHostAction ImeHostAction { get; set; } = ImeHostAction.NONE;
+        public ImeState ImeState { get; set; } = new ImeState();
         public GestureType GestureType { get; set; } = GestureType.UNDEFINED;
         public EventType GestureEventType { get; set; } = EventType.UNDEFINED;
         public PointF TapPoint { get; set; } = new PointF();

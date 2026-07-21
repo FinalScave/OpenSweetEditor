@@ -14,7 +14,7 @@ public enum GuideDirection {
         switch (value) {
             case 0: return VERTICAL;
             case 1: return HORIZONTAL;
-            default: return VERTICAL;
+            default: throw new IllegalArgumentException("Unknown GuideDirection value: " + value);
         }
     }
 }

@@ -307,6 +307,42 @@ List<GutterIconRenderItem> _readGutterIconRenderItemList(_BinaryReader reader) {
   return values;
 }
 
+void _writeImeCommandList(_BinaryWriter writer, List<ImeCommand>? values) {
+  final count = values == null ? 0 : values.length;
+  writer.writeInt32(count);
+  for (var i = 0; i < count; i++) {
+    _writeImeCommand(writer, values![i]);
+  }
+}
+
+int _sizeOfImeCommandList(List<ImeCommand>? values) {
+  var size = 4;
+  if (values != null) {
+    for (final value in values) {
+      size += _sizeOfImeCommand(value);
+    }
+  }
+  return size;
+}
+
+void _writeImeTextUpdateStepList(_BinaryWriter writer, List<ImeTextUpdateStep>? values) {
+  final count = values == null ? 0 : values.length;
+  writer.writeInt32(count);
+  for (var i = 0; i < count; i++) {
+    _writeImeTextUpdateStep(writer, values![i]);
+  }
+}
+
+int _sizeOfImeTextUpdateStepList(List<ImeTextUpdateStep>? values) {
+  var size = 4;
+  if (values != null) {
+    for (final value in values) {
+      size += _sizeOfImeTextUpdateStep(value);
+    }
+  }
+  return size;
+}
+
 void _writeIndentGuideList(_BinaryWriter writer, List<IndentGuide>? values) {
   final count = values == null ? 0 : values.length;
   writer.writeInt32(count);
@@ -657,7 +693,6 @@ EditorActionResult _readEditorActionResult(_BinaryReader reader) {
     pointerCursorChanged: reader.readBoolI32(),
     compositionChanged: reader.readBoolI32(),
     decorationChanged: reader.readBoolI32(),
-    needsImeSync: reader.readBoolI32(),
     animationFlags: reader.readUint32(),
     nextAnimationDelayMs: reader.readUint32(),
     interactionFlags: reader.readUint32(),
@@ -676,7 +711,8 @@ EditorActionResult _readEditorActionResult(_BinaryReader reader) {
     scaleAfter: reader.readFloat32(),
     pointerCursorBefore: PointerCursorType.fromValue(reader.readInt32()),
     pointerCursorAfter: PointerCursorType.fromValue(reader.readInt32()),
-    imeSync: _readImeSyncSnapshot(reader),
+    imeHostAction: ImeHostAction.fromValue(reader.readInt32()),
+    imeState: _readImeState(reader),
     gestureType: GestureType.fromValue(reader.readInt32()),
     gestureEventType: EventType.fromValue(reader.readInt32()),
     tapPoint: _readPointF(reader),
@@ -1204,151 +1240,137 @@ int _sizeOfTextRange(TextRange value) {
   return size;
 }
 
-void _writeImeCommandMessage(_BinaryWriter writer, ImeCommandMessage value) {
+void _writeImeCommand(_BinaryWriter writer, ImeCommand value) {
   writer.writeInt32(value.kind.value);
-  writer.writeUint64(value.contextId);
-  writer.writeInt32(value.contextRevision);
-  writer.writeInt32(value.documentStartOffset);
-  _writeImeOffsetRange(writer, value.range);
-  _writeImeOffsetRange(writer, value.selection);
+  _writeImeOffsetRange(writer, value.targetRange);
+  _writeImeSelection(writer, value.selectionAfter);
   _writeUtf8String(writer, value.text);
-  writer.writeInt32(value.cursorOffset);
-  writer.writeInt32(value.deleteBefore);
-  writer.writeInt32(value.deleteAfter);
+  writer.writeInt64(value.deleteBefore);
+  writer.writeInt64(value.deleteAfter);
   writer.writeInt32(value.textUnit.value);
-  writer.writeInt32(value.markedRole.value);
-  writer.writeInt32(value.scriptClass.value);
 }
 
-int _sizeOfImeCommandMessage(ImeCommandMessage value) {
+int _sizeOfImeCommand(ImeCommand value) {
   var size = 0;
   size += 4;
-  size += 8;
-  size += 4;
-  size += 4;
-  size += _sizeOfImeOffsetRange(value.range);
-  size += _sizeOfImeOffsetRange(value.selection);
+  size += _sizeOfImeOffsetRange(value.targetRange);
+  size += _sizeOfImeSelection(value.selectionAfter);
   size += _sizeOfUtf8String(value.text);
-  size += 4;
-  size += 4;
-  size += 4;
-  size += 4;
-  size += 4;
+  size += 8;
+  size += 8;
   size += 4;
   return size;
 }
 
-ImeInputContext _readImeInputContext(_BinaryReader reader) {
-  return ImeInputContext(
-    id: reader.readUint64(),
-    revision: reader.readInt32(),
-    documentStartOffset: reader.readInt32(),
-    text: _readUtf8String(reader),
-    selection: _readImeOffsetRange(reader),
-    hasPreeditRange: reader.readBoolI32(),
-    preeditRange: _readImeOffsetRange(reader),
-    hasSystemMarkRange: reader.readBoolI32(),
-    systemMarkRange: _readImeOffsetRange(reader),
-    kind: ImeInputContextKind.fromValue(reader.readInt32()),
-  );
+void _writeImeCommandBatch(_BinaryWriter writer, ImeCommandBatch value) {
+  writer.writeUint64(value.sessionId);
+  _writeImeCommandList(writer, value.commands);
 }
 
-ImeMarkedRange _readImeMarkedRange(_BinaryReader reader) {
-  return ImeMarkedRange(
-    role: ImeMarkedRangeRole.fromValue(reader.readInt32()),
-    range: _readImeOffsetRange(reader),
-  );
-}
-
-void _writeImeMarkedRange(_BinaryWriter writer, ImeMarkedRange value) {
-  writer.writeInt32(value.role.value);
-  _writeImeOffsetRange(writer, value.range);
-}
-
-int _sizeOfImeMarkedRange(ImeMarkedRange value) {
+int _sizeOfImeCommandBatch(ImeCommandBatch value) {
   var size = 0;
-  size += 4;
-  size += _sizeOfImeOffsetRange(value.range);
+  size += 8;
+  size += _sizeOfImeCommandList(value.commands);
   return size;
 }
 
 ImeOffsetRange _readImeOffsetRange(_BinaryReader reader) {
   return ImeOffsetRange(
-    start: reader.readInt32(),
-    end: reader.readInt32(),
+    coordinateSpace: ImeCoordinateSpace.fromValue(reader.readInt32()),
+    startUtf16: reader.readInt64(),
+    endUtf16: reader.readInt64(),
   );
 }
 
 void _writeImeOffsetRange(_BinaryWriter writer, ImeOffsetRange value) {
-  writer.writeInt32(value.start);
-  writer.writeInt32(value.end);
+  writer.writeInt32(value.coordinateSpace.value);
+  writer.writeInt64(value.startUtf16);
+  writer.writeInt64(value.endUtf16);
 }
 
 int _sizeOfImeOffsetRange(ImeOffsetRange value) {
   var size = 0;
   size += 4;
-  size += 4;
+  size += 8;
+  size += 8;
   return size;
 }
 
-ImeSyncSnapshot _readImeSyncSnapshot(_BinaryReader reader) {
-  return ImeSyncSnapshot(
-    cursor: _readTextPosition(reader),
-    selection: _readTextRange(reader),
-    hasSelection: reader.readBoolI32(),
-    hasPreeditRange: reader.readBoolI32(),
-    preeditRange: _readTextRange(reader),
-    hasSystemMarkRange: reader.readBoolI32(),
-    systemMarkRange: _readTextRange(reader),
-    contextPolicy: ImeContextPolicy.fromValue(reader.readInt32()),
-    clearSystemMark: reader.readBoolI32(),
+ImeSelection _readImeSelection(_BinaryReader reader) {
+  return ImeSelection(
+    coordinateSpace: ImeCoordinateSpace.fromValue(reader.readInt32()),
+    anchorUtf16: reader.readInt64(),
+    activeUtf16: reader.readInt64(),
+    affinity: CaretAffinity.fromValue(reader.readInt32()),
   );
 }
 
-ImeTextPatch _readImeTextPatch(_BinaryReader reader) {
-  return ImeTextPatch(
-    range: _readImeOffsetRange(reader),
-    text: _readUtf8String(reader),
-  );
+void _writeImeSelection(_BinaryWriter writer, ImeSelection value) {
+  writer.writeInt32(value.coordinateSpace.value);
+  writer.writeInt64(value.anchorUtf16);
+  writer.writeInt64(value.activeUtf16);
+  writer.writeInt32(value.affinity.value);
 }
 
-void _writeImeTextPatch(_BinaryWriter writer, ImeTextPatch value) {
-  _writeImeOffsetRange(writer, value.range);
-  _writeUtf8String(writer, value.text);
-}
-
-int _sizeOfImeTextPatch(ImeTextPatch value) {
+int _sizeOfImeSelection(ImeSelection value) {
   var size = 0;
-  size += _sizeOfImeOffsetRange(value.range);
-  size += _sizeOfUtf8String(value.text);
-  return size;
-}
-
-void _writeImeTextUpdateMessage(_BinaryWriter writer, ImeTextUpdateMessage value) {
-  writer.writeInt32(value.kind.value);
-  writer.writeInt32(value.scope.value);
-  writer.writeUint64(value.contextId);
-  writer.writeInt32(value.contextRevision);
-  writer.writeInt32(value.documentStartOffset);
-  _writeUtf8String(writer, value.text);
-  _writeImeTextPatch(writer, value.patch);
-  _writeImeOffsetRange(writer, value.selection);
-  _writeImeMarkedRange(writer, value.markedRange);
-  writer.writeInt32(value.scriptClass.value);
-}
-
-int _sizeOfImeTextUpdateMessage(ImeTextUpdateMessage value) {
-  var size = 0;
-  size += 4;
   size += 4;
   size += 8;
+  size += 8;
   size += 4;
-  size += 4;
-  size += _sizeOfUtf8String(value.text);
-  size += _sizeOfImeTextPatch(value.patch);
-  size += _sizeOfImeOffsetRange(value.selection);
-  size += _sizeOfImeMarkedRange(value.markedRange);
-  size += 4;
+  return size;
+}
+
+ImeState _readImeState(_BinaryReader reader) {
+  return ImeState(
+    resultCode: ImeResultCode.fromValue(reader.readInt32()),
+    sessionId: reader.readUint64(),
+    stateRevision: reader.readUint64(),
+    selection: _readImeSelection(reader),
+    compositionRange: _readImeOffsetRange(reader),
+  );
+}
+
+ImeTextContext _readImeTextContext(_BinaryReader reader) {
+  return ImeTextContext(
+    resultCode: ImeResultCode.fromValue(reader.readInt32()),
+    sliceStartUtf16: reader.readInt64(),
+    totalLengthUtf16: reader.readInt64(),
+    text: _readUtf8String(reader),
+    selection: _readImeSelection(reader),
+    compositionRange: _readImeOffsetRange(reader),
+  );
+}
+
+void _writeImeTextUpdateBatch(_BinaryWriter writer, ImeTextUpdateBatch value) {
+  writer.writeUint64(value.sessionId);
+  writer.writeUint64(value.expectedStateRevision);
+  _writeImeTextUpdateStepList(writer, value.steps);
+}
+
+int _sizeOfImeTextUpdateBatch(ImeTextUpdateBatch value) {
+  var size = 0;
+  size += 8;
+  size += 8;
+  size += _sizeOfImeTextUpdateStepList(value.steps);
+  return size;
+}
+
+void _writeImeTextUpdateStep(_BinaryWriter writer, ImeTextUpdateStep value) {
+  _writeUtf8String(writer, value.oldText);
+  _writeImeOffsetRange(writer, value.patchRange);
+  _writeUtf8String(writer, value.replacementText);
+  _writeImeSelection(writer, value.selectionAfter);
+  _writeImeOffsetRange(writer, value.compositionAfter);
+}
+
+int _sizeOfImeTextUpdateStep(ImeTextUpdateStep value) {
+  var size = 0;
+  size += _sizeOfUtf8String(value.oldText);
+  size += _sizeOfImeOffsetRange(value.patchRange);
+  size += _sizeOfUtf8String(value.replacementText);
+  size += _sizeOfImeSelection(value.selectionAfter);
+  size += _sizeOfImeOffsetRange(value.compositionAfter);
   return size;
 }
 
@@ -1749,29 +1771,24 @@ class CoreProtocol {
     return _readTextRange(reader);
   }
 
-  static ImeInputContext decodeImeInputContextFromPointer(ffi.Pointer<ffi.Uint8> ptr, int size) {
-    final reader = _BinaryReader.fromPointer(ptr, size);
-    return _readImeInputContext(reader);
-  }
-
-  static ImeMarkedRange decodeImeMarkedRangeFromPointer(ffi.Pointer<ffi.Uint8> ptr, int size) {
-    final reader = _BinaryReader.fromPointer(ptr, size);
-    return _readImeMarkedRange(reader);
-  }
-
   static ImeOffsetRange decodeImeOffsetRangeFromPointer(ffi.Pointer<ffi.Uint8> ptr, int size) {
     final reader = _BinaryReader.fromPointer(ptr, size);
     return _readImeOffsetRange(reader);
   }
 
-  static ImeSyncSnapshot decodeImeSyncSnapshotFromPointer(ffi.Pointer<ffi.Uint8> ptr, int size) {
+  static ImeSelection decodeImeSelectionFromPointer(ffi.Pointer<ffi.Uint8> ptr, int size) {
     final reader = _BinaryReader.fromPointer(ptr, size);
-    return _readImeSyncSnapshot(reader);
+    return _readImeSelection(reader);
   }
 
-  static ImeTextPatch decodeImeTextPatchFromPointer(ffi.Pointer<ffi.Uint8> ptr, int size) {
+  static ImeState decodeImeStateFromPointer(ffi.Pointer<ffi.Uint8> ptr, int size) {
     final reader = _BinaryReader.fromPointer(ptr, size);
-    return _readImeTextPatch(reader);
+    return _readImeState(reader);
+  }
+
+  static ImeTextContext decodeImeTextContextFromPointer(ffi.Pointer<ffi.Uint8> ptr, int size) {
+    final reader = _BinaryReader.fromPointer(ptr, size);
+    return _readImeTextContext(reader);
   }
 
   static HitTarget decodeHitTargetFromPointer(ffi.Pointer<ffi.Uint8> ptr, int size) {
@@ -2480,15 +2497,27 @@ class CoreProtocol {
     return writer.toBytes();
   }
 
-  static Uint8List encodeImeCommandMessage(ImeCommandMessage value) {
-    final writer = _BinaryWriter(_sizeOfImeCommandMessage(value));
-    _writeImeCommandMessage(writer, value);
+  static Uint8List encodeImeCommand(ImeCommand value) {
+    final writer = _BinaryWriter(_sizeOfImeCommand(value));
+    _writeImeCommand(writer, value);
     return writer.toBytes();
   }
 
-  static Uint8List encodeImeTextUpdateMessage(ImeTextUpdateMessage value) {
-    final writer = _BinaryWriter(_sizeOfImeTextUpdateMessage(value));
-    _writeImeTextUpdateMessage(writer, value);
+  static Uint8List encodeImeCommandBatch(ImeCommandBatch value) {
+    final writer = _BinaryWriter(_sizeOfImeCommandBatch(value));
+    _writeImeCommandBatch(writer, value);
+    return writer.toBytes();
+  }
+
+  static Uint8List encodeImeTextUpdateBatch(ImeTextUpdateBatch value) {
+    final writer = _BinaryWriter(_sizeOfImeTextUpdateBatch(value));
+    _writeImeTextUpdateBatch(writer, value);
+    return writer.toBytes();
+  }
+
+  static Uint8List encodeImeTextUpdateStep(ImeTextUpdateStep value) {
+    final writer = _BinaryWriter(_sizeOfImeTextUpdateStep(value));
+    _writeImeTextUpdateStep(writer, value);
     return writer.toBytes();
   }
 

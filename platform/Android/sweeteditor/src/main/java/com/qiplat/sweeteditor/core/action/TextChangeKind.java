@@ -26,7 +26,7 @@ public enum TextChangeKind {
             case 5: return UNDO;
             case 6: return REDO;
             case 7: return MIXED;
-            default: return NONE;
+            default: throw new IllegalArgumentException("Unknown TextChangeKind value: " + value);
         }
     }
 }

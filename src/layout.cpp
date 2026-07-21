@@ -89,6 +89,17 @@ namespace NS_SWEETEDITOR {
     return m_tab_size_;
   }
 
+  void TextLayout::setLineDecorationCollector(
+      std::function<void(size_t, LineLayoutDecorations&)> collector) {
+    m_collect_line_decorations_ = std::move(collector);
+    if (m_document_ != nullptr) {
+      for (auto& line : m_document_->getLogicalLines()) {
+        line.is_layout_dirty = true;
+      }
+    }
+    invalidateContentMetrics();
+  }
+
   void TextLayout::layoutLine(size_t index, LogicalLine& logical_line) {
     // Use prefix index to get line start y, and sync to LogicalLine.start_y (derived cache)
     ensurePrefixIndexUpTo(index);
@@ -526,9 +537,13 @@ namespace NS_SWEETEDITOR {
       } else if (run.type == VisualRunType::LINK) {
         if (click_x >= run_x && click_x < run_right) {
           const size_t source_line = runSourceLine(vl, run);
-          const LinkSpan* link = m_decoration_manager_->findLinkAt(source_line, run.column);
-          if (link != nullptr) {
-            return {HitTargetType::LINK, source_line, link->column, 0};
+          LineLayoutDecorations decorations;
+          collectLineDecorations(source_line, decorations);
+          for (const LinkSpan& link : decorations.links) {
+            if (run.column >= link.column
+                && run.column < static_cast<size_t>(link.column) + link.length) {
+              return {HitTargetType::LINK, source_line, link.column, 0};
+            }
           }
         }
       }
@@ -1220,8 +1235,10 @@ namespace NS_SWEETEDITOR {
     }
 
     // Build runs for original line (includes first phantom line segment)
+    LineLayoutDecorations decorations;
+    collectLineDecorations(line_index, decorations);
     Vector<VisualRun> all_runs;
-    buildLineRuns(line_index, line_text, all_runs);
+    buildLineRuns(line_index, line_text, decorations, all_runs);
 
     // Build content lines first so CodeLens anchors can reuse current visual-column geometry.
     Vector<VisualLine> content_visual_lines;
@@ -1331,7 +1348,7 @@ namespace NS_SWEETEDITOR {
     }
 
     // Handle cross-line phantom text continuation (2nd, 3rd... lines), each segment also wraps
-    const auto& phantom_texts = m_decoration_manager_->getLinePhantomTexts(line_index);
+    const auto& phantom_texts = decorations.phantom_texts;
     for (const auto& phantom : phantom_texts) {
       size_t nl_pos = phantom.text.find('\n');
       if (nl_pos == U8String::npos) continue;
@@ -1390,11 +1407,27 @@ namespace NS_SWEETEDITOR {
     }
   }
 
-  void TextLayout::buildLineRuns(size_t line_index, const U16String& line_text, Vector<VisualRun>& runs) {
-    const auto merged_spans = m_decoration_manager_->getMergedLineSpans(line_index);
-    const auto& inlay_hints = m_decoration_manager_->getLineInlayHints(line_index);
-    const auto& phantom_texts = m_decoration_manager_->getLinePhantomTexts(line_index);
-    const auto& links = m_decoration_manager_->getLineLinks(line_index);
+  void TextLayout::collectLineDecorations(
+      size_t line_index,
+      LineLayoutDecorations& decorations) const {
+    if (m_collect_line_decorations_) {
+      m_collect_line_decorations_(line_index, decorations);
+      return;
+    }
+    decorations.spans = m_decoration_manager_->getMergedLineSpans(line_index);
+    decorations.inlay_hints = m_decoration_manager_->getLineInlayHints(line_index);
+    decorations.phantom_texts = m_decoration_manager_->getLinePhantomTexts(line_index);
+    decorations.links = m_decoration_manager_->getLineLinks(line_index);
+  }
+
+  void TextLayout::buildLineRuns(size_t line_index,
+                                 const U16String& line_text,
+                                 const LineLayoutDecorations& decorations,
+                                 Vector<VisualRun>& runs) {
+    const auto& merged_spans = decorations.spans;
+    const auto& inlay_hints = decorations.inlay_hints;
+    const auto& phantom_texts = decorations.phantom_texts;
+    const auto& links = decorations.links;
 
     const size_t text_len = line_text.length();
 
@@ -1739,6 +1772,7 @@ namespace NS_SWEETEDITOR {
     Vector<VisualRun> runs;
     bool has_split = false;
     HashMap<size_t, Vector<TextPresentationEffect>> line_effect_cache;
+    HashMap<size_t, LineLayoutDecorations> line_decoration_cache;
 
     auto ensure_runs = [&](size_t current_index) {
       if (has_split) return;
@@ -1772,8 +1806,18 @@ namespace NS_SWEETEDITOR {
             && run.icon_id == active_hit_target.icon_id;
       }
       if (run.type == VisualRunType::LINK) {
-        const LinkSpan* link = m_decoration_manager_->findLinkAt(source_line, run.column);
-        return link != nullptr && link->column == active_hit_target.column;
+        auto it = line_decoration_cache.find(source_line);
+        if (it == line_decoration_cache.end()) {
+          LineLayoutDecorations decorations;
+          collectLineDecorations(source_line, decorations);
+          it = line_decoration_cache.emplace(source_line, std::move(decorations)).first;
+        }
+        for (const LinkSpan& link : it->second.links) {
+          if (run.column >= link.column
+              && run.column < static_cast<size_t>(link.column) + link.length) {
+            return link.column == active_hit_target.column;
+          }
+        }
       }
       return false;
     };
@@ -2299,8 +2343,10 @@ namespace NS_SWEETEDITOR {
     const U16String& end_text = m_document_->getLineU16TextRef(end_line_idx);
 
     // Use buildLineRuns to get complete runs for the tail line (with highlight styles)
+    LineLayoutDecorations end_decorations;
+    collectLineDecorations(end_line_idx, end_decorations);
     Vector<VisualRun> end_runs;
-    buildLineRuns(end_line_idx, end_text, end_runs);
+    buildLineRuns(end_line_idx, end_text, end_decorations, end_runs);
 
     // Sum widths of all runs in last_vl as the starting x for appended runs
     float append_x = 0;

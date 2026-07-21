@@ -420,6 +420,23 @@ TEST_CASE("Document range extraction honors UTF-16 surrogate boundaries") {
   CHECK(piece_doc.getU8Text({{1, 3}, {1, 4}}) == "x");
 }
 
+TEST_CASE("Document range extraction preserves original line endings") {
+  const U8String text = "A\r\nB\rC\nD";
+  LineArrayDocument line_doc(text);
+  PieceTableDocument piece_doc(text);
+
+  auto check_document = [&](Document& document) {
+    CHECK(document.getU8Text({{0, 0}, {3, 1}}) == text);
+    CHECK(document.getU8Text({{0, 1}, {1, 0}}) == "\r\n");
+    CHECK(document.getU8Text({{1, 1}, {2, 0}}) == "\r");
+    CHECK(document.getU8Text({{2, 1}, {3, 0}}) == "\n");
+    CHECK(document.getU8Text({{0, 1}, {2, 1}}) == "\r\nB\rC");
+  };
+
+  check_document(line_doc);
+  check_document(piece_doc);
+}
+
 TEST_CASE("Document global offsets use UTF-16 code units") {
   const U8String text = "A\xf0\x9f\x98\x80" "B\nC\xf0\x9f\x98\x80" "D";
   LineArrayDocument line_doc(text);

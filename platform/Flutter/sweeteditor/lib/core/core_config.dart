@@ -13,7 +13,7 @@ enum AutoIndentMode {
     switch (value) {
       case 0: return none;
       case 1: return keepIndent;
-      default: return none;
+      default: throw ArgumentError.value(value, 'value', 'Unknown AutoIndentMode value');
     }
   }
 }
@@ -31,7 +31,7 @@ enum CurrentLineRenderMode {
       case 0: return background;
       case 1: return border;
       case 2: return none;
-      default: return background;
+      default: throw ArgumentError.value(value, 'value', 'Unknown CurrentLineRenderMode value');
     }
   }
 }
@@ -49,7 +49,7 @@ enum FoldArrowMode {
       case 0: return auto;
       case 1: return always;
       case 2: return hidden;
-      default: return auto;
+      default: throw ArgumentError.value(value, 'value', 'Unknown FoldArrowMode value');
     }
   }
 }
@@ -69,7 +69,7 @@ enum RangeEffectUnderlineStyle {
       case 1: return solid;
       case 2: return dashed;
       case 3: return wavy;
-      default: return none;
+      default: throw ArgumentError.value(value, 'value', 'Unknown RangeEffectUnderlineStyle value');
     }
   }
 }
@@ -87,7 +87,7 @@ enum ScrollbarMode {
       case 0: return always;
       case 1: return transient;
       case 2: return never;
-      default: return always;
+      default: throw ArgumentError.value(value, 'value', 'Unknown ScrollbarMode value');
     }
   }
 }
@@ -103,7 +103,7 @@ enum ScrollbarTrackTapMode {
     switch (value) {
       case 0: return jump;
       case 1: return disabled;
-      default: return jump;
+      default: throw ArgumentError.value(value, 'value', 'Unknown ScrollbarTrackTapMode value');
     }
   }
 }
@@ -125,7 +125,7 @@ enum WhitespaceRenderMode {
       case 2: return selection;
       case 3: return trailing;
       case 4: return all;
-      default: return none;
+      default: throw ArgumentError.value(value, 'value', 'Unknown WhitespaceRenderMode value');
     }
   }
 }
@@ -143,7 +143,7 @@ enum WrapMode {
       case 0: return none;
       case 1: return charBreak;
       case 2: return wordBreak;
-      default: return none;
+      default: throw ArgumentError.value(value, 'value', 'Unknown WrapMode value');
     }
   }
 }

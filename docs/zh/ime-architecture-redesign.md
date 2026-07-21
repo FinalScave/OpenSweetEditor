@@ -111,22 +111,23 @@ struct ImeState {
 ```cpp
 struct CompositionState {
   TextRange current_range;
-  U8String baseline_text_raw;
+  std::optional<U8String> baseline_text_raw;
   CaretState baseline_caret;
 };
 ```
 
 - `current_range` 位于当前 `Document`，直接圈定当前 composition 文本；composition 文本始终从该范围读取。
-- `baseline_text_raw` 是 Begin 前被替换片段的原始字节快照，保留 CR、LF、CRLF，专用于 Cancel、Finish 的净变化判断和 Undo；它不是第二份当前文本。
+- `baseline_text_raw == nullopt` 表示平台只标记了现有 document range，Core 尚未取得其中字符的 provisional ownership；这不是新的公开状态或 kind。
+- 第一次 Update 在修改文本前捕获 `baseline_text_raw`，从 marked-only 提升为 owned composition。其值是被替换片段的原始字节快照，保留 CR、LF、CRLF，专用于 Cancel、Finish 的净变化判断和 Undo；它不是第二份当前文本。
 - `baseline_caret` 是 Begin 前的完整 `CaretState`，包含 anchor、active 与 active endpoint affinity。composition 外的合法 committed edit 会按 committed projection 重定位它。
 - 当前 caret/selection 继续由 EditorCore 的普通 `CaretState` 持有，不在 `CompositionState` 中复制。
 - committed baseline range不单独存储：其 start始终是 committed projection中与 `current_range.start` 对应的同一概念位置，end由该 start前进 `logicalize(baseline_text_raw)` 的逻辑形状得到。composition外的 committed edit必须同时更新 document/committed两套映射以维持这个派生不变量。
 
-Begin 只捕获上述 baseline 并建立 `current_range`，不改文本。Update/Commit 使用一个 Core-private provisional replace 原语直接替换 `Document` 的 `current_range`，然后把插入后的实际范围设为新的 `current_range`。这个原语不能调用当前带完整副作用的 `applyEdit`：它只允许修改 `Document`、当前 caret/composition、TextUpdate buffer，并统一失效 line index、line height、visual line、layout/render等派生 cache；不能更新持久 decoration/fold、search generation、undo/redo 或公开 committed change。
+Begin 只建立 marked-only `current_range` 并记录 caret，不改文本，也不捕获 baseline。第一次 Update 捕获 baseline 后，使用一个 Core-private provisional replace 原语直接替换 `Document` 的 `current_range`，然后把插入后的实际范围设为新的 `current_range`。marked-only Commit则是对该 range 的普通 committed replacement，不先制造 provisional edit。provisional replace不能调用当前带完整副作用的 `applyEdit`：它只允许修改 `Document`、当前 caret/composition、TextUpdate buffer，并统一失效 line index、line height、visual line、layout/render等派生 cache；不能更新持久 decoration/fold、search generation、undo/redo 或公开 committed change。
 
 因此当前文本的消费者保持简单：layout、render、hit-test、caret geometry 和普通 editing query 都在 UI线程直接读取 `Document`。持久 decoration、fold、linked target 和 search数据仍使用 committed 坐标；由 committed content-change stream或异步分析产生的入参也必须按 committed line model校验，不能拿当前 provisional行列冒充 committed坐标。line-local effect内部要先归一到 committed line start加 column range或完整 line range，才能投影到当前 `Document`。基于当前视图坐标的点击 fold、选择 search match等用户动作则先经过 resolution gate，使 editing与 committed重合后再执行。
 
-Composition 活跃时，位于 composition前后的持久范围通过单次 replacement的纯坐标映射投到当前 `Document`，受 composition replacement影响的 effect暂时隐藏或停用。这里不能直接复用普通半开区间 `overlaps`：derived baseline range非空时按普通 overlap；baseline为空时，任何严格跨越 insertion seam的范围都视为受影响，恰好位于 seam的 start/end/anchor按该 owner的明确 bias映射。start在 seam通常移到 current range之后，end在 seam通常保留在之前，零长度 anchor必须由 effect owner声明前/后粘性，不能让 provisional插入意外落进 committed style、fold或 search match。
+只有 owned composition 且 baseline与当前 logical text不同时才需要 effect projection。此时位于 composition前后的持久范围通过单次 replacement的纯坐标映射投到当前 `Document`，受 composition replacement影响的 effect暂时隐藏或停用。marked-only range以及 logical text未变化的 owned composition使用 identity projection，不能隐藏已有高亮。非 identity projection不能直接复用普通半开区间 `overlaps`：derived baseline range非空时按普通 overlap；baseline为空时，任何严格跨越 insertion seam的范围都视为受影响，恰好位于 seam的 start/end/anchor按该 owner的明确 bias映射。start在 seam通常移到 current range之后，end在 seam通常保留在之前，零长度 anchor必须由 effect owner声明前/后粘性，不能让 provisional插入意外落进 committed style、fold或 search match。
 
 editing→committed caret投影也不能依赖普通 overlap。collapsed caret位于 current range内部或任一边界时映射到 baseline start；non-collapsed selection endpoint严格位于内部或等于 current start时映射到 baseline start，等于 current end时映射到 baseline end，其余按 replacement map转换。current range为空时，与该点相等的 endpoint映射到 baseline start。active endpoint被折叠到 baseline start时 affinity规范化为 `DOWNSTREAM`。`COMMITTED` Context中的 active `composition_range`固定返回 rebase后的 derived baseline range；空 baseline返回合法 collapsed range，不返回 NONE。
 
@@ -160,16 +161,19 @@ Finish 才按 baseline→final 净 replacement更新上述持久范围一次，C
 
 | 当前状态 | 操作 | 结果 |
 |---|---|---|
-| Idle | Begin(range) | 捕获 baseline，进入 Composition，可以是 collapsed range |
+| Idle | Begin(range) | 建立 marked-only Composition，可以是 collapsed range，不捕获 baseline |
 | Idle | Update(text, target) | 以 target 或当前 selection 建立 baseline，再更新 composition |
-| Composition | Update(text, target) | 替换 target所指的 composition子区间；target缺失时替换整个 current range，保持同一 `CompositionState` |
-| Composition | Commit(text) | provisional 替换 current range，再结算 baseline→final 净变化，进入 Idle |
+| Marked-only Composition | Update(text, target) | 捕获 baseline并取得 ownership，再替换 composition文本 |
+| Owned Composition | Update(text, target) | 替换 target所指的 composition子区间；target缺失时替换整个 current range，保持同一 `CompositionState` |
+| Marked-only Composition | Commit(text) | 对 current range执行普通 committed replacement，进入 Idle |
+| Owned Composition | Commit(text) | provisional 替换 current range，再结算 baseline→final 净变化，进入 Idle |
 | Idle | Commit(text, target) | 对 target 或 selection 执行普通 committed edit |
-| Composition | Finish | 当前 Document 文本转为 committed，按净变化决定 undo，进入 Idle |
-| Composition | Cancel | 用 raw baseline 替换 current range并恢复 baseline caret，无 undo，进入 Idle |
+| Marked-only Composition | Finish/Cancel | 只清除标记，文本、caret和history不变，进入 Idle |
+| Owned Composition | Finish | 当前 Document 文本转为 committed，按净变化决定 undo，进入 Idle |
+| Owned Composition | Cancel | 用 raw baseline替换 current range并恢复 baseline caret，无 undo，进入 Idle |
 | Idle | Finish/Cancel | 有效 no-op，不递增 revision |
 
-Begin 只负责建立 baseline，不承担 active composition retarget。active 时新的 Begin 必须由同一个 command batch 先明确 Finish 或 Cancel。Finish 在清除 `CompositionState` 前先读取 final raw slice；若 `logicalize(final_raw)` 与 `logicalize(baseline_text_raw)` 相同，先把 `current_range` 恢复成 `baseline_text_raw`，从而保留原始行尾并形成零 committed change；否则当前 `Document` 已经是 final text，无需再次重写。Cancel 始终用 raw baseline 恢复文本。
+Begin 只负责建立 marked-only range，不承担 active composition retarget。active 时新的 Begin 必须由同一个 command batch 先明确 Finish 或 Cancel。owned Finish在清除 `CompositionState` 前先读取 final raw slice；若 `logicalize(final_raw)` 与 `logicalize(baseline_text_raw)` 相同，先把 `current_range` 恢复成 `baseline_text_raw`，从而保留原始行尾并形成零 committed change；否则当前 `Document` 已经是 final text，无需再次重写。owned Cancel始终用 raw baseline恢复文本；marked-only Finish/Cancel只清除标记。
 
 composition reducer内部按需提供私有 `rawRangeSlice([start,end))`，不扩展Document公共接口。它通过现有行文本与`LogicalLine.line_ending`拼接请求区间，保留实际的CR、LF或CRLF字节；端点不得落在行尾字节内部。`logicalize(raw)`是唯一行尾归一算法，把CR、LF、CRLF各转换为一个`\n`；baseline比较、UTF-16长度、committed projection、history和committed changes都复用它。
 
@@ -177,11 +181,11 @@ composition reducer内部按需提供私有 `rawRangeSlice([start,end))`，不�
 
 - Begin、Update 和 Cancel 不新增 undo，也不清空 redo。
 - 一个成功的 `EditTransaction` 最多产生一个 `HistoryEntry`。transaction 边界不是自动的 undo merge barrier：普通连续 typing/backspace/delete 仍可按显式 coalesce policy 跨 transaction 合并；Composition Finish/Commit、mixed delete、linked batch、recovery 和 resolution 固定不可与前后 history 合并。
-- Begin、Cancel 和零净变化 Finish 虽然不写 undo，也必须切断旧 typing merge chain，避免 composition 前后的输入被合成一次 Undo。
+- 第一次 Update取得 ownership、owned Cancel和零净变化 Finish虽然不写 undo，也必须切断旧 typing merge chain，避免 composition前后的输入被合成一次 Undo。marked-only Begin/Finish/Cancel只是元数据变化，不切断普通输入的 merge chain。
 - 同一个 transaction 内的 composition 外 committed edit 与 Finish/Commit 合并成一个 `HistoryEntry`；拒绝 payload 后的 recovery 使用第二个 transaction并单独形成一条 history。accepted guard resolution 与本批 delta 保持同一 transaction。
 - Composition Finish/Commit 只在 `baseline_text_raw -> final raw text` 存在净变化时贡献 committed effect；与 baseline logical text 相同会先恢复 raw baseline，因此不创建 composition undo。Idle 的 `Commit(text, target)` 仍是普通 committed replacement。
 - Undo entry 保存完整 `CaretState before` 与 `CaretState after`；Undo 恢复 before，Redo 恢复 after，不能在 Redo 时清空 selection或重新推导 affinity。
-- active composition 下第一次 Undo/Redo 只执行 Cancel 并消费该用户命令，history cursor 不移动。
+- owned composition 下第一次 Undo/Redo 只执行 Cancel 并消费该用户命令，history cursor 不移动；marked-only composition 只持有原生标记而不拥有 provisional 文本，先清除标记，再在同一次用户命令中继续移动 history cursor，避免 host 重建同一标记后永久阻塞真实 history。
 - Begin、Cancel 和无净文本变化的 Finish 仍触发视图失效，以正确移除 composition 装饰。
 - `EditorActionResult.changes/content_changed` 永远只表示 committed 文本。provisional Update、Begin 和 Cancel 只设置必要的 `composition_changed`、`selection_changed`、`needs_redraw` 以及 Core 内部 layout invalidation，不新增 provisional event channel。
 - composition外 committed edit与 Finish/Commit在 transaction最终提交后发布 committed changes；Finish虽然通常不再重写 `Document`，仍要以 committed pre-state中的 baseline range和 final raw text合成净 change。physical replacement plan绝不能用于生成 undo或公开 changes，因为 active transaction的物理 pre-state本来就可能含 provisional text。仅含 provisional effect/Cancel且没有 committed净变化时，不清 redo，也不发布 content change。Cancel不能抹掉同一 transaction中其他合法 committed effect。
@@ -190,7 +194,7 @@ composition reducer内部按需提供私有 `rawRangeSlice([start,end))`，不�
 
 ### Composition 编辑所有权
 
-`CompositionState` 只拥有当前 `Document` 中的 `current_range`；其 committed projection 是在相同起点用 `baseline_text_raw` 替换该范围后得到的概念文本，不单独保存。
+owned `CompositionState` 只拥有当前 `Document` 中的 `current_range`；其 committed projection是在相同起点用 `baseline_text_raw` 替换该范围后得到的概念文本，不单独保存。marked-only state不拥有该范围内的字符，surrounding delete全部按 committed edit处理并只变换标记范围。
 
 - `UPDATE_COMPOSITION` provisional 替换 `current_range`，插入后的实际多行范围直接成为新 `current_range`。范围端点必须通过 Document 的 offset/position 转换得到，不能用起点列加 UTF-16 长度推导。
 - composition underline/effect使用通用多行 range rendering；不能继续用 `start.column + preedit_columns` 只画一条逻辑行。
@@ -231,19 +235,19 @@ Composition 活跃时，所有可能改变文本或 selection 的来源都先经
 |---|---|
 | 同 session IME selection/update | 保持 Composition |
 | IME Commit/Finish/Cancel | 按显式输入执行 |
-| Escape | Cancel，消费按键，结束 session并请求 Restart；adapter按实际焦点执行 |
-| Undo/Redo | Cancel，消费当前命令，结束 session并请求 Restart；adapter按实际焦点执行 |
-| 普通键盘输入、导航、鼠标重新定位 | Finish后执行用户操作，结束 session并请求 Restart；adapter按实际焦点执行 |
+| Escape | Cancel并消费按键；Command session返回最新 Idle state并保持 generation，TextUpdate session结束并请求Restart |
+| Undo/Redo | owned composition执行Cancel并消费当前命令；marked-only composition执行Cancel后继续Undo/Redo；Command session返回最新state，TextUpdate session结束并请求Restart |
+| 普通键盘输入、导航、鼠标重新定位 | Finish后执行用户操作；Command session返回最新state，TextUpdate session结束并请求Restart |
 | 失去输入焦点 | Finish 后结束 session |
 | 文档整体重置 | Cancel，结束 session，再重置文档并请求 Restart；adapter按实际焦点执行 |
 | 切换 read-only | Finish，结束 session，关闭可编辑 host |
-| 外部程序化文档修改 | Finish后修改，结束 session并请求 Restart；adapter按实际焦点执行 |
+| 外部程序化文档修改 | Finish后修改；Command session返回最新state，TextUpdate session结束并请求Restart |
 | 同 session surrounding delete | 按所有权拆分，原子执行 |
 | 同 session 带 target 的 Commit | batch 先明确 Finish/Cancel，再按 Idle replacement 执行 |
 
-Core 决定上述语义；各接入实现不能自行选择 Finish 或 Cancel。Host 自己发来的显式 Commit/Finish/Cancel 已经同步表达了原生状态，可以保留当前 session。由 Core 主动解决 active composition 时，第一阶段不要求各 host 实现“原地 Finish/Cancel”能力：Core 先完成内部语义并结束 generation，再统一返回 Restart 或 Close。这样不需要 capability 矩阵，也不会让 Core 与仍持有旧 composition 的 host 继续共用一个 session。
+Core 决定上述 Finish/Cancel 语义；各接入实现不能自行选择。Host 自己发来的显式 Commit/Finish/Cancel 已经同步表达了原生状态，可以保留当前 session。Command session的回调是同一UI线程上按顺序执行的意图，不携带host shadow或expected revision；Core主动解决active composition后返回权威 `ImeState`，adapter按既有change flags同步文本、selection与composing range即可保持同一generation。TextUpdate session持有host shadow与revision，Core主动改变editing state时仍必须结束generation并返回Restart或Close。
 
-Core-originated active resolution 与随后未被消费的普通 action 固定使用两个 `EditTransaction`：第一个 transaction 单独 Finish/Cancel composition并结束 session，第二个 transaction 执行普通键盘输入、导航、鼠标、reset 或程序化编辑。两次 committed 文本净变化分别形成 `HistoryEntry`；导航等没有文本变化时第二个 transaction自然不产生文本 undo。两个 transaction 之间不派发可重入 observer，完整 action finish path结束后再返回一个聚合的 `EditorActionResult`。Escape 与 active 下的 Undo/Redo 已被 Cancel gate消费，不再执行第二个 action transaction。该规则不适用于 accepted TextUpdate guard；guard 明确把整批 delta 与最终 Finish 放在同一个 transaction。
+Core-originated active resolution 与随后未被消费的普通 action 固定使用两个 `EditTransaction`：第一个 transaction 单独 Finish/Cancel composition，第二个 transaction 执行普通键盘输入、导航、鼠标、reset 或程序化编辑。两次 committed 文本净变化分别形成 `HistoryEntry`；导航等没有文本变化时第二个 transaction自然不产生文本 undo。两个 transaction 之间不派发可重入 observer，完整 action finish path结束后再返回一个聚合的 `EditorActionResult`，并由统一finish path按session model决定保持或结束generation。Escape 与 owned composition 下的 Undo/Redo 已被 Cancel gate消费，不再执行第二个 action transaction；marked-only composition 下的 Undo/Redo在清除标记后继续执行第二个 action transaction。该规则不适用于 accepted TextUpdate guard；guard 明确把整批 delta 与最终 Finish 放在同一个 transaction。
 
 第二个 action的参数不能在第一 transaction前解析后原样复用。键盘/navigation只保留动作意图并从 resolution后的 `CaretState`重新计算；pointer/gesture保留 screen point，等待新 layout后重新 hit-test。必须接收 pre-resolution `Document` range/position的程序化 action，用第一 transaction的 committed change-set按该 action专属 endpoint bias转换；linked secondary位于 target前方时也必须计入。与第一 transaction修改相交而无法唯一转换时，只拒绝第二 action，已经完成的 resolution仍保留；绝不能把旧 line/column或 `TextPosition`直接套到新 `Document`。
 
@@ -580,8 +584,8 @@ enum class ImeHostAction {
 - Close/Restart 返回时 Core session 已经结束，`ime_state.session_id == 0`。
 - `RESTART_SESSION` 是“旧 generation 必须替换、条件允许时建立新 generation”的语义请求，不是 Core 对平台焦点的判断。Core 不读取 adapter-local focus；adapter 执行时重新检查 focus、read-only、binding generation和当前是否已有更新 session，不满足就只 Close。`CLOSE_SESSION` 表示语义上必须保持关闭，例如进入 read-only。
 - stale old session callback 不携带任何 host action，不能影响当前新 session。
-- accepted mutation或普通action保留session时返回 `OK + NONE + 当前ImeState`，有效no-op也一样；adapter只从返回state推进revision，并只按既有change flags通知原生host。TextUpdate的Core-originated state change不保留connection，而是Restart/Close。
-- Host 自己已经发出的 Commit/Finish/Cancel 不需要回声 action；Core 主动解决 Composition 时直接结束 session 并返回 Close/Restart，所以 wire 不再生成 `FINISH_COMPOSITION`、`CANCEL_COMPOSITION` host flags。
+- accepted mutation或普通action保留session时返回 `OK + NONE + 当前ImeState`，有效no-op也一样；Command adapter按既有change flags同步权威state，TextUpdate adapter只从accepted mutation的返回state推进revision。TextUpdate的Core-originated state change不保留connection，而是Restart/Close。
+- Host 自己已经发出的 Commit/Finish/Cancel 不需要回声 action；Core主动解决Command Composition时同样通过普通change flags与最新 `ImeState` 同步，不生成 `FINISH_COMPOSITION`、`CANCEL_COMPOSITION` host flags。TextUpdate主动resolution则结束session并返回Close/Restart。
 
 普通 `EditorActionResult` 的 IME 字段组合固定为：
 
@@ -615,7 +619,7 @@ ImeState ime_state;
 
 ### Recovery 与 Restart 边界
 
-`RESTART_SESSION` 只用于当前 generation无法安全继续，或Core主动改变了host仍可能认为活跃的editing state。正常候选提交、纯查询、普通revision、未触及guard的buffer自然增长和linked target本身都不触发Restart；linked secondary只有实际造成最终buffer与host after-state分歧时才换generation。
+`RESTART_SESSION` 只用于当前 generation无法安全继续，或Core主动改变了TextUpdate host shadow。Command session的普通action与active resolution通过返回的权威state原地同步，不换generation。正常候选提交、纯查询、普通revision、未触及guard的buffer自然增长和linked target本身都不触发Restart；linked secondary只有实际造成最终buffer与host after-state分歧时才换generation。
 
 恢复路径固定如下，不再建立 capability 策略矩阵：
 
@@ -623,7 +627,8 @@ ImeState ime_state;
 |---|---|
 | 请求 id没有指向调用时的 current session | 返回 `SESSION_MISMATCH`，不处理任何 composition，不返回 host action；“当前为空”与“已有更新 session”只写内部 trace |
 | 当前 generation 的revision/oldText、range、Unicode、transition、ownership、model或其他payload错误 | payload零应用；active时用独立recovery transaction Finish最后已接受的composition；结束session并请求Restart，read-only语义时Close |
-| Core-originated active resolution | 用独立resolution transaction Finish/Cancel并结束session，再以第二个transaction执行未消费的用户动作；请求Restart，read-only语义时Close |
+| Command session中的Core-originated active resolution | 用独立resolution transaction Finish/Cancel，再以第二个transaction执行未消费的用户动作；保留session并返回最新权威state |
+| TextUpdate session中的Core-originated active resolution | 用独立resolution transaction Finish/Cancel并结束session，再以第二个transaction执行未消费的用户动作；请求Restart，read-only语义时Close |
 | Idle TextUpdate session 中的 Core-originated editing-state change | 在本次普通 action transaction中原子应用动作并结束旧 session；请求 Restart，read-only时 Close；它不是 desync，也没有 composition recovery transaction |
 | accepted TextUpdate 触发 guard、revision 上界或 final-state divergence，需要新的 buffer/generation | 全量验证整个 batch；在同一个 `EditTransaction` 中提交全部 delta并 Finish 最终 active Composition；结束 session并请求 Restart，read-only 时 Close，不在原 session rebind |
 | 正常失焦或 host 主动连接关闭 | Finish 后结束，不重建，也不要求 host 再执行 Close |
@@ -767,7 +772,7 @@ Core内部的 `ImeSessionState`、`CompositionState`、`EditingBufferState`、�
 - `getTextBeforeCursor/getTextAfterCursor/getSelectedText/getSurroundingText/getCursorCapsMode/takeSnapshot` 从一次权威 Context/State快照读取；`EditorInfo.initialSelStart/End` 与 initial surrounding text也必须来自同一次快照。before/after查询最多返回请求的 UTF-16 units；adapter在 Core向请求内收缩后的结果上继续遵守 Android上限。`getCursorCapsMode` 按这份 Java UTF-16 context计算。
 - `getExtractedText` 的普通调用是查询，带 `GET_EXTRACTED_TEXT_MONITOR` 时还建立 adapter-local订阅；Core文本/选区变化后在最外层 batch外合并调用 `updateExtractedText`。`requestCursorUpdates` 同样是订阅协议，必须处理 IMMEDIATE、MONITOR和 filter；`requestTextBoundsInfo` 是纯几何查询。它们都不改变 mutation model。
 - `beginBatchEdit/endBatchEdit` 维护嵌套计数。每个 mutation 仍立即进入 Core，使同一 batch 内随后的 query 看见最新权威状态；selection/cursor/extracted-text 通知、render flush 和其他可见 host callback 延迟到最外层 `endBatchEdit` 后合并发送。`closeConnection` 清空 batch 深度并丢弃尚未发送的旧 generation 通知。
-- Core-originated selection change若保留 Command session，由既有 selection-changed flag与返回的 `ImeState` 调用 `InputMethodManager.updateSelection`，同时传递 composing start/end；host action enum不重复表达它。每个 `InputConnection` 实例固定捕获创建时的 session id，`restartInput(view)` 后只能由系统新调用 `onCreateInputConnection` 才 begin新 session。
+- Core-originated text、selection或composition change保留Command session时，adapter从返回的 `ImeState` 重建只读镜像，并按既有change flags调用 `InputMethodManager.updateSelection`，同时传递composing start/end；普通action不得因此调用 `restartInput(view)`，host action enum也不重复表达状态同步。每个 `InputConnection` 实例固定捕获创建时的session id，只有Core明确返回Restart后才能等待系统新调用 `onCreateInputConnection` 并begin新session。
 - API返回值区分 closed/stale、accepted no-op与 unsupported，但不能用“文本是否真的变化”决定协议成功；例如 API 34 `replaceText` 的合法 no-op仍按 Android契约返回成功。
 - 不再识别拉丁词、候选窗口或 `enabled` 之类文本内容。
 
@@ -888,28 +893,29 @@ Flutter 3.41.6存在以下必须绕开的 engine事实：
 
 ### Core 必测不变量
 
-- Idle/Composition 的Begin、Update、Commit、Finish、Cancel完整转换矩阵，包括collapsed active与Flutter empty composition；direct-Document状态只含 `current_range + baseline_text_raw + baseline_caret`，覆盖取消、候选替换和连续删除，不保存第二份current preedit。
+- Idle/Composition 的Begin、Update、Commit、Finish、Cancel完整转换矩阵，包括marked-only→owned提升、collapsed active与Flutter empty composition；direct-Document状态只含 `current_range + optional baseline_text_raw + baseline_caret`，覆盖取消、候选替换和连续删除，不保存第二份current preedit。
 - Command/TextUpdate batch先完成语义验证；被拒payload零应用，随后独立recovery的Finish结果另行断言。验证成功后检查同一pre-state replacement plan、history/result/effect计划与最终live state一致；不注入或承诺内存分配失败下的整Document回滚。
 - TextUpdate覆盖oldText链、after selection/composition、stale session/revision、model mismatch、有限buffer创建与自然增长、guard、hard cap、超大selection拒绝和前step触guard后后step非法。Core-originated editing-state变化和accepted换区按规定结束generation，不允许原session rebind。
 - Command不携带expected revision且对外revision固定为 `0`；所有inactive字段、未知enum和canonical NONE按固定校验顺序处理，不能依赖目标语言默认值或静默回退。
 - ownership覆盖边界插入 `[abc]`/`ab[c]`、collapsed同点不同bias、非collapsed preimage与inserted span不一致、单端/双端/多行替换；不能唯一判断时整批拒绝，不能拆成provisional与committed两次编辑。
 - `EDITING`、`COMMITTED` 任意slice和 `EDITING_BUFFER(0,-1)` 覆盖 `length=-1`、空slice、越界、checked arithmetic、surrogate内收及精确UTF-16 host扩展后裁剪；Context查询幂等且不改变buffer/revision。
-- Finish最多产生一个composition `HistoryEntry`，Cancel零undo，Undo/Redo先Cancel；普通typing允许coalesce，composition、mixed、linked、recovery及零净边界形成merge barrier。Undo/Redo精确恢复反向selection和active affinity。
+- Finish最多产生一个composition `HistoryEntry`，Cancel零undo；owned composition 下 Undo/Redo只Cancel并消费命令，marked-only composition 下清除标记后继续Undo/Redo。普通typing允许coalesce，composition、mixed、linked、recovery及零净边界形成merge barrier。Undo/Redo精确恢复反向selection和active affinity。
 - provisional Document变化只更新composition/selection/redraw与当前layout；committed history/event/effect按baseline→final结算。纯Update无committed事件，Finish即使无物理replacement也可产生committed event；所有changes使用同一committed pre-state坐标和raw文本。
-- Core-originated active resolution与随后普通action使用两个transaction但只发布一个聚合结果；linked target、pointer和navigation在第一阶段提交后重算，无法唯一映射时只拒绝第二个action。linked secondary只在Finish/Commit提交。
+- Core-originated active resolution与随后普通action使用两个transaction但只发布一个聚合结果；Command session返回最新state并保持generation，TextUpdate session结束并Restart/Close。linked target、pointer和navigation在第一阶段提交后重算，无法唯一映射时只拒绝第二个action。linked secondary只在Finish/Commit提交。
 - surrounding delete从同一pre-state原子解析两侧并保留selection；部分命中composition时分别结算provisional与committed effect，覆盖保持active、Finish、Cancel和同batch Finish。IME严格验证UTF-16/code point，普通Backspace/Delete独立验证grapheme。
 - `CaretAffinity` 覆盖软换行两侧、hit-test、移动、preferred-x、geometry和渲染，以及Flutter、UIKit/AppKit和Swing可保真的映射；它不得参与ownership或编辑边界粘性。
 - `ImeOffsetRange`/`ImeSelection` 覆盖collapsed、正反selection、canonical NONE、混合负值、`< -1`、错误坐标和伪NONE；所有生成语言的默认构造必须逐字段为canonical NONE。必需的TextUpdate selection收到NONE时整批拒绝并恢复。
 - 所有wire offset/length/delete count使用 `int64_t`，覆盖 `INT32_MAX + 1` round-trip、容器转换检查和ArkTS `2^53 - 1` 上界；session id耗尽拒绝begin，revision耗尽先完整提交当前batch再Finish并Restart/Close，均不得回绕或丢输入。
 - CRLF、CR、LF与混合行尾在Update/Cancel/Finish/Undo后精确恢复raw文本；logical文本相等不能把原行尾改写为 `\n`。
-- provisional edit不更新持久decoration/fold/search/history；相交effect临时停用、外部effect映射，Finish只结算一次。覆盖空baseline insertion seam、非空baseline/current collapsed和三种Context中的current/derived range。
+- provisional edit不更新持久decoration/fold/search/history；非 identity projection下相交effect临时停用、外部effect映射，Finish只结算一次。marked-only与logical零变化owner保持identity projection。覆盖空baseline insertion seam、非空baseline/current collapsed和三种Context中的current/derived range。
 - `ImeState`/`ImeTextContext` 的result/default、`EditorActionResult` 合法组合、begin冲突、query错误、session mismatch、end成功和apply内部结束逐项覆盖；response id `0` 不能单独驱动binding清理，Context不回显session/source/revision。
 - 多错误payload只按既定优先级记录第一个内部原因；多replacement的apply与Undo/Redo全部使用同一transaction pre-state坐标。
-- read-only、reset、失焦、外部编辑、Escape和Undo/Redo覆盖resolution gate。Core HostAction已结束session；延迟Restart必须复核focus、read-only和generation，`SESSION_MISMATCH` 不得关闭或重建当前连接。未通过old-generation barrier的目标只验收安全Close，不标记为正确启用。
+- read-only、reset、失焦、外部编辑、Escape和Undo/Redo覆盖resolution gate。Command普通action保持session并返回最新state；TextUpdate state变化、reset、read-only和明确recovery按规则结束session。Core HostAction已结束session；延迟Restart必须复核focus、read-only和generation，`SESSION_MISMATCH` 不得关闭或重建当前连接。未通过old-generation barrier的目标只验收安全Close，不标记为正确启用。
 
 ### 接入实现必测场景
 
 - Android 原生与 Flutter Android：点击 `enabled` 中间、候选替换为 `enables`、立即 backspace，必须得到 `enable` 且保留前方空格。
+- Android 原生：先点击已被标记的 `boolean`，再点击 `enabled` 中间并输入首个字符；两次点击之间不得重建 `InputConnection`，首字符Commit后不得因session rollover再次标记整个单词。
 - Android 原生：两种 surrounding delete 在非空 selection 下分别按精确 UTF-16 code-unit/code-point 删除两侧且不删除 selection；非法 surrogate 边界零应用并恢复。
 - Android 原生：`KEYCODE_DEL` 不进入 surrounding delete，按 grapheme 删除；有 selection 时删除 selection。
 - Android 原生：所有受支持的 `InputConnection` 协议级文本 mutation 只调用 Command 入口；普通按键、菜单和 editor action 只进入现有 EditorCore action。两类路径都不得发送 TextUpdate/snapshot，本地 `Editable`/`BaseInputConnection` 不得产生未进入 Core 的 mutation，任意 callback 后镜像与 Core state 一致。

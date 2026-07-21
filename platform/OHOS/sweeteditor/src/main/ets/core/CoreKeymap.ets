@@ -73,7 +73,7 @@ export function editorBuiltinCommandFromValue(value: number): EditorBuiltinComma
     case 32: return EditorBuiltinCommand.PASTE;
     case 33: return EditorBuiltinCommand.CUT;
     case 34: return EditorBuiltinCommand.TRIGGER_COMPLETION;
-    default: return EditorBuiltinCommand.NONE;
+    default: throw new Error('Unknown EditorBuiltinCommand value: ' + value);
   }
 }
 

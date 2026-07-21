@@ -110,6 +110,12 @@ namespace NS_SWEETEDITOR {
     return !m_redo_stack_.empty();
   }
 
+  void UndoManager::breakMergeChain() {
+    if (!m_undo_stack_.empty()) {
+      m_undo_stack_.back().allows_merge = false;
+    }
+  }
+
   void UndoManager::clear() {
     m_undo_stack_.clear();
     m_redo_stack_.clear();

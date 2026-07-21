@@ -16,7 +16,7 @@ public enum CurrentLineRenderMode {
             case 0: return BACKGROUND;
             case 1: return BORDER;
             case 2: return NONE;
-            default: return BACKGROUND;
+            default: throw new IllegalArgumentException("Unknown CurrentLineRenderMode value: " + value);
         }
     }
 }

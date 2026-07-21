@@ -16,7 +16,7 @@ public enum PointerCursorType {
             case 0: return DEFAULT;
             case 1: return TEXT;
             case 2: return HAND;
-            default: return DEFAULT;
+            default: throw new IllegalArgumentException("Unknown PointerCursorType value: " + value);
         }
     }
 }

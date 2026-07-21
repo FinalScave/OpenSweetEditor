@@ -39,7 +39,7 @@ enum EditorActionSource {
       case 8: return folding;
       case 9: return search;
       case 10: return linkedEditing;
-      default: return none;
+      default: throw ArgumentError.value(value, 'value', 'Unknown EditorActionSource value');
     }
   }
 }
@@ -65,7 +65,7 @@ enum ScrollBehavior {
       case 0: return gotoTop;
       case 1: return gotoCenter;
       case 2: return gotoBottom;
-      default: return gotoTop;
+      default: throw ArgumentError.value(value, 'value', 'Unknown ScrollBehavior value');
     }
   }
 }
@@ -93,7 +93,7 @@ enum TextChangeKind {
       case 5: return undo;
       case 6: return redo;
       case 7: return mixed;
-      default: return none;
+      default: throw ArgumentError.value(value, 'value', 'Unknown TextChangeKind value');
     }
   }
 }
@@ -112,7 +112,6 @@ class EditorActionResult {
     this.pointerCursorChanged = false,
     this.compositionChanged = false,
     this.decorationChanged = false,
-    this.needsImeSync = false,
     this.animationFlags = 0,
     this.nextAnimationDelayMs = 0,
     this.interactionFlags = 0,
@@ -131,7 +130,8 @@ class EditorActionResult {
     this.scaleAfter = 1.0,
     this.pointerCursorBefore = PointerCursorType.text,
     this.pointerCursorAfter = PointerCursorType.text,
-    this.imeSync = const ImeSyncSnapshot(),
+    this.imeHostAction = ImeHostAction.none,
+    this.imeState = const ImeState(),
     this.gestureType = GestureType.undefined,
     this.gestureEventType = EventType.undefined,
     this.tapPoint = const PointF(),
@@ -152,7 +152,6 @@ class EditorActionResult {
   final bool pointerCursorChanged;
   final bool compositionChanged;
   final bool decorationChanged;
-  final bool needsImeSync;
   final int animationFlags;
   final int nextAnimationDelayMs;
   final int interactionFlags;
@@ -171,7 +170,8 @@ class EditorActionResult {
   final double scaleAfter;
   final PointerCursorType pointerCursorBefore;
   final PointerCursorType pointerCursorAfter;
-  final ImeSyncSnapshot imeSync;
+  final ImeHostAction imeHostAction;
+  final ImeState imeState;
   final GestureType gestureType;
   final EventType gestureEventType;
   final PointF tapPoint;

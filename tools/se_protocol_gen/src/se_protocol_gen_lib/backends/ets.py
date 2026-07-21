@@ -311,7 +311,7 @@ def generate_ets_domain(domain, items, enums, schema, target):
         lines.append("  switch (value) {")
         for value in item["values"]:
             lines.append(f"    case {value['value']}: return {item['name']}.{value['name']};")
-        lines.append(f"    default: return {item['name']}.{item['fallback']};")
+        lines.append(f"    default: throw new Error('Unknown {item['name']} value: ' + value);")
         lines.append("  }")
         lines.append("}")
         lines.append("")

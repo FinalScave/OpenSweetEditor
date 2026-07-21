@@ -28,7 +28,7 @@ public enum HitTargetType {
             case 6: return GUTTER_ICON;
             case 7: return FOLD_GUTTER;
             case 8: return FOLD_PLACEHOLDER;
-            default: return NONE;
+            default: throw new IllegalArgumentException("Unknown HitTargetType value: " + value);
         }
     }
 }

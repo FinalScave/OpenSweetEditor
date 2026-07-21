@@ -28,12 +28,11 @@ import com.qiplat.sweeteditor.core.config.EditorOptions;
 import com.qiplat.sweeteditor.core.config.HandleConfig;
 import com.qiplat.sweeteditor.core.config.ScrollbarConfig;
 import com.qiplat.sweeteditor.core.keymap.KeyBinding;
-import com.qiplat.sweeteditor.core.ime.ImeCommandMessage;
-import com.qiplat.sweeteditor.core.ime.ImeInputContext;
-import com.qiplat.sweeteditor.core.ime.ImeScriptClass;
-import com.qiplat.sweeteditor.core.ime.ImeSyncSnapshot;
-import com.qiplat.sweeteditor.core.ime.ImeTextUpdateMessage;
-import com.qiplat.sweeteditor.core.ime.ImeTextUpdateScope;
+import com.qiplat.sweeteditor.core.ime.ImeCommandBatch;
+import com.qiplat.sweeteditor.core.ime.ImeMutationModel;
+import com.qiplat.sweeteditor.core.ime.ImeState;
+import com.qiplat.sweeteditor.core.ime.ImeTextContext;
+import com.qiplat.sweeteditor.core.ime.ImeTextSource;
 import com.qiplat.sweeteditor.core.keymap.KeyModifier;
 import com.qiplat.sweeteditor.core.interaction.EventType;
 import com.qiplat.sweeteditor.core.interaction.GestureEvent;
@@ -802,73 +801,56 @@ public class EditorCore {
 
     // ==================== IME Composition Input ====================
 
-    public boolean hasPreedit() {
-        if (mNativeHandle == 0) return false;
-        return nativeHasPreedit(mNativeHandle);
-    }
-
     @NonNull
-    public EditorActionResult handleImeCommandMessage(@NonNull ImeCommandMessage message) {
-        if (mNativeHandle == 0) return new EditorActionResult();
-        ByteBuffer payload = CoreProtocol.encodeImeCommandMessage(message);
-        return decodeAction(nativeImeHandleCommandMessage(
-                mNativeHandle,
-                payload,
-                payload.remaining()));
-    }
-
-    @NonNull
-    public EditorActionResult handleImeTextUpdateMessage(@NonNull ImeTextUpdateMessage message) {
-        if (mNativeHandle == 0) return new EditorActionResult();
-        ByteBuffer payload = CoreProtocol.encodeImeTextUpdateMessage(message);
-        return decodeAction(nativeImeHandleTextUpdateMessage(
-                mNativeHandle,
-                payload,
-                payload.remaining()));
-    }
-
-    public int getImeKeyboardScriptClass() {
-        if (mNativeHandle == 0) return ImeScriptClass.UNKNOWN.value;
-        return nativeImeGetKeyboardScriptClass(mNativeHandle);
-    }
-
-    @NonNull
-    public ImeSyncSnapshot getImeSyncSnapshot() {
-        if (mNativeHandle == 0) return new ImeSyncSnapshot();
-        ByteBuffer data = nativeGetImeSyncSnapshot(mNativeHandle);
+    public ImeState beginImeSession(@NonNull ImeMutationModel mutationModel) {
+        if (mNativeHandle == 0) return new ImeState();
+        ByteBuffer data = nativeImeBeginSession(mNativeHandle, mutationModel.value);
         try {
-            if (data == null) return new ImeSyncSnapshot();
-            return CoreProtocol.decodeImeSyncSnapshot(data);
+            return data != null ? CoreProtocol.decodeImeState(data) : new ImeState();
         } finally {
             nativeFreeBinaryData(data);
         }
     }
 
     @NonNull
-    public ImeInputContext getImeCommandInputContext(long beforeLength, long afterLength) {
-        if (mNativeHandle == 0) return new ImeInputContext();
-        ByteBuffer data = nativeGetImeCommandInputContext(mNativeHandle, beforeLength, afterLength);
+    public EditorActionResult endImeSession(long sessionId) {
+        if (mNativeHandle == 0) return new EditorActionResult();
+        return decodeAction(nativeImeEndSession(mNativeHandle, sessionId));
+    }
+
+    @NonNull
+    public EditorActionResult applyImeCommands(@NonNull ImeCommandBatch batch) {
+        if (mNativeHandle == 0) return new EditorActionResult();
+        ByteBuffer payload = CoreProtocol.encodeImeCommandBatch(batch);
+        return decodeAction(nativeImeApplyCommands(
+                mNativeHandle,
+                payload,
+                payload.remaining()));
+    }
+
+    @NonNull
+    public ImeState getImeState(long sessionId) {
+        if (mNativeHandle == 0) return new ImeState();
+        ByteBuffer data = nativeImeGetState(mNativeHandle, sessionId);
         try {
-            if (data == null) return new ImeInputContext();
-            return CoreProtocol.decodeImeInputContext(data);
+            return data != null ? CoreProtocol.decodeImeState(data) : new ImeState();
         } finally {
             nativeFreeBinaryData(data);
         }
     }
 
     @NonNull
-    public ImeInputContext getImeTextUpdateInputContext(@NonNull ImeTextUpdateScope scope,
-                                                        long beforeLength,
-                                                        long afterLength) {
-        if (mNativeHandle == 0) return new ImeInputContext();
-        ByteBuffer data = nativeGetImeTextUpdateInputContext(
+    public ImeTextContext getImeContext(long sessionId, @NonNull ImeTextSource source,
+                                        long startUtf16, long lengthUtf16) {
+        if (mNativeHandle == 0) return new ImeTextContext();
+        ByteBuffer data = nativeImeGetContext(
                 mNativeHandle,
-                scope.value,
-                beforeLength,
-                afterLength);
+                sessionId,
+                source.value,
+                startUtf16,
+                lengthUtf16);
         try {
-            if (data == null) return new ImeInputContext();
-            return CoreProtocol.decodeImeInputContext(data);
+            return data != null ? CoreProtocol.decodeImeTextContext(data) : new ImeTextContext();
         } finally {
             nativeFreeBinaryData(data);
         }
@@ -2125,26 +2107,21 @@ public class EditorCore {
     @FastNative
     private static native String nativeGetSelectedText(long handle);
 
-    @CriticalNative
-    private static native boolean nativeHasPreedit(long handle);
+    @FastNative
+    private static native ByteBuffer nativeImeBeginSession(long handle, int mutationModel);
 
     @FastNative
-    private static native ByteBuffer nativeImeHandleCommandMessage(long handle, ByteBuffer data, int size);
+    private static native ByteBuffer nativeImeEndSession(long handle, long sessionId);
 
     @FastNative
-    private static native ByteBuffer nativeImeHandleTextUpdateMessage(long handle, ByteBuffer data, int size);
-
-    @CriticalNative
-    private static native int nativeImeGetKeyboardScriptClass(long handle);
+    private static native ByteBuffer nativeImeApplyCommands(long handle, ByteBuffer data, int size);
 
     @FastNative
-    private static native ByteBuffer nativeGetImeSyncSnapshot(long handle);
+    private static native ByteBuffer nativeImeGetState(long handle, long sessionId);
 
     @FastNative
-    private static native ByteBuffer nativeGetImeCommandInputContext(long handle, long beforeLength, long afterLength);
-
-    @FastNative
-    private static native ByteBuffer nativeGetImeTextUpdateInputContext(long handle, int scope, long beforeLength, long afterLength);
+    private static native ByteBuffer nativeImeGetContext(long handle, long sessionId, int source,
+                                                         long startUtf16, long lengthUtf16);
 
     @FastNative
     private static native ByteBuffer nativeSetReadOnly(long handle, boolean readOnly);

@@ -5,12 +5,12 @@ public enum FoldState: Int32 {
     case EXPANDED = 1
     case COLLAPSED = 2
 
-    public static func fromValue(_ value: Int32) -> FoldState {
+    public static func fromValue(_ value: Int32) -> FoldState? {
         switch value {
         case 0: return .NONE
         case 1: return .EXPANDED
         case 2: return .COLLAPSED
-        default: return .NONE
+        default: return nil
         }
     }
 }
@@ -19,11 +19,11 @@ public enum GuideDirection: Int32 {
     case VERTICAL = 0
     case HORIZONTAL = 1
 
-    public static func fromValue(_ value: Int32) -> GuideDirection {
+    public static func fromValue(_ value: Int32) -> GuideDirection? {
         switch value {
         case 0: return .VERTICAL
         case 1: return .HORIZONTAL
-        default: return .VERTICAL
+        default: return nil
         }
     }
 }
@@ -33,12 +33,12 @@ public enum GuideStyle: Int32 {
     case DASHED = 1
     case DOUBLE = 2
 
-    public static func fromValue(_ value: Int32) -> GuideStyle {
+    public static func fromValue(_ value: Int32) -> GuideStyle? {
         switch value {
         case 0: return .SOLID
         case 1: return .DASHED
         case 2: return .DOUBLE
-        default: return .SOLID
+        default: return nil
         }
     }
 }
@@ -49,13 +49,13 @@ public enum GuideType: Int32 {
     case FLOW = 2
     case SEPARATOR = 3
 
-    public static func fromValue(_ value: Int32) -> GuideType {
+    public static func fromValue(_ value: Int32) -> GuideType? {
         switch value {
         case 0: return .INDENT
         case 1: return .BRACKET
         case 2: return .FLOW
         case 3: return .SEPARATOR
-        default: return .INDENT
+        default: return nil
         }
     }
 }
@@ -65,12 +65,12 @@ public enum PointerCursorType: Int32 {
     case TEXT = 1
     case HAND = 2
 
-    public static func fromValue(_ value: Int32) -> PointerCursorType {
+    public static func fromValue(_ value: Int32) -> PointerCursorType? {
         switch value {
         case 0: return .DEFAULT
         case 1: return .TEXT
         case 2: return .HAND
-        default: return .DEFAULT
+        default: return nil
         }
     }
 }
@@ -91,7 +91,7 @@ public enum RangeEffectKind: Int32 {
     case DIAGNOSTIC_INFO = 12
     case DIAGNOSTIC_HINT = 13
 
-    public static func fromValue(_ value: Int32) -> RangeEffectKind {
+    public static func fromValue(_ value: Int32) -> RangeEffectKind? {
         switch value {
         case 0: return .SELECTION
         case 1: return .SEARCH_MATCH
@@ -107,7 +107,7 @@ public enum RangeEffectKind: Int32 {
         case 11: return .DIAGNOSTIC_WARNING
         case 12: return .DIAGNOSTIC_INFO
         case 13: return .DIAGNOSTIC_HINT
-        default: return .SELECTION
+        default: return nil
         }
     }
 }
@@ -117,12 +117,12 @@ public enum VisualLineKind: Int32 {
     case PHANTOM = 1
     case CODELENS = 2
 
-    public static func fromValue(_ value: Int32) -> VisualLineKind {
+    public static func fromValue(_ value: Int32) -> VisualLineKind? {
         switch value {
         case 0: return .CONTENT
         case 1: return .PHANTOM
         case 2: return .CODELENS
-        default: return .CONTENT
+        default: return nil
         }
     }
 }
@@ -138,7 +138,7 @@ public enum VisualRunType: Int32 {
     case CODELENS = 7
     case LINK = 8
 
-    public static func fromValue(_ value: Int32) -> VisualRunType {
+    public static func fromValue(_ value: Int32) -> VisualRunType? {
         switch value {
         case 0: return .TEXT
         case 1: return .WHITESPACE
@@ -149,7 +149,7 @@ public enum VisualRunType: Int32 {
         case 6: return .FOLD_PLACEHOLDER
         case 7: return .CODELENS
         case 8: return .LINK
-        default: return .TEXT
+        default: return nil
         }
     }
 }

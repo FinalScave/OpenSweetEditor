@@ -295,7 +295,6 @@ def generate_dart_enum(item):
             lines.append(f"  static const int {dart_enum_value_name(value['name'])} = {value['value']};")
         lines.append("}")
         return lines
-    fallback = dart_enum_value_name(item["fallback"])
     lines = [f"enum {item['name']} {{"]
     for index, value in enumerate(item["values"]):
         suffix = "," if index + 1 < len(item["values"]) else ";"
@@ -311,7 +310,7 @@ def generate_dart_enum(item):
     for value in item["values"]:
         lines.append(f"      case {value['value']}: return {dart_enum_value_name(value['name'])};")
     lines.extend([
-        f"      default: return {fallback};",
+        f"      default: throw ArgumentError.value(value, 'value', 'Unknown {item['name']} value');",
         "    }",
         "  }",
         "}",

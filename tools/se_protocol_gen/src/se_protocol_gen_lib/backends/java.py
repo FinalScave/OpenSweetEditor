@@ -1411,7 +1411,7 @@ def generate_java_enum(item, target):
     for value in item["values"]:
         lines.append(f"            case {value['value']}: return {value['name']};")
     lines.extend([
-        f"            default: return {item['fallback']};",
+        f"            default: throw new IllegalArgumentException(\"Unknown {item['name']} value: \" + value);",
         "        }",
         "    }",
         "}",

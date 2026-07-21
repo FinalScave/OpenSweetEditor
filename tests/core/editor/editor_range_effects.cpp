@@ -1,4 +1,5 @@
 #include <algorithm>
+#include <unordered_map>
 #include <catch2/catch_amalgamated.hpp>
 #include <sweeteditor/document.h>
 #include <sweeteditor/editor_core.h>
@@ -21,14 +22,19 @@ namespace {
     editor.setWrapMode(WrapMode::CHAR_BREAK);
   }
 
-  EditorActionResult updatePreedit(EditorCore& editor,
-                                   const U8String& text,
-                                   ImeScriptClass script_class = ImeScriptClass::LATIN) {
-    ImeCommandMessage message;
-    message.kind = ImeCommandKind::SET_PREEDIT_TEXT;
-    message.text = text;
-    message.script_class = script_class;
-    return editor.handleImeCommandMessage(message);
+  EditorActionResult updatePreedit(EditorCore& editor, const U8String& text) {
+    static std::unordered_map<EditorCore*, uint64_t> sessions;
+    uint64_t session_id = sessions[&editor];
+    if (editor.getImeState(session_id).result_code != ImeResultCode::OK) {
+      ImeState state = editor.beginImeSession(ImeMutationModel::COMMAND);
+      REQUIRE(state.result_code == ImeResultCode::OK);
+      session_id = state.session_id;
+      sessions[&editor] = session_id;
+    }
+    ImeCommand command;
+    command.kind = ImeCommandKind::UPDATE_COMPOSITION;
+    command.text = text;
+    return editor.applyImeCommands({session_id, {std::move(command)}});
   }
 
   void checkWrappedRangeEffects(const EditorRenderModel& model, RangeEffectKind kind) {
@@ -288,7 +294,7 @@ TEST_CASE("EditorCore buildRenderModel exposes active IME composition range effe
   styles.ime_composition.underline_style = RangeEffectUnderlineStyle::SOLID;
   editor.setEditorRangeEffectStyles(styles);
   editor.setCursorPosition({0, 1});
-  updatePreedit(editor, "xy", ImeScriptClass::LATIN);
+  updatePreedit(editor, "xy");
 
   EditorRenderModel model;
   editor.buildRenderModel(model);
@@ -311,7 +317,7 @@ TEST_CASE("EditorCore buildRenderModel splits wrapped IME composition range effe
   editor.setEditorRangeEffectStyles(styles);
 
   editor.setCursorPosition({0, 0});
-  updatePreedit(editor, "abcdefghijkl", ImeScriptClass::LATIN);
+  updatePreedit(editor, "abcdefghijkl");
 
   EditorRenderModel model;
   editor.buildRenderModel(model);

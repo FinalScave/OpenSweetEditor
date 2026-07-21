@@ -16,7 +16,7 @@ public enum FoldState {
             case 0: return NONE;
             case 1: return EXPANDED;
             case 2: return COLLAPSED;
-            default: return NONE;
+            default: throw new IllegalArgumentException("Unknown FoldState value: " + value);
         }
     }
 }

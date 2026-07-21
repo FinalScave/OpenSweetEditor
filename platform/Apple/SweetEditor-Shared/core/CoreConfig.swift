@@ -4,11 +4,11 @@ public enum AutoIndentMode: Int32 {
     case NONE = 0
     case KEEP_INDENT = 1
 
-    public static func fromValue(_ value: Int32) -> AutoIndentMode {
+    public static func fromValue(_ value: Int32) -> AutoIndentMode? {
         switch value {
         case 0: return .NONE
         case 1: return .KEEP_INDENT
-        default: return .NONE
+        default: return nil
         }
     }
 }
@@ -18,12 +18,12 @@ public enum CurrentLineRenderMode: Int32 {
     case BORDER = 1
     case NONE = 2
 
-    public static func fromValue(_ value: Int32) -> CurrentLineRenderMode {
+    public static func fromValue(_ value: Int32) -> CurrentLineRenderMode? {
         switch value {
         case 0: return .BACKGROUND
         case 1: return .BORDER
         case 2: return .NONE
-        default: return .BACKGROUND
+        default: return nil
         }
     }
 }
@@ -33,12 +33,12 @@ public enum FoldArrowMode: Int32 {
     case ALWAYS = 1
     case HIDDEN = 2
 
-    public static func fromValue(_ value: Int32) -> FoldArrowMode {
+    public static func fromValue(_ value: Int32) -> FoldArrowMode? {
         switch value {
         case 0: return .AUTO
         case 1: return .ALWAYS
         case 2: return .HIDDEN
-        default: return .AUTO
+        default: return nil
         }
     }
 }
@@ -49,13 +49,13 @@ public enum RangeEffectUnderlineStyle: Int32 {
     case DASHED = 2
     case WAVY = 3
 
-    public static func fromValue(_ value: Int32) -> RangeEffectUnderlineStyle {
+    public static func fromValue(_ value: Int32) -> RangeEffectUnderlineStyle? {
         switch value {
         case 0: return .NONE
         case 1: return .SOLID
         case 2: return .DASHED
         case 3: return .WAVY
-        default: return .NONE
+        default: return nil
         }
     }
 }
@@ -65,12 +65,12 @@ public enum ScrollbarMode: Int32 {
     case TRANSIENT = 1
     case NEVER = 2
 
-    public static func fromValue(_ value: Int32) -> ScrollbarMode {
+    public static func fromValue(_ value: Int32) -> ScrollbarMode? {
         switch value {
         case 0: return .ALWAYS
         case 1: return .TRANSIENT
         case 2: return .NEVER
-        default: return .ALWAYS
+        default: return nil
         }
     }
 }
@@ -79,11 +79,11 @@ public enum ScrollbarTrackTapMode: Int32 {
     case JUMP = 0
     case DISABLED = 1
 
-    public static func fromValue(_ value: Int32) -> ScrollbarTrackTapMode {
+    public static func fromValue(_ value: Int32) -> ScrollbarTrackTapMode? {
         switch value {
         case 0: return .JUMP
         case 1: return .DISABLED
-        default: return .JUMP
+        default: return nil
         }
     }
 }
@@ -95,14 +95,14 @@ public enum WhitespaceRenderMode: Int32 {
     case TRAILING = 3
     case ALL = 4
 
-    public static func fromValue(_ value: Int32) -> WhitespaceRenderMode {
+    public static func fromValue(_ value: Int32) -> WhitespaceRenderMode? {
         switch value {
         case 0: return .NONE
         case 1: return .BOUNDARY
         case 2: return .SELECTION
         case 3: return .TRAILING
         case 4: return .ALL
-        default: return .NONE
+        default: return nil
         }
     }
 }
@@ -112,12 +112,12 @@ public enum WrapMode: Int32 {
     case CHAR_BREAK = 1
     case WORD_BREAK = 2
 
-    public static func fromValue(_ value: Int32) -> WrapMode {
+    public static func fromValue(_ value: Int32) -> WrapMode? {
         switch value {
         case 0: return .NONE
         case 1: return .CHAR_BREAK
         case 2: return .WORD_BREAK
-        default: return .NONE
+        default: return nil
         }
     }
 }

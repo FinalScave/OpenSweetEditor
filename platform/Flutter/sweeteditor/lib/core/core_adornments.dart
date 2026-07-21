@@ -17,7 +17,7 @@ enum DiagnosticSeverity {
       case 1: return diagWarning;
       case 2: return diagInfo;
       case 3: return diagHint;
-      default: return diagError;
+      default: throw ArgumentError.value(value, 'value', 'Unknown DiagnosticSeverity value');
     }
   }
 }
@@ -35,7 +35,7 @@ enum DocumentHighlightKind {
       case 0: return text;
       case 1: return read;
       case 2: return write;
-      default: return text;
+      default: throw ArgumentError.value(value, 'value', 'Unknown DocumentHighlightKind value');
     }
   }
 }
@@ -53,7 +53,7 @@ enum InlayType {
       case 0: return text;
       case 1: return icon;
       case 2: return color;
-      default: return text;
+      default: throw ArgumentError.value(value, 'value', 'Unknown InlayType value');
     }
   }
 }
@@ -69,7 +69,7 @@ enum SeparatorStyle {
     switch (value) {
       case 0: return single;
       case 1: return double;
-      default: return single;
+      default: throw ArgumentError.value(value, 'value', 'Unknown SeparatorStyle value');
     }
   }
 }
@@ -87,7 +87,7 @@ enum SpanLayer {
       case 0: return syntax;
       case 1: return semantic;
       case 2: return overlay;
-      default: return syntax;
+      default: throw ArgumentError.value(value, 'value', 'Unknown SpanLayer value');
     }
   }
 }
