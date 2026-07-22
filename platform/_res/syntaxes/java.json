@@ -151,7 +151,7 @@
       },
       {
         "pattern": "\\b0[xX][0-9a-fA-F_]+[lL]?\\b",
-        "style": "color"
+        "style": "number"
       },
       {
         "pattern": "\\b0[bB][01_]+[lL]?\\b",
@@ -450,6 +450,13 @@
     ],
     "rules": [
       { "kind": "delimiter", "start": "{", "end": "}", "branches": ["case"] }
+    ]
+  },
+  "bracketRules": {
+    "pairs": [
+      { "start": "(", "end": ")" },
+      { "start": "[", "end": "]" },
+      { "start": "{", "end": "}" }
     ]
   }
 }

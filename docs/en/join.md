@@ -94,7 +94,7 @@ This document gives practical development entry points based on the current repo
 
 - `include/sweeteditor/c_api.h`
   - canonical C API imported from the native framework
-- `platform/Apple/SweetEditor-Shared/api/SweetEditorCore.swift`
+- `platform/Apple/SweetEditor-Shared/EditorCore.swift`
   - core Swift wrapper and bridge-facing entry points
 - `platform/Apple/SweetEditor-Shared/core/CoreProtocol.swift`
   - binary payload encoding and decoding aligned with generated integration `CoreProtocol`
@@ -160,7 +160,7 @@ Usual sync targets:
 - Android: `jeditor.hpp`, `jni_entry.cpp`, Java `CoreProtocol`
 - Swing: `EditorNative.java`, `CoreProtocol.java`
 - WinForms: `EditorCore.cs`, `CoreProtocol.cs`
-- Apple: `c_api.h`, `SweetEditorCore.swift`, `CoreProtocol.swift`
+- Apple: `c_api.h`, `EditorCore.swift`, `CoreProtocol.swift`
 - Flutter: `editor_core.dart`, `core_protocol.dart`, `sweeteditor_bindings_generated.dart`
 - Avalonia: `EditorCore.cs`, `CoreProtocol.cs`
 

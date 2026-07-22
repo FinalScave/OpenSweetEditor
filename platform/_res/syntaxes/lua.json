@@ -212,5 +212,12 @@
       { "kind": "word", "start": "then", "end": "end", "branches": ["elseif","else"] },
       { "kind": "word", "start": "function", "end": "end" }
     ]
+  },
+  "bracketRules": {
+    "pairs": [
+      { "start": "(", "end": ")" },
+      { "start": "[", "end": "]" },
+      { "start": "{", "end": "}" }
+    ]
   }
 }

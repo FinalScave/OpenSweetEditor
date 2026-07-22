@@ -813,9 +813,9 @@ Flutter 3.41.6存在以下必须绕开的 engine事实：
 - `insertText` 映射为 `COMMIT_TEXT`；`unmarkText` 只映射 `FINISH_COMPOSITION`，不能重复插入 marked text，也不能当成 Cancel。
 - UIKit `replace(_:withText:)`、`selectedTextRange` setter与 `deleteBackward` 必须实现；AppKit `doCommand(by:)` 进入普通 Core action。普通删除按 grapheme，普通 navigation/pointer relocation统一经过 resolution gate。
 - UIKit `text(in:)`、selected/marked range与 AppKit attributed substring都描述当前 text storage，必须查询 `EDITING`；adapter不能任意选择 `COMMITTED`。
-- `firstRect`、`caretRect`、`closestPosition`、`characterRange`、AppKit `firstRect(...actualRange:)` 与 `characterIndex` 必须按调用方请求的 editing position/range查询 layout/hit-test，不能总返回当前 caret。
+- `firstRect`、`caretRect` 与 AppKit `firstRect(...actualRange:)` 按调用方请求的 editing position查询现有位置几何。pointer relocation仍统一经过 Core gesture；在没有原生选择手势或Scribble等实际消费者时，UIKit `closestPosition`、`characterRange`与AppKit `characterIndex`只提供当前editing caret的稳定兜底，不在Apple层复制layout hit-test，也不为此提前扩充C API。
 - 用户点击 marked range外是普通 pointer relocation：Core gate先 Finish再定位，不能由 Apple adapter猜成 Cancel。
-- `inputDelegate` 的 text/selection will/did通知只用于 Core-originated外部变化；will必须在 Core mutation前发送，did在 mutation和状态更新后发送，并且始终成对。若执行前只能知道“可能变化”，就保守地用一对通知包住整个 action，不能先发 will再因结果 no-op省略 did。系统刚发起并已由同一 `UITextInput` callback应用的 mutation不能再回声通知。
+- `inputDelegate` 通知只用于 Core-originated外部变化，并在 mutation和本地状态同步后根据实际结果发送 `textDidChange`或`selectionDidChange`。不为了预判结果在每个Core action外扩散will/did包装；系统刚发起并已由同一`UITextInput` callback应用的mutation不能再回声通知。
 - UIKit `setMarkedText(nil, selectedRange:)`、active marked状态下 `replace(_:withText:)` 是否保留composition仍需真实 `UITextView` 对照trace；AppKit replacementRange坐标契约不再列为未知，但仍要用 `NSTextView` 覆盖整段、合法子区间、collapsed子区间、越界和 `NSNotFound` 事件序列，验证实现没有换错坐标空间。
 - 本地 marked state 只是 Core state 的镜像，不能独立决定 Finish/Cancel。
 - resign first responder、input client detach或 view dispose时 Finish/end当前 generation；重新成为 first responder必须 begin新 session。Restart是否启用由前述barrier表决定。
