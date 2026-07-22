@@ -94,7 +94,7 @@
 
 - `include/sweeteditor/c_api.h`
   - 原生 Framework 直接导入的标准 C API
-- `platform/Apple/SweetEditor-Shared/api/SweetEditorCore.swift`
+- `platform/Apple/SweetEditor-Shared/EditorCore.swift`
   - Swift 侧核心封装与二进制协议解码
 - `platform/Apple/SweetEditor-Shared/core/CoreProtocol.swift`
   - 与其他接入实现 `CoreProtocol` 对齐的二进制载荷编解码
@@ -160,7 +160,7 @@
 - Android：`jeditor.hpp`、`jni_entry.cpp`、Java `CoreProtocol`
 - Swing：`EditorNative.java`、`CoreProtocol.java`
 - WinForms：`EditorCore.cs`、`CoreProtocol.cs`
-- Apple：`c_api.h`、`SweetEditorCore.swift`、`CoreProtocol.swift`
+- Apple：`c_api.h`、`EditorCore.swift`、`CoreProtocol.swift`
 - Flutter：`editor_core.dart`、`core_protocol.dart`、`sweeteditor_bindings_generated.dart`
 - Avalonia：`EditorCore.cs`、`CoreProtocol.cs`
 

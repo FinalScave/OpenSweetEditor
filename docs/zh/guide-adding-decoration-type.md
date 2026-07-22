@@ -122,7 +122,7 @@
 - Swing：`DecorationType.java`
 - OHOS：`DecorationTypes.ets`（字符串枚举）
 - Flutter：`decoration_types.dart`
-- Apple (Swift)：`DecorationProvider.swift`（OptionSet 位域）
+- Apple (Swift)：`Decorations.swift`（OptionSet 位域）
 - Avalonia：`EditorDecoration.cs`（Flags 枚举）
 - WinForms：`EditorDecoration.cs`（Flags 枚举）
 
@@ -186,5 +186,5 @@ LINK run 在 `getPositionScreenCoord()` / `columnToX()` 中与 TEXT run 同等�
 | Java Core | `<Type>.java`、`VisualRunType.java`、`HitTargetType`、`EditorCore.java`、`CoreProtocol.java` |
 | Java 装饰 | `DecorationResult.java`、`DecorationType.java`、`DecorationProviderManager.java` |
 | Java UI | `SweetEditor.java`、`<Type>ClickEvent.java`（如果可交互）、`EditorRenderer.java` |
-| DecorationType 枚举 | `DecorationType.java`（Android、Swing）、`DecorationTypes.ets`（OHOS）、`decoration_types.dart`（Flutter）、`DecorationProvider.swift`（Apple）、`EditorDecoration.cs`（Avalonia、WinForms） |
+| DecorationType 枚举 | `DecorationType.java`（Android、Swing）、`DecorationTypes.ets`（OHOS）、`decoration_types.dart`（Flutter）、`Decorations.swift`（Apple）、`EditorDecoration.cs`（Avalonia、WinForms） |
 | 测试 | `tests/core/decoration/decoration_adjust.cpp`、`tests/core/layout/layout_decorations.cpp` |

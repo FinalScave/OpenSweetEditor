@@ -1,0 +1,15 @@
+{
+  "originHash" : "146365ea995eb0e0a895b28a594d40fd799b795f7b0fe2645b7951d039f7edce",
+  "pins" : [
+    {
+      "identity" : "sweetline-apple",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/Xiue233/SweetLine-Apple.git",
+      "state" : {
+        "revision" : "5db7a39d4d1bb50205c6d6055590587ddfcf8b51",
+        "version" : "1.3.1"
+      }
+    }
+  ],
+  "version" : 3
+}

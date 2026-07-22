@@ -124,7 +124,7 @@ For Android as example:
 - Swing: `DecorationType.java`
 - OHOS: `DecorationTypes.ets` (string enum)
 - Flutter: `decoration_types.dart`
-- Apple (Swift): `DecorationProvider.swift` (OptionSet bitfield)
+- Apple (Swift): `Decorations.swift` (OptionSet bitfield)
 - Avalonia: `EditorDecoration.cs` (Flags enum)
 - WinForms: `EditorDecoration.cs` (Flags enum)
 
@@ -188,5 +188,5 @@ LINK runs participate in `getPositionScreenCoord()` / `columnToX()` the same way
 | Java Core | `<Type>.java`, `VisualRunType.java`, `HitTargetType`, `EditorCore.java`, `CoreProtocol.java` |
 | Java Decoration | `DecorationResult.java`, `DecorationType.java`, `DecorationProviderManager.java` |
 | Java UI | `SweetEditor.java`, `<Type>ClickEvent.java` (if interactive), `EditorRenderer.java` |
-| DecorationType Enum | `DecorationType.java` (Android, Swing), `DecorationTypes.ets` (OHOS), `decoration_types.dart` (Flutter), `DecorationProvider.swift` (Apple), `EditorDecoration.cs` (Avalonia, WinForms) |
+| DecorationType Enum | `DecorationType.java` (Android, Swing), `DecorationTypes.ets` (OHOS), `decoration_types.dart` (Flutter), `Decorations.swift` (Apple), `EditorDecoration.cs` (Avalonia, WinForms) |
 | Tests | `tests/core/decoration/decoration_adjust.cpp`, `tests/core/layout/layout_decorations.cpp` |

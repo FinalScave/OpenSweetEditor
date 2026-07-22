@@ -14,7 +14,7 @@ The Apple SDK provides native SweetEditor views for iOS and macOS as a local Swi
 - `SweetEditorIOS`: UIKit and SwiftUI integration
 - `SweetEditorMacOS`: AppKit and SwiftUI integration
 
-`SweetEditorShared` and the native binary targets are package implementation details and are not published as products. The shared target imports the canonical C API exposed by the platform-specific core Framework; it does not maintain a separate bridge header.
+`SweetEditorShared` and the native binary targets are package implementation details and are not published as products. Public shared types such as `EditorCore` and `Document` are re-exported by both platform products. The shared target imports the canonical C API exposed by the platform-specific core Framework; it does not maintain a separate bridge header.
 
 ## Local Package Integration
 
@@ -35,8 +35,7 @@ Add `platform/Apple` as a local Swift Package in Xcode, then link the product fo
 ```swift
 import SweetEditorIOS
 
-let editor = SweetEditorViewiOS(frame: .zero)
-editor.applyTheme(isDark: true)
+let editor = SweetEditorView(frame: .zero)
 editor.loadDocument(text: "Hello, SweetEditor!")
 editor.settings.setWrapMode(.wordBreak)
 ```
@@ -46,13 +45,12 @@ editor.settings.setWrapMode(.wordBreak)
 ```swift
 import SweetEditorMacOS
 
-let editor = SweetEditorViewMacOS(frame: .zero)
-editor.applyTheme(isDark: true)
+let editor = SweetEditorView(frame: .zero)
 editor.loadDocument(text: "Hello, SweetEditor!")
 editor.settings.setWrapMode(.wordBreak)
 ```
 
-SwiftUI entry points are `SweetEditorSwiftUIViewiOS` and `SweetEditorSwiftUIMacOS`.
+Both native views use `EditorTheme.xcodeDark()` by default. `EditorTheme.xcodeLight()` provides the matching light preset, while `light()` and `dark()` remain the cross-platform presets. The SwiftUI entry point is `SweetEditor` in both platform modules and accepts an `EditorTheme` directly.
 
 ## Features
 
@@ -64,7 +62,7 @@ SwiftUI entry points are `SweetEditorSwiftUIViewiOS` and `SweetEditorSwiftUIMacO
 - Runtime settings for wrapping, whitespace, line breaks, scale, spacing, and read-only mode
 - Fold, decoration, and interaction callbacks
 
-Neither public native view currently exposes a language-configuration setter. The macOS newline-provider methods depend on internal provider types and are not usable as an application extension point. Metadata access is public only on `SweetEditorViewMacOS`; it is not exposed by `SweetEditorViewiOS` or either SwiftUI wrapper.
+Both native views expose language configuration, metadata, completion, decoration, and newline provider extension points. Provider contexts carry the current language configuration and editor metadata. SwiftUI wrappers intentionally keep a smaller surface; use `SweetEditorView` for those APIs.
 
 ## Native Artifacts
 
@@ -102,8 +100,8 @@ Set `SWEETEDITOR_FORCE_NATIVE=1` to force a one-time rebuild.
 ## Links
 
 - [Apple API reference](https://github.com/FinalScave/SweetEditor/blob/main/docs/en/api-platform-apple.md)
-- [iOS demo](Examples-iOS/README.md)
-- [macOS demos](Examples-MacOS/README.md)
+- [iOS demo](Demo-iOS/README.md)
+- [macOS demos](Demo-macOS/README.md)
 - [Changelog](CHANGELOG.md)
 - [Repository](https://github.com/FinalScave/SweetEditor)
 - [MIT License](../../LICENSE)

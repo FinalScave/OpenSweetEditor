@@ -31,18 +31,17 @@ let package = Package(
         .target(
             name: "SweetEditorIOS",
             dependencies: ["SweetEditorShared"],
-            path: "SweetEditor-iOS",
-            swiftSettings: [
-                .unsafeFlags(["-Xfrontend", "-disable-access-control"]),
-            ]
+            path: "SweetEditor-iOS"
         ),
         .target(
             name: "SweetEditorMacOS",
             dependencies: ["SweetEditorShared"],
-            path: "SweetEditor-macOS",
-            swiftSettings: [
-                .unsafeFlags(["-Xfrontend", "-disable-access-control"]),
-            ]
+            path: "SweetEditor-macOS"
+        ),
+        .testTarget(
+            name: "SweetEditorSharedTests",
+            dependencies: ["SweetEditorShared"],
+            path: "Tests/SweetEditorSharedTests"
         ),
     ],
     swiftLanguageVersions: [.v5]

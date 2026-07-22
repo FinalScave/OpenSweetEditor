@@ -265,7 +265,7 @@ function verify_package() {
 
 function run_macos_demo() {
   local action="$1"
-  local module_cache="${APPLE_DIR}/Examples-MacOS/.build/module-cache"
+  local module_cache="${APPLE_DIR}/Demo-macOS/.build/module-cache"
   local command=(swift)
 
   build_native_if_needed all
@@ -284,7 +284,7 @@ function run_macos_demo() {
   esac
 
   (
-    cd "${APPLE_DIR}/Examples-MacOS"
+    cd "${APPLE_DIR}/Demo-macOS"
     SWIFT_MODULECACHE_PATH="${module_cache}" \
       CLANG_MODULE_CACHE_PATH="${module_cache}" \
       "${command[@]}"
@@ -295,7 +295,7 @@ function clean_outputs() {
   rm -rf \
     "${APPLE_DIR}/.build" \
     "${APPLE_DIR}/.build-local" \
-    "${APPLE_DIR}/Examples-MacOS/.build" \
+    "${APPLE_DIR}/Demo-macOS/.build" \
     "${IOS_DEVICE_BUILD_DIR}" \
     "${IOS_SIM_BUILD_DIR}" \
     "${MACOS_BUILD_DIR}" \

@@ -27,10 +27,6 @@ public extension EditorActionResult {
 public extension AutoIndentMode {
     static let none = AutoIndentMode.NONE
     static let keepIndent = AutoIndentMode.KEEP_INDENT
-
-    init(_ mode: AutoIndentMode) {
-        self = mode
-    }
 }
 
 public extension CurrentLineRenderMode {
@@ -43,20 +39,12 @@ public extension FoldArrowMode {
     static let auto = FoldArrowMode.AUTO
     static let always = FoldArrowMode.ALWAYS
     static let hidden = FoldArrowMode.HIDDEN
-
-    init(_ mode: FoldArrowMode) {
-        self = mode
-    }
 }
 
 public extension WrapMode {
     static let none = WrapMode.NONE
     static let charBreak = WrapMode.CHAR_BREAK
     static let wordBreak = WrapMode.WORD_BREAK
-
-    init(_ mode: WrapMode) {
-        self = mode
-    }
 }
 
 public extension WhitespaceRenderMode {
@@ -65,15 +53,12 @@ public extension WhitespaceRenderMode {
     static let selection = WhitespaceRenderMode.SELECTION
     static let trailing = WhitespaceRenderMode.TRAILING
     static let all = WhitespaceRenderMode.ALL
-
-    init(_ mode: WhitespaceRenderMode) {
-        self = mode
-    }
 }
 
 public extension SpanLayer {
     static let syntax = SpanLayer.SYNTAX
     static let semantic = SpanLayer.SEMANTIC
+    static let overlay = SpanLayer.OVERLAY
 }
 
 public extension ScrollbarMode {
@@ -206,11 +191,19 @@ public extension StyleSpan {
 
 public extension Diagnostic {
     init(column: Int, length: Int, severity: Int32) {
-        self.init(column: Int32(column), length: Int32(length), severity: DiagnosticSeverity.fromValue(severity))
+        self.init(
+            column: Int32(column),
+            length: Int32(length),
+            severity: DiagnosticSeverity.fromValue(severity) ?? .DIAG_ERROR
+        )
     }
 
     init(column: Int32, length: Int32, severity: Int32) {
-        self.init(column: column, length: length, severity: DiagnosticSeverity.fromValue(severity))
+        self.init(
+            column: column,
+            length: length,
+            severity: DiagnosticSeverity.fromValue(severity) ?? .DIAG_ERROR
+        )
     }
 }
 

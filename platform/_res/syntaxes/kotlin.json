@@ -529,5 +529,12 @@
     "rules": [
       { "kind": "delimiter", "start": "{", "end": "}" }
     ]
+  },
+  "bracketRules": {
+    "pairs": [
+      { "start": "(", "end": ")" },
+      { "start": "[", "end": "]" },
+      { "start": "{", "end": "}" }
+    ]
   }
 }
