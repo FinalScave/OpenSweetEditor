@@ -361,28 +361,26 @@ public final class EditorNative {
             FunctionDescriptor.ofVoid(ValueLayout.JAVA_LONG,
                     ValueLayout.ADDRESS, ValueLayout.ADDRESS, ValueLayout.ADDRESS, ValueLayout.ADDRESS));
 
-    private static final MethodHandle HAS_PREEDIT = downcall("editor_ime_has_preedit",
-            FunctionDescriptor.of(ValueLayout.JAVA_INT, ValueLayout.JAVA_LONG));
+    private static final MethodHandle IME_BEGIN_SESSION = downcall("editor_ime_begin_session",
+            FunctionDescriptor.of(ValueLayout.ADDRESS, ValueLayout.JAVA_LONG, ValueLayout.JAVA_INT,
+                    ValueLayout.ADDRESS));
 
-    private static final MethodHandle IME_HANDLE_COMMAND_MESSAGE = downcall("editor_ime_handle_command_message",
+    private static final MethodHandle IME_END_SESSION = downcall("editor_ime_end_session",
+            FunctionDescriptor.of(ValueLayout.ADDRESS, ValueLayout.JAVA_LONG, ValueLayout.JAVA_LONG,
+                    ValueLayout.ADDRESS));
+
+    private static final MethodHandle IME_APPLY_COMMANDS = downcall("editor_ime_apply_commands",
             FunctionDescriptor.of(ValueLayout.ADDRESS,
                     ValueLayout.JAVA_LONG, ValueLayout.ADDRESS, ValueLayout.JAVA_LONG,
                     ValueLayout.ADDRESS));
 
-    private static final MethodHandle IME_HANDLE_TEXT_UPDATE_MESSAGE = downcall("editor_ime_handle_text_update_message",
-            FunctionDescriptor.of(ValueLayout.ADDRESS,
-                    ValueLayout.JAVA_LONG, ValueLayout.ADDRESS, ValueLayout.JAVA_LONG,
+    private static final MethodHandle IME_GET_STATE = downcall("editor_ime_get_state",
+            FunctionDescriptor.of(ValueLayout.ADDRESS, ValueLayout.JAVA_LONG, ValueLayout.JAVA_LONG,
                     ValueLayout.ADDRESS));
 
-    private static final MethodHandle IME_GET_KEYBOARD_SCRIPT_CLASS = downcall("editor_ime_get_keyboard_script_class",
-            FunctionDescriptor.of(ValueLayout.JAVA_INT, ValueLayout.JAVA_LONG));
-
-    private static final MethodHandle GET_IME_SYNC_SNAPSHOT = downcall("editor_ime_get_sync_snapshot",
-            FunctionDescriptor.of(ValueLayout.ADDRESS, ValueLayout.JAVA_LONG, ValueLayout.ADDRESS));
-
-    private static final MethodHandle GET_IME_INPUT_CONTEXT = downcall("editor_ime_get_command_input_context",
-            FunctionDescriptor.of(ValueLayout.ADDRESS,
-                    ValueLayout.JAVA_LONG, ValueLayout.JAVA_LONG, ValueLayout.JAVA_LONG, ValueLayout.ADDRESS));
+    private static final MethodHandle IME_GET_CONTEXT = downcall("editor_ime_get_context",
+            FunctionDescriptor.of(ValueLayout.ADDRESS, ValueLayout.JAVA_LONG, ValueLayout.JAVA_LONG,
+                    ValueLayout.JAVA_INT, ValueLayout.JAVA_LONG, ValueLayout.JAVA_LONG, ValueLayout.ADDRESS));
 
     private static final MethodHandle SET_READ_ONLY = downcall("editor_set_read_only",
             FunctionDescriptor.of(ValueLayout.ADDRESS, ValueLayout.JAVA_LONG, ValueLayout.JAVA_INT, ValueLayout.ADDRESS));
@@ -1072,33 +1070,30 @@ public final class EditorNative {
         }
     }
 
-    // ===================== IME =====================
-
-    public static boolean hasPreedit(long handle) {
-        return invokeBoolean(() -> (int) HAS_PREEDIT.invokeExact(handle));
+    public static NativeBinaryResult beginImeSession(long handle, int mutationModel) {
+        return invokeBinaryResult(outSize ->
+                (MemorySegment) IME_BEGIN_SESSION.invokeExact(handle, mutationModel, outSize));
     }
 
-    public static NativeBinaryResult handleImeCommandMessage(long handle, MemorySegment payload, long size) {
-        return invokeBinaryResult(outSize -> (MemorySegment) IME_HANDLE_COMMAND_MESSAGE.invokeExact(
+    public static NativeBinaryResult endImeSession(long handle, long sessionId) {
+        return invokeBinaryResult(outSize ->
+                (MemorySegment) IME_END_SESSION.invokeExact(handle, sessionId, outSize));
+    }
+
+    public static NativeBinaryResult applyImeCommands(long handle, MemorySegment payload, long size) {
+        return invokeBinaryResult(outSize -> (MemorySegment) IME_APPLY_COMMANDS.invokeExact(
                 handle, payload, size, outSize));
     }
 
-    public static NativeBinaryResult handleImeTextUpdateMessage(long handle, MemorySegment payload, long size) {
-        return invokeBinaryResult(outSize -> (MemorySegment) IME_HANDLE_TEXT_UPDATE_MESSAGE.invokeExact(
-                handle, payload, size, outSize));
+    public static NativeBinaryResult getImeState(long handle, long sessionId) {
+        return invokeBinaryResult(outSize ->
+                (MemorySegment) IME_GET_STATE.invokeExact(handle, sessionId, outSize));
     }
 
-    public static int getImeKeyboardScriptClass(long handle) {
-        return invokeValue(() -> (int) IME_GET_KEYBOARD_SCRIPT_CLASS.invokeExact(handle));
-    }
-
-    public static NativeBinaryResult getImeSyncSnapshot(long handle) {
-        return invokeBinaryResult(outSize -> (MemorySegment) GET_IME_SYNC_SNAPSHOT.invokeExact(handle, outSize));
-    }
-
-    public static NativeBinaryResult getImeCommandInputContext(long handle, long beforeLength, long afterLength) {
-        return invokeBinaryResult(outSize -> (MemorySegment) GET_IME_INPUT_CONTEXT.invokeExact(
-                handle, beforeLength, afterLength, outSize));
+    public static NativeBinaryResult getImeContext(long handle, long sessionId, int source,
+                                                   long startUtf16, long lengthUtf16) {
+        return invokeBinaryResult(outSize -> (MemorySegment) IME_GET_CONTEXT.invokeExact(
+                handle, sessionId, source, startUtf16, lengthUtf16, outSize));
     }
 
     // ===================== Read-only =====================

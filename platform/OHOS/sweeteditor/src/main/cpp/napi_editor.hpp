@@ -524,16 +524,33 @@ public:
     return napi_create_string_value(env, selected.c_str());
   }
 
-  static napi_value hasPreedit(napi_env env, napi_callback_info info) {
-    size_t argc = 1;
-    napi_value args[1];
+  static napi_value imeBeginSession(napi_env env, napi_callback_info info) {
+    size_t argc = 2;
+    napi_value args[2];
     napi_get_cb_info(env, info, &argc, args, nullptr, nullptr);
-    return napi_create_bool_value(env, editor_ime_has_preedit(static_cast<intptr_t>(napi_get_handle(env, args[0]))) != 0);
+
+    int64_t handle = napi_get_handle(env, args[0]);
+    if (handle == 0) { napi_value u; napi_get_undefined(env, &u); return u; }
+
+    size_t out_size = 0;
+    return wrap_binary_payload(env, editor_ime_begin_session(
+      static_cast<intptr_t>(handle), napi_get_int32(env, args[1]), &out_size), out_size);
   }
 
-  using ImeMessageHandler = const uint8_t* (*)(intptr_t, const uint8_t*, size_t, size_t*);
+  static napi_value imeEndSession(napi_env env, napi_callback_info info) {
+    size_t argc = 2;
+    napi_value args[2];
+    napi_get_cb_info(env, info, &argc, args, nullptr, nullptr);
 
-  static napi_value imeHandleMessage(napi_env env, napi_callback_info info, ImeMessageHandler handler) {
+    int64_t handle = napi_get_handle(env, args[0]);
+    if (handle == 0) { napi_value u; napi_get_undefined(env, &u); return u; }
+
+    size_t out_size = 0;
+    return wrap_binary_payload(env, editor_ime_end_session(
+      static_cast<intptr_t>(handle), static_cast<uint64_t>(napi_get_handle(env, args[1])), &out_size), out_size);
+  }
+
+  static napi_value imeApplyCommands(napi_env env, napi_callback_info info) {
     size_t argc = 2;
     napi_value args[2];
     napi_get_cb_info(env, info, &argc, args, nullptr, nullptr);
@@ -548,7 +565,7 @@ public:
     }
 
     size_t out_size = 0;
-    const uint8_t* payload = handler(
+    const uint8_t* payload = editor_ime_apply_commands(
       static_cast<intptr_t>(handle),
       reinterpret_cast<const uint8_t*>(data),
       byte_length,
@@ -556,47 +573,34 @@ public:
     return wrap_binary_payload(env, payload, out_size);
   }
 
-  static napi_value imeHandleCommandMessage(napi_env env, napi_callback_info info) {
-    return imeHandleMessage(env, info, editor_ime_handle_command_message);
-  }
-
-  static napi_value imeHandleTextUpdateMessage(napi_env env, napi_callback_info info) {
-    return imeHandleMessage(env, info, editor_ime_handle_text_update_message);
-  }
-
-  static napi_value imeGetKeyboardScriptClass(napi_env env, napi_callback_info info) {
-    size_t argc = 1;
-    napi_value args[1];
-    napi_get_cb_info(env, info, &argc, args, nullptr, nullptr);
-    return napi_create_int32_value(env, editor_ime_get_keyboard_script_class(
-      static_cast<intptr_t>(napi_get_handle(env, args[0]))));
-  }
-
-  static napi_value getImeSyncSnapshot(napi_env env, napi_callback_info info) {
-    size_t argc = 1;
-    napi_value args[1];
+  static napi_value imeGetState(napi_env env, napi_callback_info info) {
+    size_t argc = 2;
+    napi_value args[2];
     napi_get_cb_info(env, info, &argc, args, nullptr, nullptr);
 
     int64_t handle = napi_get_handle(env, args[0]);
     if (handle == 0) { napi_value u; napi_get_undefined(env, &u); return u; }
 
     size_t out_size = 0;
-    return wrap_binary_payload(env, editor_ime_get_sync_snapshot(static_cast<intptr_t>(handle), &out_size), out_size);
+    return wrap_binary_payload(env, editor_ime_get_state(
+      static_cast<intptr_t>(handle), static_cast<uint64_t>(napi_get_handle(env, args[1])), &out_size), out_size);
   }
 
-  static napi_value getImeCommandInputContext(napi_env env, napi_callback_info info) {
-    size_t argc = 3;
-    napi_value args[3];
+  static napi_value imeGetContext(napi_env env, napi_callback_info info) {
+    size_t argc = 5;
+    napi_value args[5];
     napi_get_cb_info(env, info, &argc, args, nullptr, nullptr);
 
     int64_t handle = napi_get_handle(env, args[0]);
     if (handle == 0) { napi_value u; napi_get_undefined(env, &u); return u; }
 
     size_t out_size = 0;
-    const uint8_t* payload = editor_ime_get_command_input_context(
+    const uint8_t* payload = editor_ime_get_context(
       static_cast<intptr_t>(handle),
-      argc > 1 ? static_cast<size_t>(napi_get_int32(env, args[1])) : 0,
-      argc > 2 ? static_cast<size_t>(napi_get_int32(env, args[2])) : 0,
+      static_cast<uint64_t>(napi_get_handle(env, args[1])),
+      napi_get_int32(env, args[2]),
+      napi_get_handle(env, args[3]),
+      napi_get_handle(env, args[4]),
       &out_size);
     return wrap_binary_payload(env, payload, out_size);
   }

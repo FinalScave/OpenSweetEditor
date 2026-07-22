@@ -6,7 +6,8 @@ import {
   IndentGuide,
   InlayHint,
   SeparatorGuide,
-  StyleSpan
+  StyleSpan,
+  TextChange
 } from '@qiplat/sweeteditor';
 
 export interface LineDecorationItems<T> {
@@ -27,6 +28,7 @@ export interface DecorationWorkerAnalyzeMessage {
   visibleStartLine: number;
   visibleEndLine: number;
   text: string | null;
+  textChanges: TextChange[];
 }
 
 export interface DecorationWorkerResultMessage {

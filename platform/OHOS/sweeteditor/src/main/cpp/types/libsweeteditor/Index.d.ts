@@ -90,12 +90,11 @@ export const editorMoveCursorToLineStart: (handle: number, extendSelection: bool
 export const editorMoveCursorToLineEnd: (handle: number, extendSelection: boolean) => ArrayBuffer | undefined;
 
 // IME composition
-export const editorHasPreedit: (handle: number) => boolean;
-export const editorImeHandleCommandMessage: (handle: number, data: ArrayBuffer) => ArrayBuffer | undefined;
-export const editorImeHandleTextUpdateMessage: (handle: number, data: ArrayBuffer) => ArrayBuffer | undefined;
-export const editorImeGetKeyboardScriptClass: (handle: number) => number;
-export const editorGetImeSyncSnapshot: (handle: number) => ArrayBuffer | undefined;
-export const editorGetImeCommandInputContext: (handle: number, beforeLength: number, afterLength: number) => ArrayBuffer | undefined;
+export const editorImeBeginSession: (handle: number, mutationModel: number) => ArrayBuffer | undefined;
+export const editorImeEndSession: (handle: number, sessionId: number) => ArrayBuffer | undefined;
+export const editorImeApplyCommands: (handle: number, data: ArrayBuffer) => ArrayBuffer | undefined;
+export const editorImeGetState: (handle: number, sessionId: number) => ArrayBuffer | undefined;
+export const editorImeGetContext: (handle: number, sessionId: number, source: number, startUtf16: number, lengthUtf16: number) => ArrayBuffer | undefined;
 
 // Read-only
 export const editorSetReadOnly: (handle: number, readOnly: boolean) => ArrayBuffer | undefined;

@@ -18,12 +18,7 @@ import com.qiplat.sweeteditor.core.config.RangeEffectUnderlineStyle;
 import com.qiplat.sweeteditor.core.adornment.*;
 import com.qiplat.sweeteditor.core.foundation.*;
 import com.qiplat.sweeteditor.core.foundation.PointF;
-import com.qiplat.sweeteditor.core.ime.ImeCommandKind;
-import com.qiplat.sweeteditor.core.ime.ImeCommandMessage;
-import com.qiplat.sweeteditor.core.ime.ImeInputContext;
-import com.qiplat.sweeteditor.core.ime.ImeOffsetRange;
-import com.qiplat.sweeteditor.core.ime.ImeScriptClass;
-import com.qiplat.sweeteditor.core.ime.ImeTextUnit;
+import com.qiplat.sweeteditor.core.ime.ImeHostAction;
 import com.qiplat.sweeteditor.core.interaction.GestureType;
 import com.qiplat.sweeteditor.core.interaction.HitTargetType;
 import com.qiplat.sweeteditor.core.keymap.KeyBinding;
@@ -45,10 +40,7 @@ import java.awt.*;
 import java.awt.datatransfer.DataFlavor;
 import java.awt.datatransfer.StringSelection;
 import java.awt.event.*;
-import java.awt.font.TextHitInfo;
 import java.awt.im.InputMethodRequests;
-import java.text.AttributedCharacterIterator;
-import java.text.AttributedString;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -87,6 +79,7 @@ public class SweetEditor extends JPanel {
     private boolean fontMetricsDirty = true;
     private EditorRenderer renderer;
     private AnimationHolder animationHolder;
+    private final InputConnection inputConnection;
 
     private Timer cursorBlinkTimer;
     private Timer cursorAnimationTimer;
@@ -126,6 +119,7 @@ public class SweetEditor extends JPanel {
         animationHolder = new AnimationHolder();
 
         editorCore = new EditorCore(renderer.getTextMeasurer(), new EditorOptions(20.0f, 300L, 500L, 3.5f, 50.0f, 8000.0f, 512L, 2000L, false));
+        inputConnection = new InputConnection(this);
         keyMap = createDefaultKeyMap();
         editorCore.setKeyMap(keyMap.getBindings());
         editorCore.setContentStartPadding(settings.getContentStartPadding());
@@ -167,6 +161,12 @@ public class SweetEditor extends JPanel {
         setupGutterAnimation();
         setupAnimationTimer();
         enableInputMethods(true);
+    }
+
+    @Override
+    public void removeNotify() {
+        inputConnection.endSession(true);
+        super.removeNotify();
     }
 
     // ==================== Document Loading ====================
@@ -1079,14 +1079,10 @@ public class SweetEditor extends JPanel {
                 long inputPerfStart = startInputPerf();
                 try {
                     refreshPointerModifiers(e);
-
-                    if (editorCore.hasPreedit()) {
-                        handleComposingKeyPressed(e);
-                        return;
-                    }
+                    boolean composing = inputConnection.hasComposition();
 
                     // Inline suggestion keyboard interception (Tab=accept, Esc=dismiss)
-                    if (inlineSuggestionController != null && inlineSuggestionController.isShowing()) {
+                    if (!composing && inlineSuggestionController != null && inlineSuggestionController.isShowing()) {
                         if (inlineSuggestionController.handleKeyEvent(e.getKeyCode())) {
                             e.consume();
                             return;
@@ -1094,7 +1090,7 @@ public class SweetEditor extends JPanel {
                     }
 
                     // Completion panel keyboard interception
-                    if (completionPopupController != null && completionPopupController.isShowing()) {
+                    if (!composing && completionPopupController != null && completionPopupController.isShowing()) {
                         if (completionPopupController.handleSwingKeyCode(e.getKeyCode())) {
                             e.consume();
                             return;
@@ -1148,7 +1144,7 @@ public class SweetEditor extends JPanel {
             public void keyTyped(KeyEvent e) {
                 long inputPerfStart = startInputPerf();
                 try {
-                    if (editorCore.hasPreedit()) return;
+                    if (inputConnection.hasComposition()) return;
                     char ch = e.getKeyChar();
                     if (!Character.isISOControl(ch) && ch != KeyEvent.CHAR_UNDEFINED) {
                         EditorActionResult result = editorCore.handleKeyEvent(KeyCode.NONE, String.valueOf(ch), 0);
@@ -1162,69 +1158,8 @@ public class SweetEditor extends JPanel {
             }
         });
 
-        addInputMethodListener(new InputMethodListener() {
-            @Override
-            public void inputMethodTextChanged(InputMethodEvent event) {
-                long inputPerfStart = startInputPerf();
-                try {
-                    AttributedCharacterIterator aci = event.getText();
-                    if (aci == null) return;
-
-                    int committedCount = event.getCommittedCharacterCount();
-                    StringBuilder committed = new StringBuilder();
-                    StringBuilder composed = new StringBuilder();
-
-                    char c = aci.first();
-                    for (int i = 0; i < committedCount && c != AttributedCharacterIterator.DONE; i++, c = aci.next()) {
-                        committed.append(c);
-                    }
-                    while (c != AttributedCharacterIterator.DONE) {
-                        composed.append(c);
-                        c = aci.next();
-                    }
-
-                    boolean changed = false;
-                    if (committed.length() > 0) {
-                        ImeCommandMessage message = new ImeCommandMessage();
-                        message.kind = ImeCommandKind.COMMIT_TEXT;
-                        message.text = committed.toString();
-                        message.scriptClass = ImeScriptClass.UNKNOWN;
-                        EditorActionResult result = editorCore.handleImeCommandMessage(message);
-                        dispatchEditorActionResult(result);
-                        changed = true;
-                    }
-                    if (composed.length() > 0) {
-                        int caretOffset = getComposedCaretOffset(event, committedCount, composed.length());
-                        ImeCommandMessage message = new ImeCommandMessage();
-                        message.kind = ImeCommandKind.SET_PREEDIT_TEXT;
-                        message.text = composed.toString();
-                        message.selection = new ImeOffsetRange(caretOffset, caretOffset);
-                        message.scriptClass = ImeScriptClass.UNKNOWN;
-                        EditorActionResult result = editorCore.handleImeCommandMessage(message);
-                        dispatchEditorActionResult(result);
-                        changed = true;
-                    } else if (editorCore.hasPreedit() && committed.length() == 0) {
-                        ImeCommandMessage message = new ImeCommandMessage();
-                        message.kind = ImeCommandKind.CANCEL_PREEDIT;
-                        EditorActionResult result = editorCore.handleImeCommandMessage(message);
-                        dispatchEditorActionResult(result);
-                        changed = true;
-                    }
-                    if (changed) {
-                        resetCursorBlink();
-                    }
-
-                    event.consume();
-                } finally {
-                    finishInputPerf("ime", inputPerfStart);
-                }
-            }
-
-            @Override
-            public void caretPositionChanged(InputMethodEvent event) {
-                event.consume();
-            }
-        });
+        addInputMethodListener(inputConnection);
+        addFocusListener(inputConnection);
 
         addComponentListener(new ComponentAdapter() {
             @Override
@@ -1236,110 +1171,7 @@ public class SweetEditor extends JPanel {
 
     @Override
     public InputMethodRequests getInputMethodRequests() {
-        return new InputMethodRequests() {
-            @Override
-            public Rectangle getTextLocation(TextHitInfo offset) {
-                ensureRenderModelUpToDate();
-                if (renderModel != null && renderModel.cursor != null) {
-                    Point p = getLocationOnScreen();
-                    return new Rectangle(
-                            p.x + (int) renderModel.cursor.position.x,
-                            p.y + (int) renderModel.cursor.position.y,
-                            0, (int) renderModel.cursor.height);
-                }
-                Point p = getLocationOnScreen();
-                return new Rectangle(p.x, p.y, 0, 20);
-            }
-
-            @Override
-            public TextHitInfo getLocationOffset(int x, int y) {
-                return null;
-            }
-
-            @Override
-            public int getInsertPositionOffset() {
-                ImeInputContext context = editorCore.getImeCommandInputContext(0, 0);
-                return context.documentStartOffset + context.selection.start;
-            }
-
-            @Override
-            public AttributedCharacterIterator getCommittedText(int beginIndex, int endIndex, AttributedCharacterIterator.Attribute[] attributes) {
-                String text = getDocumentTextForInputMethod();
-                int start = clampTextOffset(beginIndex, text.length());
-                int end = clampTextOffset(endIndex, text.length());
-                if (end < start) {
-                    end = start;
-                }
-                return new AttributedString(text.substring(start, end)).getIterator();
-            }
-
-            @Override
-            public int getCommittedTextLength() {
-                return getDocumentTextForInputMethod().length();
-            }
-
-            @Override
-            public AttributedCharacterIterator cancelLatestCommittedText(AttributedCharacterIterator.Attribute[] attributes) {
-                return null;
-            }
-
-            @Override
-            public AttributedCharacterIterator getSelectedText(AttributedCharacterIterator.Attribute[] attributes) {
-                String selectedText = editorCore.getSelectedText();
-                return selectedText == null || selectedText.isEmpty()
-                        ? null
-                        : new AttributedString(selectedText).getIterator();
-            }
-        };
-    }
-
-    private void handleComposingKeyPressed(KeyEvent e) {
-        EditorActionResult result = null;
-        ImeCommandMessage message = new ImeCommandMessage();
-        switch (e.getKeyCode()) {
-            case KeyEvent.VK_BACK_SPACE:
-                message.kind = ImeCommandKind.DELETE_SURROUNDING_TEXT;
-                message.deleteBefore = 1;
-                message.textUnit = ImeTextUnit.GRAPHEME;
-                result = editorCore.handleImeCommandMessage(message);
-                break;
-            case KeyEvent.VK_DELETE:
-                message.kind = ImeCommandKind.DELETE_SURROUNDING_TEXT;
-                message.deleteAfter = 1;
-                message.textUnit = ImeTextUnit.GRAPHEME;
-                result = editorCore.handleImeCommandMessage(message);
-                break;
-            case KeyEvent.VK_ESCAPE:
-                message.kind = ImeCommandKind.CANCEL_PREEDIT;
-                result = editorCore.handleImeCommandMessage(message);
-                break;
-            default:
-                return;
-        }
-        e.consume();
-        dispatchEditorActionResult(result);
-        resetCursorBlink();
-    }
-
-    private int getComposedCaretOffset(InputMethodEvent event, int committedCount, int composedLength) {
-        TextHitInfo caret = event.getCaret();
-        if (caret == null) {
-            return composedLength;
-        }
-        int insertionIndex = caret.getInsertionIndex();
-        if (insertionIndex > composedLength && insertionIndex >= committedCount) {
-            insertionIndex -= committedCount;
-        }
-        return clampTextOffset(insertionIndex, composedLength);
-    }
-
-    private String getDocumentTextForInputMethod() {
-        Document document = getDocument();
-        return document != null ? document.getText() : "";
-    }
-
-    private int clampTextOffset(int offset, int length) {
-        return Math.max(0, Math.min(offset, length));
+        return inputConnection;
     }
 
     private void handleGesture(int type, float x, float y, int modifiers, float wheelDeltaX, float wheelDeltaY, float directScale) {
@@ -1437,6 +1269,17 @@ public class SweetEditor extends JPanel {
         if (result.contentChanged) {
             dispatchTextChanged(result);
         }
+        if (result.imeHostAction != null && result.imeHostAction != ImeHostAction.NONE
+                && completionProviderManager != null) {
+            completionProviderManager.dismiss();
+        } else if (result.compositionChanged && completionProviderManager != null) {
+            if (inputConnection.hasComposition() && !editorCore.isInLinkedEditing()) {
+                completionProviderManager.triggerCompletion(CompletionContext.TriggerKind.RETRIGGER, null);
+            } else if (!result.contentChanged && completionPopupController != null
+                    && completionPopupController.isShowing()) {
+                completionProviderManager.dismiss();
+            }
+        }
         if (result.cursorChanged) {
             eventBus.publish(new CursorChangedEvent(result.cursorAfter));
         }
@@ -1526,6 +1369,7 @@ public class SweetEditor extends JPanel {
         if (result == null) {
             return;
         }
+        inputConnection.synchronize(result);
         if (result.pointerCursorChanged) {
             updateMouseCursor(result.pointerCursorAfter);
         }
@@ -1627,7 +1471,7 @@ public class SweetEditor extends JPanel {
         cursorBlinkTimer.start();
     }
 
-    private void resetCursorBlink() {
+    void resetCursorBlink() {
         cursorVisible = true;
         if (cursorBlinkTimer != null) {
             cursorBlinkTimer.restart();
