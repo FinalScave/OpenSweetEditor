@@ -48,6 +48,7 @@ class DemoDecorationWorker {
   private highlightEngine: sweetline.HighlightEngine | null = null;
   private documentAnalyzer: sweetline.DocumentAnalyzer | null = null;
   private analyzedFileName: string = DEFAULT_ANALYSIS_FILE_NAME;
+  private loadedDocumentUri: string | null = null;
   private sourceLines: string[] = [];
 
   handleMessage(message: DecorationWorkerRequestMessage): void {
@@ -70,6 +71,7 @@ class DemoDecorationWorker {
     this.highlightEngine = engine;
     this.documentAnalyzer = null;
     this.analyzedFileName = DEFAULT_ANALYSIS_FILE_NAME;
+    this.loadedDocumentUri = null;
     this.sourceLines = [];
   }
 
@@ -105,19 +107,17 @@ class DemoDecorationWorker {
     const diagnosticCount: number[] = [0];
     let firstKeywordRange: TokenRangeInfo | null = null;
 
-    const fileChanged = message.fileName !== this.analyzedFileName;
-    if (message.text !== null || this.documentAnalyzer === null || fileChanged) {
-      this.loadDocument(message.fileName, message.text === null ? '' : message.text);
-    }
-    if (this.documentAnalyzer === null) {
-      return this.buildEmptyResultMessage(message.requestId, Date.now() - startedAt, null);
-    }
-
     const visibleRange = new sweetline.LineRange(
       Math.max(0, message.visibleStartLine),
       Math.max(0, message.visibleEndLine - Math.max(0, message.visibleStartLine) + 1)
     );
-    const highlightSlice = this.documentAnalyzer.analyzeLineRange(visibleRange);
+    let highlightSlice = this.synchronizeDocument(message, visibleRange);
+    if (this.documentAnalyzer === null) {
+      return this.buildEmptyResultMessage(message.requestId, Date.now() - startedAt, null);
+    }
+    if (highlightSlice === null) {
+      highlightSlice = this.documentAnalyzer.analyzeLineRange(visibleRange);
+    }
     if (highlightSlice === null || highlightSlice.lines.length === 0) {
       return this.buildEmptyResultMessage(message.requestId, Date.now() - startedAt, null);
     }
@@ -208,15 +208,66 @@ class DemoDecorationWorker {
   }
 
   private loadDocument(fileName: string, text: string): void {
+    if (this.highlightEngine === null) {
+      return;
+    }
+    if (this.loadedDocumentUri !== null) {
+      this.highlightEngine.removeDocument(this.loadedDocumentUri);
+    }
+    const uri = this.buildAnalysisUri(fileName);
     this.documentAnalyzer = null;
     this.analyzedFileName = fileName;
+    this.loadedDocumentUri = uri;
     this.sourceLines = splitLines(text);
-    const analyzer = this.highlightEngine!.loadDocument(
-      new sweetline.Document(this.buildAnalysisUri(fileName), text)
-    );
+    const analyzer = this.highlightEngine.loadDocument(new sweetline.Document(uri, text));
     if (analyzer !== null) {
       this.documentAnalyzer = analyzer;
     }
+  }
+
+  private synchronizeDocument(message: DecorationWorkerAnalyzeMessage,
+    visibleRange: sweetline.LineRange): sweetline.DocumentHighlightSlice | null {
+    const fileChanged = message.fileName !== this.analyzedFileName;
+    if (this.documentAnalyzer === null || fileChanged) {
+      this.loadDocument(message.fileName, message.text === null ? '' : message.text);
+      return null;
+    }
+    if (message.textChanges.length === 0) {
+      if (message.text !== null && this.documentAnalyzer.getDocument().getText() !== message.text) {
+        this.loadDocument(message.fileName, message.text);
+      }
+      return null;
+    }
+
+    let highlightSlice: sweetline.DocumentHighlightSlice | null = null;
+    try {
+      for (let index = 0; index < message.textChanges.length; index++) {
+        const change = message.textChanges[index];
+        highlightSlice = this.documentAnalyzer.analyzeIncrementalInLineRange(
+          new sweetline.TextRange(
+            new sweetline.TextPosition(change.range.start.line, change.range.start.column),
+            new sweetline.TextPosition(change.range.end.line, change.range.end.column)
+          ),
+          change.newText,
+          visibleRange
+        );
+      }
+    } catch (_error) {
+      if (message.text === null) {
+        throw new Error(`${_error}`);
+      }
+      this.loadDocument(message.fileName, message.text);
+      return null;
+    }
+
+    if (message.text !== null) {
+      if (this.documentAnalyzer.getDocument().getText() !== message.text) {
+        this.loadDocument(message.fileName, message.text);
+        return null;
+      }
+      this.sourceLines = splitLines(message.text);
+    }
+    return highlightSlice;
   }
 
   private appendDynamicDemoDecorations(diagnostics: Map<number, Diagnostic[]>,

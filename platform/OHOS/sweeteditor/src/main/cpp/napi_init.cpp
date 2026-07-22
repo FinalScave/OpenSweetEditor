@@ -95,12 +95,11 @@ static napi_value Init(napi_env env, napi_value exports)
         NAPI_METHOD("editorMoveCursorToLineEnd", EditorCoreNapi::moveCursorToLineEnd),
 
         // IME composition
-        NAPI_METHOD("editorHasPreedit", EditorCoreNapi::hasPreedit),
-        NAPI_METHOD("editorImeHandleCommandMessage", EditorCoreNapi::imeHandleCommandMessage),
-        NAPI_METHOD("editorImeHandleTextUpdateMessage", EditorCoreNapi::imeHandleTextUpdateMessage),
-        NAPI_METHOD("editorImeGetKeyboardScriptClass", EditorCoreNapi::imeGetKeyboardScriptClass),
-        NAPI_METHOD("editorGetImeSyncSnapshot", EditorCoreNapi::getImeSyncSnapshot),
-        NAPI_METHOD("editorGetImeCommandInputContext", EditorCoreNapi::getImeCommandInputContext),
+        NAPI_METHOD("editorImeBeginSession", EditorCoreNapi::imeBeginSession),
+        NAPI_METHOD("editorImeEndSession", EditorCoreNapi::imeEndSession),
+        NAPI_METHOD("editorImeApplyCommands", EditorCoreNapi::imeApplyCommands),
+        NAPI_METHOD("editorImeGetState", EditorCoreNapi::imeGetState),
+        NAPI_METHOD("editorImeGetContext", EditorCoreNapi::imeGetContext),
 
         // Read-only
         NAPI_METHOD("editorSetReadOnly", EditorCoreNapi::setReadOnly),

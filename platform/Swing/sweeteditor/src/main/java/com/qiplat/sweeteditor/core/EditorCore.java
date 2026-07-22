@@ -8,10 +8,11 @@ import com.qiplat.sweeteditor.core.config.EditorOptions;
 import com.qiplat.sweeteditor.core.config.HandleConfig;
 import com.qiplat.sweeteditor.core.config.ScrollbarConfig;
 import com.qiplat.sweeteditor.core.foundation.*;
-import com.qiplat.sweeteditor.core.ime.ImeCommandMessage;
-import com.qiplat.sweeteditor.core.ime.ImeInputContext;
-import com.qiplat.sweeteditor.core.ime.ImeSyncSnapshot;
-import com.qiplat.sweeteditor.core.ime.ImeTextUpdateMessage;
+import com.qiplat.sweeteditor.core.ime.ImeCommandBatch;
+import com.qiplat.sweeteditor.core.ime.ImeMutationModel;
+import com.qiplat.sweeteditor.core.ime.ImeState;
+import com.qiplat.sweeteditor.core.ime.ImeTextContext;
+import com.qiplat.sweeteditor.core.ime.ImeTextSource;
 import com.qiplat.sweeteditor.core.interaction.EventType;
 import com.qiplat.sweeteditor.core.interaction.GestureEvent;
 import com.qiplat.sweeteditor.core.keymap.KeyBinding;
@@ -454,12 +455,6 @@ public class EditorCore {
         }
     }
 
-    // ===================== IME =====================
-
-    public boolean hasPreedit() {
-        return EditorNative.hasPreedit(nativeHandle);
-    }
-
     private EditorActionResult decodeAction(EditorNative.NativeBinaryResult result) {
         try {
             if (result == null || !result.hasData()) return null;
@@ -469,51 +464,49 @@ public class EditorCore {
         }
     }
 
-    public EditorActionResult handleImeCommandMessage(ImeCommandMessage message) {
-        if (message == null) return null;
-        try (Arena tempArena = Arena.ofConfined()) {
-            MemorySegment payload = CoreProtocol.encodeImeCommandMessage(tempArena, message);
-            return decodeAction(EditorNative.handleImeCommandMessage(
-                    nativeHandle,
-                    payload,
-                    payload.byteSize()));
-        }
-    }
-
-    public EditorActionResult handleImeTextUpdateMessage(ImeTextUpdateMessage message) {
-        if (message == null) return null;
-        try (Arena tempArena = Arena.ofConfined()) {
-            MemorySegment payload = CoreProtocol.encodeImeTextUpdateMessage(tempArena, message);
-            return decodeAction(EditorNative.handleImeTextUpdateMessage(
-                    nativeHandle,
-                    payload,
-                    payload.byteSize()));
-        }
-    }
-
-    public ImeSyncSnapshot getImeSyncSnapshot() {
-        EditorNative.NativeBinaryResult result = EditorNative.getImeSyncSnapshot(nativeHandle);
+    public ImeState beginImeSession(ImeMutationModel mutationModel) {
+        if (mutationModel == null) return null;
+        EditorNative.NativeBinaryResult result = EditorNative.beginImeSession(nativeHandle, mutationModel.value);
         try {
-            if (result == null || !result.hasData()) return new ImeSyncSnapshot();
-            return CoreProtocol.decodeImeSyncSnapshot(result.segment(), result.size());
+            if (result == null || !result.hasData()) return null;
+            return CoreProtocol.decodeImeState(result.segment(), result.size());
         } finally {
             if (result != null) result.free();
         }
     }
 
-    public ImeInputContext getImeCommandInputContext(long beforeLength, long afterLength) {
-        EditorNative.NativeBinaryResult result = EditorNative.getImeCommandInputContext(
-                nativeHandle, Math.max(0, beforeLength), Math.max(0, afterLength));
+    public EditorActionResult endImeSession(long sessionId) {
+        return decodeAction(EditorNative.endImeSession(nativeHandle, sessionId));
+    }
+
+    public EditorActionResult applyImeCommands(ImeCommandBatch batch) {
+        if (batch == null) return null;
+        try (Arena tempArena = Arena.ofConfined()) {
+            MemorySegment payload = CoreProtocol.encodeImeCommandBatch(tempArena, batch);
+            return decodeAction(EditorNative.applyImeCommands(nativeHandle, payload, payload.byteSize()));
+        }
+    }
+
+    public ImeState getImeState(long sessionId) {
+        EditorNative.NativeBinaryResult result = EditorNative.getImeState(nativeHandle, sessionId);
         try {
-            if (result == null || !result.hasData()) return new ImeInputContext();
-            return CoreProtocol.decodeImeInputContext(result.segment(), result.size());
+            if (result == null || !result.hasData()) return null;
+            return CoreProtocol.decodeImeState(result.segment(), result.size());
         } finally {
             if (result != null) result.free();
         }
     }
 
-    public int getImeKeyboardScriptClass() {
-        return EditorNative.getImeKeyboardScriptClass(nativeHandle);
+    public ImeTextContext getImeContext(long sessionId, ImeTextSource source, long startUtf16, long lengthUtf16) {
+        if (source == null) return null;
+        EditorNative.NativeBinaryResult result = EditorNative.getImeContext(
+                nativeHandle, sessionId, source.value, startUtf16, lengthUtf16);
+        try {
+            if (result == null || !result.hasData()) return null;
+            return CoreProtocol.decodeImeTextContext(result.segment(), result.size());
+        } finally {
+            if (result != null) result.free();
+        }
     }
 
     // ===================== Read-only =====================

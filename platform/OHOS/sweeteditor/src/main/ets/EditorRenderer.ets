@@ -1,6 +1,9 @@
 import { EditorIconProvider, EditorTheme } from './EditorTypes';
 import {
+  CurrentLineRenderMode,
   HandleConfig,
+  RangeEffectStyle,
+  RangeEffectUnderlineStyle,
   ScrollbarConfig
 } from './core/CoreConfig';
 import { Rect } from './core/CoreFoundation';
@@ -21,7 +24,6 @@ import {
   VisualRun,
   VisualRunType
 } from './core/CoreVisual';
-import { CurrentLineRenderMode, RangeEffectStyle, RangeEffectUnderlineStyle } from './core/CoreConfig';
 import { TextStyle } from './core/CoreAdornments';
 import { MeasurePerfStats, PerfOverlay, PerfStepRecorder } from './perf/PerfOverlay';
 import { argbToCssColor, multiplyArgbAlpha } from './ui/EditorColor';
@@ -39,9 +41,7 @@ interface FontMetricsSnapshot {
 }
 
 /**
- * Platform-independent rendering engine for the editor.
- * Owns all draw methods, icon provider, handle/scrollbar config,
- * and text measurement. SweetEditor delegates all rendering to this class.
+ * Renders the editor model on an OHOS canvas and provides text measurement.
  */
 export class EditorRenderer {
   private theme: EditorTheme;
@@ -112,10 +112,6 @@ export class EditorRenderer {
     this.measurePerfStats.reset();
   }
 
-  getEditorIconProvider(): EditorIconProvider | null {
-    return this.iconProvider;
-  }
-
   syncPlatformScale(scale: number): void {
     this.scale = scale;
     this.invalidateFontCaches();
@@ -135,32 +131,12 @@ export class EditorRenderer {
     this.theme = theme;
   }
 
-  getTextSize(): number {
-    return this.textSize;
-  }
-
-  getScale(): number {
-    return this.scale;
-  }
-
-  getFontFamily(): string {
-    return this.fontFamily;
-  }
-
-  getDensity(): number {
-    return this.density;
-  }
-
   getHandleConfig(): HandleConfig {
     return this.handleConfig;
   }
 
   setScrollbarConfig(config: ScrollbarConfig | null): void {
     this.scrollbarConfig = config;
-  }
-
-  getScrollbarConfig(): ScrollbarConfig | null {
-    return this.scrollbarConfig;
   }
 
   attachCanvasContext(ctx: CanvasRenderingContext2D): void {
@@ -222,7 +198,6 @@ export class EditorRenderer {
     perf.finish();
     this.lastDrawPerf = perf;
     this.lastDrawMs = perf.getTotalMs();
-
   }
 
   private drawLines(ctx: CanvasRenderingContext2D, model: EditorRenderModel): void {

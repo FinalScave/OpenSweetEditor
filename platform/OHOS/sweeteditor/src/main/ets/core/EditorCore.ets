@@ -21,13 +21,13 @@ import {
   WhitespaceRenderMode,
   WrapMode
 } from './CoreConfig';
-import { EventType, GestureEvent } from './CoreInteraction';
+import { GestureEvent } from './CoreInteraction';
 import {
-  ImeCommandMessage,
-  ImeInputContext,
-  ImeScriptClass,
-  ImeSyncSnapshot,
-  ImeTextUpdateMessage
+  ImeCommandBatch,
+  ImeMutationModel,
+  ImeState,
+  ImeTextContext,
+  ImeTextSource
 } from './CoreIme';
 import { KeyBinding } from './CoreKeymap';
 import { SearchRequest, SearchState } from './CoreSearch';
@@ -49,20 +49,6 @@ import {
   TextStyle
 } from './CoreAdornments';
 import { CursorRect, EditorRenderModel, ScrollMetrics } from './CoreVisual';
-
-export enum EditorEventType {
-  TextChanged,
-  CursorChanged,
-  SelectionChanged,
-  ScrollChanged,
-  ScaleChanged,
-  LongPress,
-  DoubleTap,
-  ContextMenu,
-  GutterIconClick,
-  InlayHintClick,
-  FoldToggle
-}
 
 export class Document {
   private handle: number = 0;
@@ -118,15 +104,11 @@ export class EditorCore {
   private handleConfig: HandleConfig = new HandleConfig();
   private scrollbarConfig: ScrollbarConfig = new ScrollbarConfig();
 
-  // ==================== Construction/Initialization/Lifecycle ====================
+  // Lifecycle
 
   constructor(measurer: native.TextMeasurer, options?: EditorOptions) {
     const optionsData = options ? CoreProtocol.encodeEditorOptions(options) : undefined;
     this.handle = native.createEditor(measurer, optionsData);
-  }
-
-  getHandle(): number {
-    return this.handle;
   }
 
   destroy(): void {
@@ -146,7 +128,7 @@ export class EditorCore {
     return this.document;
   }
 
-  // ==================== Viewport/Font/Appearance Configuration ====================
+  // Viewport and appearance
 
   setViewport(width: number, height: number): EditorActionResult {
     return CoreProtocol.decodeEditorActionResult(native.setEditorViewport(this.handle, width, height));
@@ -213,7 +195,7 @@ export class EditorCore {
     return CoreProtocol.decodeEditorActionResult(native.editorSetCurrentLineRenderMode(this.handle, mode as number));
   }
 
-  // ==================== Rendering ====================
+  // Rendering
 
   buildRenderModel(): EditorRenderModel {
     const payload = native.buildEditorRenderModel(this.handle);
@@ -224,22 +206,12 @@ export class EditorCore {
     return native.getLayoutMetrics(this.handle);
   }
 
-  // ==================== Gesture/Keyboard Event Handling ====================
+  // Input events
 
   handleGestureEvent(event: GestureEvent): EditorActionResult {
     const data = CoreProtocol.encodeGestureEvent(event);
     const payload = native.handleEditorGestureEvent(this.handle, data, data.byteLength);
     return CoreProtocol.decodeEditorActionResult(payload);
-  }
-
-  handleSimpleGestureEvent(type: EventType, pointerCount: number, points: number[]): EditorActionResult {
-    const event = new GestureEvent();
-    event.type = type;
-    const count = Math.min(pointerCount, Math.floor(points.length / 2));
-    for (let i = 0; i < count; i++) {
-      event.points.push({ x: points[i * 2], y: points[i * 2 + 1] });
-    }
-    return this.handleGestureEvent(event);
   }
 
   tickAnimations(): EditorActionResult {
@@ -256,7 +228,7 @@ export class EditorCore {
     return CoreProtocol.decodeEditorActionResult(payload);
   }
 
-  // ==================== Text Editing ====================
+  // Text editing
 
   insertText(text: string): EditorActionResult {
     return CoreProtocol.decodeEditorActionResult(native.editorInsertText(this.handle, text));
@@ -290,7 +262,7 @@ export class EditorCore {
     return CoreProtocol.decodeEditorActionResult(native.editorDeleteForward(this.handle));
   }
 
-  // ==================== Line Operations ====================
+  // Line operations
 
   moveLineUp(): EditorActionResult {
     return CoreProtocol.decodeEditorActionResult(native.editorMoveLineUp(this.handle));
@@ -320,7 +292,7 @@ export class EditorCore {
     return CoreProtocol.decodeEditorActionResult(native.editorInsertLineBelow(this.handle));
   }
 
-  // ==================== Undo/Redo ====================
+  // Undo, redo, and search
 
   undo(): EditorActionResult {
     return CoreProtocol.decodeEditorActionResult(native.editorUndo(this.handle));
@@ -369,7 +341,7 @@ export class EditorCore {
     return CoreProtocol.decodeSearchState(native.editorGetSearchState(this.handle));
   }
 
-  // ==================== Cursor/Selection Management ====================
+  // Cursor and selection
 
   getCursorPosition(): TextPosition {
     const arr = native.editorGetCursorPosition(this.handle);
@@ -453,41 +425,31 @@ export class EditorCore {
     return CoreProtocol.decodeEditorActionResult(native.editorMoveCursorToLineEnd(this.handle, extendSelection));
   }
 
-  // ==================== IME Composition Input ====================
+  // IME
 
-  handleImeCommandMessage(message: ImeCommandMessage): EditorActionResult {
-    const data = CoreProtocol.encodeImeCommandMessage(message);
-    return CoreProtocol.decodeEditorActionResult(
-      native.editorImeHandleCommandMessage(this.handle, data)
-    );
+  beginImeSession(mutationModel: ImeMutationModel): ImeState {
+    return CoreProtocol.decodeImeState(native.editorImeBeginSession(this.handle, mutationModel as number));
   }
 
-  handleImeTextUpdateMessage(message: ImeTextUpdateMessage): EditorActionResult {
-    const data = CoreProtocol.encodeImeTextUpdateMessage(message);
-    return CoreProtocol.decodeEditorActionResult(
-      native.editorImeHandleTextUpdateMessage(this.handle, data)
-    );
+  endImeSession(sessionId: number): EditorActionResult {
+    return CoreProtocol.decodeEditorActionResult(native.editorImeEndSession(this.handle, sessionId));
   }
 
-  hasPreedit(): boolean {
-    return native.editorHasPreedit(this.handle);
+  applyImeCommands(batch: ImeCommandBatch): EditorActionResult {
+    const data = CoreProtocol.encodeImeCommandBatch(batch);
+    return CoreProtocol.decodeEditorActionResult(native.editorImeApplyCommands(this.handle, data));
   }
 
-  getImeKeyboardScriptClass(): ImeScriptClass {
-    return native.editorImeGetKeyboardScriptClass(this.handle) as ImeScriptClass;
+  getImeState(sessionId: number): ImeState {
+    return CoreProtocol.decodeImeState(native.editorImeGetState(this.handle, sessionId));
   }
 
-  getImeSyncSnapshot(): ImeSyncSnapshot {
-    return CoreProtocol.decodeImeSyncSnapshot(native.editorGetImeSyncSnapshot(this.handle));
+  getImeContext(sessionId: number, source: ImeTextSource, startUtf16: number, lengthUtf16: number): ImeTextContext {
+    return CoreProtocol.decodeImeTextContext(
+      native.editorImeGetContext(this.handle, sessionId, source as number, startUtf16, lengthUtf16));
   }
 
-  getImeCommandInputContext(beforeLength: number, afterLength: number): ImeInputContext {
-    return CoreProtocol.decodeImeInputContext(
-      native.editorGetImeCommandInputContext(this.handle, beforeLength, afterLength)
-    );
-  }
-
-  // ==================== Read-Only Mode ====================
+  // Read-only mode
 
   setReadOnly(readOnly: boolean): EditorActionResult {
     return CoreProtocol.decodeEditorActionResult(native.editorSetReadOnly(this.handle, readOnly));
@@ -497,7 +459,7 @@ export class EditorCore {
     return native.editorIsReadOnly(this.handle);
   }
 
-  // ==================== Auto Indent ====================
+  // Auto indent
 
   setAutoIndentMode(mode: AutoIndentMode): EditorActionResult {
     return CoreProtocol.decodeEditorActionResult(native.editorSetAutoIndentMode(this.handle, mode as number));
@@ -512,7 +474,7 @@ export class EditorCore {
       native.editorSetBackspaceUnindent(this.handle, enabled ? 1 : 0));
   }
 
-  // ==================== Handle Config ====================
+  // Handle configuration
 
   setHandleConfig(config: HandleConfig): EditorActionResult {
     this.handleConfig = config;
@@ -524,7 +486,7 @@ export class EditorCore {
     return this.handleConfig;
   }
 
-  // ==================== Scrollbar Config ====================
+  // Scrollbar configuration
 
   setScrollbarConfig(config: ScrollbarConfig): EditorActionResult {
     this.scrollbarConfig = config;
@@ -548,7 +510,7 @@ export class EditorCore {
       native.editorSetEditorRangeEffectStyles(this.handle, data, data.byteLength));
   }
 
-  // ==================== Position Coordinate Query ====================
+  // Position queries
 
   getPositionRect(line: number, column: number): CursorRect {
     const arr = native.editorGetPositionRect(this.handle, line, column);
@@ -560,7 +522,7 @@ export class EditorCore {
     return { x: arr[0], y: arr[1], height: arr[2] };
   }
 
-  // ==================== Scroll/Navigation ====================
+  // Scrolling and navigation
 
   scrollToLine(line: number, behavior: ScrollBehavior = ScrollBehavior.GOTO_CENTER): EditorActionResult {
     return CoreProtocol.decodeEditorActionResult(native.editorScrollToLine(this.handle, line, behavior as number));
@@ -590,7 +552,7 @@ export class EditorCore {
     };
   }
 
-  // ==================== Style Registration + Highlight Spans ====================
+  // Text styles and spans
 
   registerTextStyle(styleId: number, color: number,
                     backgroundColorOrFontStyle: number, fontStyle?: number): EditorActionResult {
@@ -641,7 +603,7 @@ export class EditorCore {
     return CoreProtocol.decodeEditorActionResult(native.editorClearLineSpans(this.handle, line, layer as number));
   }
 
-  // ==================== InlayHint / PhantomText ====================
+  // Inlay hints and phantom text
 
   setLineInlayHints(lineOrData: number | ArrayBuffer,
                     hintsOrSize: InlayHint[] | number): EditorActionResult | null {
@@ -699,7 +661,7 @@ export class EditorCore {
       native.editorSetBatchLinePhantomTexts(this.handle, data, data.byteLength));
   }
 
-  // ==================== Gutter Icons ====================
+  // Gutter icons
 
   setLineGutterIcons(lineOrData: number | ArrayBuffer,
                      iconsOrSize: GutterIcon[] | number): EditorActionResult | null {
@@ -733,7 +695,7 @@ export class EditorCore {
     return CoreProtocol.decodeEditorActionResult(native.editorSetMaxGutterIcons(this.handle, count));
   }
 
-  // ==================== CodeLens ====================
+  // Code lens
 
   setLineCodeLens(lineOrData: number | ArrayBuffer,
                   itemsOrSize?: CodeLensItem[] | number): EditorActionResult | null {
@@ -766,7 +728,7 @@ export class EditorCore {
     return CoreProtocol.decodeEditorActionResult(native.editorClearCodeLens(this.handle));
   }
 
-  // ==================== Links ====================
+  // Links
 
   setLineLinks(lineOrData: number | ArrayBuffer, linksOrSize?: LinkSpan[] | number): EditorActionResult | null {
     if (lineOrData instanceof ArrayBuffer) {
@@ -802,7 +764,7 @@ export class EditorCore {
     return native.editorGetLinkTargetAt(this.handle, line, column);
   }
 
-  // ==================== Diagnostic Decorations ====================
+  // Diagnostics and document highlights
 
   setLineDiagnostics(lineOrData: number | ArrayBuffer,
                      itemsOrSize: Diagnostic[] | number): EditorActionResult | null {
@@ -860,7 +822,7 @@ export class EditorCore {
       native.editorSetBatchLineDocumentHighlights(this.handle, data, data.byteLength));
   }
 
-  // ==================== Guide (Code Structure Lines) ====================
+  // Guides
 
   setIndentGuides(guidesOrData: IndentGuide[] | ArrayBuffer, _size?: number): EditorActionResult {
     if (guidesOrData instanceof ArrayBuffer) {
@@ -899,7 +861,7 @@ export class EditorCore {
       native.editorSetSeparatorGuides(this.handle, data, data.byteLength));
   }
 
-  // ==================== Bracket Pair Highlight ====================
+  // Bracket pairs
 
   setBracketPairs(openChars: number[], closeChars: number[]): EditorActionResult {
     return CoreProtocol.decodeEditorActionResult(native.editorSetBracketPairs(this.handle, openChars, closeChars));
@@ -920,7 +882,7 @@ export class EditorCore {
     return CoreProtocol.decodeEditorActionResult(native.editorClearMatchedBrackets(this.handle));
   }
 
-  // ==================== Code Folding ====================
+  // Code folding
 
   setFoldRegions(regionsOrData: FoldRegion[] | ArrayBuffer, _size?: number): EditorActionResult {
     if (regionsOrData instanceof ArrayBuffer) {
@@ -932,10 +894,6 @@ export class EditorCore {
   }
 
   toggleFoldAt(line: number): EditorActionResult {
-    return this.toggleFold(line);
-  }
-
-  toggleFold(line: number): EditorActionResult {
     return CoreProtocol.decodeEditorActionResult(native.editorToggleFold(this.handle, line));
   }
 
@@ -959,7 +917,7 @@ export class EditorCore {
     return native.editorIsLineVisible(this.handle, line);
   }
 
-  // ==================== Linked Editing ====================
+  // Linked editing
 
   insertSnippet(snippetTemplate: string): EditorActionResult {
     return CoreProtocol.decodeEditorActionResult(native.editorInsertSnippet(this.handle, snippetTemplate));
@@ -991,7 +949,7 @@ export class EditorCore {
     return CoreProtocol.decodeEditorActionResult(native.editorCancelLinkedEditing(this.handle));
   }
 
-  // ==================== Clear Operations ====================
+  // Decoration cleanup
 
   clearHighlights(layer?: SpanLayer): EditorActionResult {
     if (layer === undefined) {

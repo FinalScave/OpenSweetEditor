@@ -112,7 +112,8 @@ export class DemoDecorationProvider implements DecorationProvider {
       totalLineCount: context.totalLineCount,
       visibleStartLine: context.visibleLineRange.start,
       visibleEndLine: context.visibleLineRange.end,
-      text
+      text,
+      textChanges: context.textChanges
     };
 
     this.pendingRequests.set(requestId, { receiver, startedAt: Date.now() });
@@ -208,7 +209,7 @@ export class DemoDecorationProvider implements DecorationProvider {
     }
 
     pending.receiver.accept(new DecorationResultBuilder()
-      .syntaxSpans(DemoDecorationProvider.mapFromLineItems(message.syntaxSpans), ApplyMode.MERGE)
+      .syntaxSpans(DemoDecorationProvider.mapFromLineItems(message.syntaxSpans), ApplyMode.REPLACE_RANGE)
       .inlayHints(DemoDecorationProvider.mapFromLineItems(message.inlayHints), ApplyMode.REPLACE_RANGE)
       .indentGuides(message.indentGuides, ApplyMode.REPLACE_ALL)
       .foldRegions(message.foldRegions, ApplyMode.REPLACE_ALL)
@@ -255,7 +256,7 @@ export class DemoDecorationProvider implements DecorationProvider {
 
   private buildEmptyResult(): DecorationResult {
     return new DecorationResultBuilder()
-      .syntaxSpans(new Map<number, StyleSpan[]>(), ApplyMode.MERGE)
+      .syntaxSpans(new Map<number, StyleSpan[]>(), ApplyMode.REPLACE_RANGE)
       .inlayHints(new Map<number, InlayHint[]>(), ApplyMode.REPLACE_RANGE)
       .indentGuides([], ApplyMode.REPLACE_ALL)
       .foldRegions([], ApplyMode.REPLACE_ALL)
