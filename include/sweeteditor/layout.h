@@ -10,6 +10,7 @@
 #include <sweeteditor/visual.h>
 #include <sweeteditor/gesture.h>
 #include <functional>
+#include <optional>
 
 namespace NS_SWEETEDITOR {
 

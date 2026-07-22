@@ -7,6 +7,7 @@
 
 #include <cstdint>
 #include <array>
+#include <optional>
 #include <sweeteditor/macro.h>
 #include <sweeteditor/foundation.h>
 
