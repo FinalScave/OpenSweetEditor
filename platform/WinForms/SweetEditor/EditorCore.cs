@@ -519,23 +519,21 @@ namespace SweetEditor {
 		[DllImport(LibraryName, EntryPoint = "editor_move_cursor_to_line_end", CallingConvention = CallingConvention.Cdecl)]
 		internal static extern IntPtr MoveCursorToLineEnd(IntPtr handle, int extendSelection, out UIntPtr outSize);
 
-		[DllImport(LibraryName, EntryPoint = "editor_ime_has_preedit", CallingConvention = CallingConvention.Cdecl)]
-		internal static extern int HasPreedit(IntPtr handle);
+		[DllImport(LibraryName, EntryPoint = "editor_ime_begin_session", CallingConvention = CallingConvention.Cdecl)]
+		internal static extern IntPtr ImeBeginSession(IntPtr handle, int mutationModel, out UIntPtr outSize);
 
-		[DllImport(LibraryName, EntryPoint = "editor_ime_handle_command_message", CallingConvention = CallingConvention.Cdecl)]
-		internal static extern IntPtr ImeHandleCommandMessage(IntPtr handle, byte[] data, nuint size, out UIntPtr outSize);
+		[DllImport(LibraryName, EntryPoint = "editor_ime_end_session", CallingConvention = CallingConvention.Cdecl)]
+		internal static extern IntPtr ImeEndSession(IntPtr handle, ulong sessionId, out UIntPtr outSize);
 
-		[DllImport(LibraryName, EntryPoint = "editor_ime_handle_text_update_message", CallingConvention = CallingConvention.Cdecl)]
-		internal static extern IntPtr ImeHandleTextUpdateMessage(IntPtr handle, byte[] data, nuint size, out UIntPtr outSize);
+		[DllImport(LibraryName, EntryPoint = "editor_ime_apply_commands", CallingConvention = CallingConvention.Cdecl)]
+		internal static extern IntPtr ImeApplyCommands(IntPtr handle, byte[] data, nuint size, out UIntPtr outSize);
 
-		[DllImport(LibraryName, EntryPoint = "editor_ime_get_keyboard_script_class", CallingConvention = CallingConvention.Cdecl)]
-		internal static extern int ImeGetKeyboardScriptClass(IntPtr handle);
+		[DllImport(LibraryName, EntryPoint = "editor_ime_get_state", CallingConvention = CallingConvention.Cdecl)]
+		internal static extern IntPtr ImeGetState(IntPtr handle, ulong sessionId, out UIntPtr outSize);
 
-		[DllImport(LibraryName, EntryPoint = "editor_ime_get_sync_snapshot", CallingConvention = CallingConvention.Cdecl)]
-		internal static extern IntPtr GetImeSyncSnapshot(IntPtr handle, out UIntPtr outSize);
-
-		[DllImport(LibraryName, EntryPoint = "editor_ime_get_command_input_context", CallingConvention = CallingConvention.Cdecl)]
-		internal static extern IntPtr GetImeCommandInputContext(IntPtr handle, nuint beforeLength, nuint afterLength, out UIntPtr outSize);
+		[DllImport(LibraryName, EntryPoint = "editor_ime_get_context", CallingConvention = CallingConvention.Cdecl)]
+		internal static extern IntPtr ImeGetContext(IntPtr handle, ulong sessionId, int source,
+			long startUtf16, long lengthUtf16, out UIntPtr outSize);
 
 		[DllImport(LibraryName, EntryPoint = "editor_set_read_only", CallingConvention = CallingConvention.Cdecl)]
 		internal static extern IntPtr SetReadOnly(IntPtr handle, int readOnly, out UIntPtr outSize);
@@ -1444,49 +1442,44 @@ namespace SweetEditor {
 			return DecodeAction(payloadPtr, payloadSize);
 		}
 
-		/// <summary>Whether IME preedit is currently active.</summary>
-		/// <returns>Returns <c>true</c> when IME preedit is active.</returns>
-		public bool HasPreedit() {
-			if (IsReleased) return false;
-			return NativeMethods.HasPreedit(nativeHandle) != 0;
+		/// <summary>Begins an IME session using the requested mutation model.</summary>
+		public ImeState BeginImeSession(ImeMutationModel mutationModel) {
+			if (IsReleased) return new ImeState { ResultCode = ImeResultCode.REJECTED };
+			IntPtr payloadPtr = NativeMethods.ImeBeginSession(nativeHandle, (int)mutationModel, out UIntPtr payloadSize);
+			return DecodePayload(payloadPtr, payloadSize, CoreProtocol.DecodeImeState,
+				new ImeState { ResultCode = ImeResultCode.REJECTED });
 		}
 
-		/// <summary>Handles a platform IME command message.</summary>
-		public EditorActionResult HandleImeCommandMessage(ImeCommandMessage message) {
-			if (IsReleased) return EditorActionResult.Empty;
-			byte[] payload = CoreProtocol.EncodeImeCommandMessage(message);
-			IntPtr payloadPtr = NativeMethods.ImeHandleCommandMessage(nativeHandle, payload, (nuint)payload.Length, out UIntPtr payloadSize);
+		/// <summary>Ends an IME session using finish semantics.</summary>
+		public EditorActionResult EndImeSession(long sessionId) {
+			if (IsReleased || sessionId <= 0) return EditorActionResult.Empty;
+			IntPtr payloadPtr = NativeMethods.ImeEndSession(nativeHandle, (ulong)sessionId, out UIntPtr payloadSize);
 			return DecodeAction(payloadPtr, payloadSize);
 		}
 
-		/// <summary>Handles a platform text update message.</summary>
-		public EditorActionResult HandleImeTextUpdateMessage(ImeTextUpdateMessage message) {
-			if (IsReleased) return EditorActionResult.Empty;
-			byte[] payload = CoreProtocol.EncodeImeTextUpdateMessage(message);
-			IntPtr payloadPtr = NativeMethods.ImeHandleTextUpdateMessage(nativeHandle, payload, (nuint)payload.Length, out UIntPtr payloadSize);
+		/// <summary>Applies one atomic batch of IME commands.</summary>
+		public EditorActionResult ApplyImeCommands(ImeCommandBatch batch) {
+			if (IsReleased || batch == null) return EditorActionResult.Empty;
+			byte[] payload = CoreProtocol.EncodeImeCommandBatch(batch);
+			IntPtr payloadPtr = NativeMethods.ImeApplyCommands(nativeHandle, payload, (nuint)payload.Length, out UIntPtr payloadSize);
 			return DecodeAction(payloadPtr, payloadSize);
 		}
 
-		/// <summary>Gets the current IME keyboard script class.</summary>
-		public ImeScriptClass GetImeKeyboardScriptClass() {
-			if (IsReleased) return ImeScriptClass.UNKNOWN;
-			int value = NativeMethods.ImeGetKeyboardScriptClass(nativeHandle);
-			return Enum.IsDefined(typeof(ImeScriptClass), value) ? (ImeScriptClass)value : ImeScriptClass.UNKNOWN;
+		/// <summary>Gets the current state of an IME session.</summary>
+		public ImeState GetImeState(long sessionId) {
+			if (IsReleased || sessionId <= 0) return new ImeState { ResultCode = ImeResultCode.SESSION_MISMATCH };
+			IntPtr payloadPtr = NativeMethods.ImeGetState(nativeHandle, (ulong)sessionId, out UIntPtr payloadSize);
+			return DecodePayload(payloadPtr, payloadSize, CoreProtocol.DecodeImeState,
+				new ImeState { ResultCode = ImeResultCode.SESSION_MISMATCH });
 		}
 
-		/// <summary>Gets the current IME synchronization snapshot.</summary>
-		public ImeSyncSnapshot GetImeSyncSnapshot() {
-			if (IsReleased) return new ImeSyncSnapshot();
-			IntPtr payloadPtr = NativeMethods.GetImeSyncSnapshot(nativeHandle, out UIntPtr payloadSize);
-			return DecodePayload(payloadPtr, payloadSize, CoreProtocol.DecodeImeSyncSnapshot, new ImeSyncSnapshot());
-		}
-
-		/// <summary>Gets an input method text context centered around the current selection.</summary>
-		public ImeInputContext GetImeCommandInputContext(int beforeLength, int afterLength) {
-			if (IsReleased) return new ImeInputContext();
-			IntPtr payloadPtr = NativeMethods.GetImeCommandInputContext(nativeHandle,
-				ToNativeSize(beforeLength), ToNativeSize(afterLength), out UIntPtr payloadSize);
-			return DecodePayload(payloadPtr, payloadSize, CoreProtocol.DecodeImeInputContext, new ImeInputContext());
+		/// <summary>Gets an immutable text slice for an IME session.</summary>
+		public ImeTextContext GetImeContext(long sessionId, ImeTextSource source, long startUtf16, long lengthUtf16) {
+			if (IsReleased || sessionId <= 0) return new ImeTextContext { ResultCode = ImeResultCode.SESSION_MISMATCH };
+			IntPtr payloadPtr = NativeMethods.ImeGetContext(nativeHandle, (ulong)sessionId, (int)source,
+				startUtf16, lengthUtf16, out UIntPtr payloadSize);
+			return DecodePayload(payloadPtr, payloadSize, CoreProtocol.DecodeImeTextContext,
+				new ImeTextContext { ResultCode = ImeResultCode.SESSION_MISMATCH });
 		}
 
 		private static TextRange? CreateOptionalRange(int startLine, int startColumn, int endLine, int endColumn) {

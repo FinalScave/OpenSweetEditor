@@ -643,22 +643,8 @@ namespace SweetEditor {
 		private EditorTheme currentTheme = EditorTheme.Dark();
 		private EditorRenderer renderer;
 
-		// Win32 IME message constants.
-		private const int WM_IME_STARTCOMPOSITION = 0x010D;
-		private const int WM_IME_ENDCOMPOSITION = 0x010E;
-		private const int WM_IME_COMPOSITION = 0x010F;
-		private const int GCS_COMPSTR = 0x0008;
-		private const int GCS_CURSORPOS = 0x0080;
-		private const int GCS_RESULTSTR = 0x0800;
-
-		[DllImport("imm32.dll")]
-		private static extern IntPtr ImmGetContext(IntPtr hWnd);
-		[DllImport("imm32.dll")]
-		private static extern bool ImmReleaseContext(IntPtr hWnd, IntPtr hIMC);
-		[DllImport("imm32.dll", CharSet = CharSet.Unicode)]
-		private static extern int ImmGetCompositionString(IntPtr hIMC, int dwIndex, byte[]? lpBuf, int dwBufLen);
-
 		private EditorCore editorCore;
+		private InputConnection? inputConnection;
 		private EditorRenderModel? renderModel;
 		private bool renderModelDirty = true;
 		private DecorationProviderManager? decorationProviderManager;
@@ -1504,6 +1490,7 @@ namespace SweetEditor {
 				DoubleTapTimeout = doubleClickTime,
 				RevealSelectionEndOnSelectAll = false
 			});
+			inputConnection = new InputConnection(this);
 			decorationProviderManager = new DecorationProviderManager(this);
 
 			// Completion manager and popup controller.
@@ -1537,6 +1524,22 @@ namespace SweetEditor {
 			renderer.RecreateTextGraphics(this);
 			DispatchEditorActionResult(editorCore.OnFontMetricsChanged());
 			lastMeasureDpi = DeviceDpi;
+			inputConnection?.BeginSession(true);
+		}
+
+		protected override void OnHandleDestroyed(EventArgs e) {
+			inputConnection?.EndSession(false);
+			base.OnHandleDestroyed(e);
+		}
+
+		protected override void OnGotFocus(EventArgs e) {
+			base.OnGotFocus(e);
+			inputConnection?.BeginSession(true);
+		}
+
+		protected override void OnLostFocus(EventArgs e) {
+			inputConnection?.EndSession(false);
+			base.OnLostFocus(e);
 		}
 
 		protected override void OnPaint(PaintEventArgs e) {
@@ -1567,10 +1570,7 @@ namespace SweetEditor {
 		protected override void OnKeyDown(KeyEventArgs e) {
 			using var perf = StartInputPerf($"OnKeyDown({e.KeyCode})");
 			RefreshPointerModifiers(e.KeyCode);
-			if (editorCore.HasPreedit()) {
-				if (TryHandleComposingKeyDown(e)) {
-					return;
-				}
+			if (inputConnection?.HasComposition == true) {
 				base.OnKeyDown(e);
 				return;
 			}
@@ -1627,7 +1627,7 @@ namespace SweetEditor {
 		protected override void OnKeyPress(KeyPressEventArgs e) {
 			using var perf = StartInputPerf($"OnKeyPress({(int)e.KeyChar})");
 			// Ignore KeyPress while IME composition is active.
-			if (editorCore.HasPreedit()) {
+			if (inputConnection?.HasComposition == true) {
 				base.OnKeyPress(e);
 				return;
 			}
@@ -1652,111 +1652,8 @@ namespace SweetEditor {
 		}
 
 		protected override void WndProc(ref Message m) {
-			switch (m.Msg) {
-				case WM_IME_STARTCOMPOSITION: {
-					using var perf = StartInputPerf("WndProc(IME_START)");
-					base.WndProc(ref m);
-					return;
-				}
-				case WM_IME_COMPOSITION: {
-					using var perf = StartInputPerf("WndProc(IME_COMPOSITION)");
-					int imeFlags = (int)m.LParam;
-					IntPtr hIMC = ImmGetContext(this.Handle);
-					if (hIMC != IntPtr.Zero) {
-						try {
-							if ((imeFlags & GCS_RESULTSTR) != 0) {
-								string resultStr = GetImmCompositionString(hIMC, GCS_RESULTSTR);
-								if (!string.IsNullOrEmpty(resultStr)) {
-									DispatchEditorActionResult(editorCore.HandleImeCommandMessage(new ImeCommandMessage {
-										Kind = ImeCommandKind.COMMIT_TEXT,
-										Text = resultStr,
-										ScriptClass = ImeScriptClass.UNKNOWN
-									}));
-								} else if ((imeFlags & GCS_COMPSTR) == 0 && HasImeActiveRange()) {
-									DispatchEditorActionResult(editorCore.HandleImeCommandMessage(new ImeCommandMessage {
-										Kind = ImeCommandKind.FINISH_PREEDIT
-									}));
-								}
-							}
-							if ((imeFlags & GCS_COMPSTR) != 0) {
-								string compStr = GetImmCompositionString(hIMC, GCS_COMPSTR);
-								int cursorPos = GetImmCompositionCursorPosition(hIMC, compStr.Length);
-								DispatchEditorActionResult(editorCore.HandleImeCommandMessage(new ImeCommandMessage {
-									Kind = ImeCommandKind.SET_PREEDIT_TEXT,
-									Text = compStr,
-									Selection = new ImeOffsetRange { Start = cursorPos, End = cursorPos },
-									ScriptClass = ImeScriptClass.UNKNOWN
-								}));
-							}
-						} finally {
-							ImmReleaseContext(this.Handle, hIMC);
-						}
-					}
-					// Do not call base.WndProc here to avoid default IME side effects.
-					return;
-				}
-				case WM_IME_ENDCOMPOSITION: {
-					using var perf = StartInputPerf("WndProc(IME_END)");
-					if (HasImeActiveRange()) {
-						DispatchEditorActionResult(editorCore.HandleImeCommandMessage(new ImeCommandMessage {
-							Kind = ImeCommandKind.FINISH_PREEDIT
-						}));
-					}
-					base.WndProc(ref m);
-					return;
-				}
-			}
+			if (inputConnection?.HandleWindowMessage(ref m) == true) return;
 			base.WndProc(ref m);
-		}
-
-		private static string GetImmCompositionString(IntPtr hIMC, int dwIndex) {
-			int byteLen = ImmGetCompositionString(hIMC, dwIndex, null, 0);
-			if (byteLen <= 0) return "";
-			byte[] buffer = new byte[byteLen];
-			ImmGetCompositionString(hIMC, dwIndex, buffer, byteLen);
-			return System.Text.Encoding.Unicode.GetString(buffer, 0, byteLen);
-		}
-
-		private static int GetImmCompositionCursorPosition(IntPtr hIMC, int fallback) {
-			int cursorPosition = ImmGetCompositionString(hIMC, GCS_CURSORPOS, null, 0);
-			if (cursorPosition < 0) return fallback;
-			return Math.Max(0, Math.Min(cursorPosition, fallback));
-		}
-
-		private bool HasImeActiveRange() {
-			ImeSyncSnapshot snapshot = editorCore.GetImeSyncSnapshot();
-			return editorCore.HasPreedit() || snapshot.HasPreeditRange || snapshot.HasSystemMarkRange;
-		}
-
-		private bool TryHandleComposingKeyDown(KeyEventArgs e) {
-			EditorActionResult result;
-			switch (e.KeyCode) {
-				case Keys.Back:
-					result = editorCore.HandleImeCommandMessage(new ImeCommandMessage {
-						Kind = ImeCommandKind.DELETE_SURROUNDING_TEXT,
-						DeleteBefore = 1,
-						TextUnit = ImeTextUnit.GRAPHEME
-					});
-					break;
-				case Keys.Delete:
-					result = editorCore.HandleImeCommandMessage(new ImeCommandMessage {
-						Kind = ImeCommandKind.DELETE_SURROUNDING_TEXT,
-						DeleteAfter = 1,
-						TextUnit = ImeTextUnit.GRAPHEME
-					});
-					break;
-				case Keys.Escape:
-					result = editorCore.HandleImeCommandMessage(new ImeCommandMessage {
-						Kind = ImeCommandKind.CANCEL_PREEDIT
-					});
-					break;
-				default:
-					return false;
-			}
-			e.Handled = true;
-			e.SuppressKeyPress = true;
-			DispatchEditorActionResult(result);
-			return true;
 		}
 
 		private static ushort MapKeysToKeyCode(Keys key) {
@@ -2043,10 +1940,8 @@ namespace SweetEditor {
 			if (result.ContentChanged) {
 				FireTextChanged(result);
 			}
-			TextPosition cursor = result.NeedsImeSync ? result.ImeSync.Cursor : result.CursorAfter;
-			TextRange? selection = result.NeedsImeSync
-				? result.ImeSync.Selection
-				: (result.HasSelectionAfter ? result.SelectionAfter : (TextRange?)null);
+			TextPosition cursor = result.CursorAfter;
+			TextRange? selection = result.HasSelectionAfter ? result.SelectionAfter : (TextRange?)null;
 			if (result.CursorChanged) {
 				CursorChanged?.Invoke(this, new CursorChangedEventArgs(cursor));
 			}
@@ -2117,6 +2012,7 @@ namespace SweetEditor {
 
 		internal void DispatchEditorActionResult(EditorActionResult? result) {
 			if (IsReleased || result == null) return;
+			inputConnection?.Synchronize(result);
 
 			if (result.PointerCursorChanged) {
 				UpdateMouseCursor(result.PointerCursorAfter);
@@ -2271,8 +2167,10 @@ namespace SweetEditor {
 				base.Dispose(disposing);
 				return;
 			}
-			disposed = true;
 			if (disposing) {
+				inputConnection?.Dispose();
+				inputConnection = null;
+				disposed = true;
 				animationActive = false;
 				animationTimer?.Stop();
 				animationTimer?.Dispose();
@@ -2289,6 +2187,7 @@ namespace SweetEditor {
 				editorCore?.Dispose();
 				renderer?.Dispose();
 			}
+			disposed = true;
 			base.Dispose(disposing);
 		}
 
