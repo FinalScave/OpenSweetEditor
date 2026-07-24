@@ -13,6 +13,7 @@ public sealed class DeferredMainViewHost : UserControl
 
     public DeferredMainViewHost()
     {
+        Background = new SolidColorBrush(Color.FromUInt32(0xFF1B1E24));
         Content = BuildPlaceholder();
         AttachedToVisualTree += OnAttachedToVisualTree;
     }
@@ -33,12 +34,20 @@ public sealed class DeferredMainViewHost : UserControl
 
         try
         {
-            Content = new MainView();
+            MainView mainView = new();
+            mainView.PropertyChanged += OnMainViewPropertyChanged;
+            Content = mainView;
         }
         catch (Exception ex)
         {
             Content = BuildErrorPlaceholder(ex);
         }
+    }
+
+    private void OnMainViewPropertyChanged(object? sender, AvaloniaPropertyChangedEventArgs change)
+    {
+        if (change.Property == BackgroundProperty && sender is MainView mainView)
+            Background = mainView.Background;
     }
 
     private static Control BuildPlaceholder()

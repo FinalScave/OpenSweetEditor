@@ -17,6 +17,7 @@ tests/build
 tools/se_protocol_gen/generated/
 CMakeSettings.json
 *.csproj.user
+*.DotSettings.user
 **/.tmp/
 
 # AI Coding (DO NOT submit)

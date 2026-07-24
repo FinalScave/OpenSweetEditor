@@ -5,6 +5,7 @@ using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Numerics;
+using System.Reflection;
 using System.Runtime.InteropServices;
 using System.Text.Json.Serialization;
 using System.Threading.Tasks;
@@ -378,10 +379,37 @@ namespace SweetEditor {
 #endregion
 
 	/// <summary>
-	/// Native method entry points for the WinForms platform, centralized management of all P/Invoke declarations.
+	/// Native method entry points for the Avalonia platform.
 	/// </summary>
 	internal static class NativeMethods {
 		private const string LibraryName = "sweeteditor";
+		private static readonly Lazy<IntPtr> IosLibraryHandle = new(LoadIosLibrary);
+
+		static NativeMethods() {
+			if (!OperatingSystem.IsIOS()) {
+				return;
+			}
+
+			try {
+				NativeLibrary.SetDllImportResolver(typeof(NativeMethods).Assembly, ResolveLibrary);
+			} catch (InvalidOperationException) {
+			}
+		}
+
+		internal static void Initialize() {
+		}
+
+		private static IntPtr ResolveLibrary(string libraryName, Assembly assembly, DllImportSearchPath? searchPath) {
+			return string.Equals(libraryName, LibraryName, StringComparison.OrdinalIgnoreCase)
+				? IosLibraryHandle.Value
+				: IntPtr.Zero;
+		}
+
+		private static IntPtr LoadIosLibrary() {
+			string frameworkPath = Path.Combine(AppContext.BaseDirectory, "Frameworks",
+				"SweetEditorCoreIOS.framework", "SweetEditorCoreIOS");
+			return NativeLibrary.Load(frameworkPath);
+		}
 
 		[DllImport(LibraryName, EntryPoint = "create_document_from_utf16", CharSet = CharSet.Unicode,
 				   CallingConvention = CallingConvention.Cdecl)]
@@ -404,8 +432,8 @@ namespace SweetEditor {
 		internal static extern void InitUnhandledExceptionHandler();
 
 		[DllImport(LibraryName, EntryPoint = "create_editor", CallingConvention = CallingConvention.Cdecl)]
-		internal static extern IntPtr CreateEditor(EditorCore.TextMeasurer measurer, byte[] optionsData,
-												   UIntPtr optionsSize);
+		internal static extern IntPtr CreateEditor(EditorCore.NativeTextMeasurer measurer, byte[] optionsData,
+												  UIntPtr optionsSize);
 
 		[DllImport(LibraryName, EntryPoint = "free_editor", CallingConvention = CallingConvention.Cdecl)]
 		internal static extern void FreeEditor(IntPtr handle);
@@ -615,14 +643,21 @@ namespace SweetEditor {
 				   CallingConvention = CallingConvention.Cdecl)]
 		internal static extern IntPtr MoveCursorToLineEnd(IntPtr handle, int extendSelection, out UIntPtr outSize);
 
-		[DllImport(LibraryName, EntryPoint = "editor_ime_handle_command_message", CallingConvention = CallingConvention.Cdecl)]
-		internal static extern IntPtr ImeHandleCommandMessage(IntPtr handle, byte[] data, nuint size, out UIntPtr outSize);
+		[DllImport(LibraryName, EntryPoint = "editor_ime_begin_session", CallingConvention = CallingConvention.Cdecl)]
+		internal static extern IntPtr ImeBeginSession(IntPtr handle, int mutationModel, out UIntPtr outSize);
 
-		[DllImport(LibraryName, EntryPoint = "editor_ime_handle_text_update_message", CallingConvention = CallingConvention.Cdecl)]
-		internal static extern IntPtr ImeHandleTextUpdateMessage(IntPtr handle, byte[] data, nuint size, out UIntPtr outSize);
+		[DllImport(LibraryName, EntryPoint = "editor_ime_end_session", CallingConvention = CallingConvention.Cdecl)]
+		internal static extern IntPtr ImeEndSession(IntPtr handle, ulong sessionId, out UIntPtr outSize);
 
-		[DllImport(LibraryName, EntryPoint = "editor_ime_has_preedit", CallingConvention = CallingConvention.Cdecl)]
-		internal static extern int HasPreedit(IntPtr handle);
+		[DllImport(LibraryName, EntryPoint = "editor_ime_apply_commands", CallingConvention = CallingConvention.Cdecl)]
+		internal static extern IntPtr ImeApplyCommands(IntPtr handle, byte[] data, nuint size, out UIntPtr outSize);
+
+		[DllImport(LibraryName, EntryPoint = "editor_ime_get_state", CallingConvention = CallingConvention.Cdecl)]
+		internal static extern IntPtr ImeGetState(IntPtr handle, ulong sessionId, out UIntPtr outSize);
+
+		[DllImport(LibraryName, EntryPoint = "editor_ime_get_context", CallingConvention = CallingConvention.Cdecl)]
+		internal static extern IntPtr ImeGetContext(IntPtr handle, ulong sessionId, int source,
+			long startUtf16, long lengthUtf16, out UIntPtr outSize);
 
 		[DllImport(LibraryName, EntryPoint = "editor_set_read_only", CallingConvention = CallingConvention.Cdecl)]
 		internal static extern IntPtr SetReadOnly(IntPtr handle, int readOnly, out UIntPtr outSize);
@@ -893,6 +928,13 @@ namespace SweetEditor {
 		internal static extern void FreeUtf8String(IntPtr cstringPtr);
 	}
 
+	internal interface ITextMeasurer {
+		float MeasureTextWidth(IntPtr textPtr, int fontStyle);
+		float MeasureInlayHintWidth(IntPtr textPtr);
+		float MeasureIconWidth(int iconId);
+		void GetFontMetrics(IntPtr arrPtr, UIntPtr length);
+	}
+
 	/// <summary>
 	/// Editor core that wraps high-level calls to the native C++ editor engine.
 	/// </summary>
@@ -900,17 +942,22 @@ namespace SweetEditor {
 		private static bool exceptionHandlerInitialized = false;
 		private static bool exceptionHandlerInitAttempted = false;
 		private static readonly object exceptionHandlerInitLock = new object();
+
+		[ThreadStatic]
+		private static WeakReference<ITextMeasurer>? activeTextMeasurer;
+
 		private IntPtr nativeHandleValue;
+		private readonly ITextMeasurer textMeasurer;
 		private IntPtr nativeHandle {
 			get {
 				if (disposed || nativeHandleValue == IntPtr.Zero) {
 					throw new ObjectDisposedException(nameof(EditorCore));
 				}
+				BindTextMeasurer();
 				return nativeHandleValue;
 			}
 			set => nativeHandleValue = value;
 		}
-		private TextMeasurer measurer;
 		private HandleConfig _handleConfig = new HandleConfig();
 		private ScrollbarConfig _scrollbarConfig = new ScrollbarConfig();
 		private Document? currentDocument;
@@ -926,7 +973,7 @@ namespace SweetEditor {
 		/// Native text measurement callback set, corresponding to the C++ side text_measurer_t.
 		/// </summary>
 		[StructLayout(LayoutKind.Sequential)]
-		public struct TextMeasurer {
+		internal struct NativeTextMeasurer {
 			public IntPtr MeasureTextWidth;
 			public IntPtr MeasureInlayHintWidth;
 			public IntPtr MeasureIconWidth;
@@ -942,16 +989,79 @@ namespace SweetEditor {
 		/// </summary>
 		/// <param name="textMeasurer">Text measurement callback set</param>
 		/// <param name="options">Editor construction options</param>
-		public EditorCore(TextMeasurer textMeasurer, EditorOptions options) {
+		internal EditorCore(ITextMeasurer textMeasurer, EditorOptions options) {
+			NativeMethods.Initialize();
 			EnsureExceptionHandlerInitialized();
-			measurer = textMeasurer;
+			this.textMeasurer = textMeasurer;
 			byte[] optionsData = CoreProtocol.EncodeEditorOptions(options);
-			nativeHandle = NativeMethods.CreateEditor(measurer, optionsData, (UIntPtr)optionsData.Length);
+			BindTextMeasurer();
+			nativeHandle = NativeMethods.CreateEditor(CreateNativeTextMeasurer(), optionsData,
+													  (UIntPtr)optionsData.Length);
 			SetKeyMap(EditorKeyMap.DefaultKeyMap().Bindings);
 		}
 
+		private void BindTextMeasurer() {
+			if (activeTextMeasurer == null) {
+				activeTextMeasurer = new WeakReference<ITextMeasurer>(textMeasurer);
+			} else {
+				activeTextMeasurer.SetTarget(textMeasurer);
+			}
+		}
+
+		private static unsafe NativeTextMeasurer CreateNativeTextMeasurer() {
+			return new NativeTextMeasurer {
+				MeasureTextWidth = (IntPtr)(delegate* unmanaged<IntPtr, int, float>)&MeasureTextWidthCallback,
+				MeasureInlayHintWidth = (IntPtr)(delegate* unmanaged<IntPtr, float>)&MeasureInlayHintWidthCallback,
+				MeasureIconWidth = (IntPtr)(delegate* unmanaged<int, float>)&MeasureIconWidthCallback,
+				GetFontMetrics = (IntPtr)(delegate* unmanaged<IntPtr, UIntPtr, void>)&GetFontMetricsCallback,
+			};
+		}
+
+		private static ITextMeasurer? GetActiveTextMeasurer() {
+			if (activeTextMeasurer != null
+				&& activeTextMeasurer.TryGetTarget(out ITextMeasurer? textMeasurer)) {
+				return textMeasurer;
+			}
+			return null;
+		}
+
+		[UnmanagedCallersOnly]
+		private static float MeasureTextWidthCallback(IntPtr textPtr, int fontStyle) {
+			try {
+				return GetActiveTextMeasurer()?.MeasureTextWidth(textPtr, fontStyle) ?? 0f;
+			} catch {
+				return 0f;
+			}
+		}
+
+		[UnmanagedCallersOnly]
+		private static float MeasureInlayHintWidthCallback(IntPtr textPtr) {
+			try {
+				return GetActiveTextMeasurer()?.MeasureInlayHintWidth(textPtr) ?? 0f;
+			} catch {
+				return 0f;
+			}
+		}
+
+		[UnmanagedCallersOnly]
+		private static float MeasureIconWidthCallback(int iconId) {
+			try {
+				return GetActiveTextMeasurer()?.MeasureIconWidth(iconId) ?? 0f;
+			} catch {
+				return 0f;
+			}
+		}
+
+		[UnmanagedCallersOnly]
+		private static void GetFontMetricsCallback(IntPtr arrPtr, UIntPtr length) {
+			try {
+				GetActiveTextMeasurer()?.GetFontMetrics(arrPtr, length);
+			} catch {
+			}
+		}
+
 		private static void EnsureExceptionHandlerInitialized() {
-			if (exceptionHandlerInitialized || exceptionHandlerInitAttempted) {
+			if (!OperatingSystem.IsWindows() || exceptionHandlerInitialized || exceptionHandlerInitAttempted) {
 				return;
 			}
 
@@ -1575,45 +1685,60 @@ namespace SweetEditor {
 
 #endregion
 
-#region IME composition
+#region IME
 
-		/// <summary>Handles a platform IME command message.</summary>
-		public EditorActionResult HandleImeCommandMessage(ImeCommandMessage message) {
-			byte[] payload = CoreProtocol.EncodeImeCommandMessage(message);
-			IntPtr payloadPtr = NativeMethods.ImeHandleCommandMessage(nativeHandle, payload, (nuint)payload.Length, out UIntPtr payloadSize);
-			return DecodeAction(payloadPtr, payloadSize);
+		/// <summary>Begins an IME session using the requested mutation model.</summary>
+		public ImeState BeginImeSession(ImeMutationModel mutationModel) {
+			IntPtr payloadPtr = NativeMethods.ImeBeginSession(nativeHandle, (int)mutationModel, out UIntPtr payloadSize);
+			return DecodePayload(payloadPtr, payloadSize, CoreProtocol.DecodeImeState,
+				new ImeState { ResultCode = ImeResultCode.REJECTED });
 		}
 
-		/// <summary>Handles a platform text update message.</summary>
-		public EditorActionResult HandleImeTextUpdateMessage(ImeTextUpdateMessage message) {
-			byte[] payload = CoreProtocol.EncodeImeTextUpdateMessage(message);
-			IntPtr payloadPtr = NativeMethods.ImeHandleTextUpdateMessage(nativeHandle, payload, (nuint)payload.Length, out UIntPtr payloadSize);
-			return DecodeAction(payloadPtr, payloadSize);
-		}
-
-		/// <summary>Whether IME preedit is currently active.</summary>
-		/// <returns>Returns <c>true</c> when IME preedit is active.</returns>
-		public bool HasPreedit() {
-			return NativeMethods.HasPreedit(nativeHandle) != 0;
-		}
-
-		/// <summary>Enables or disables IME composition handling.</summary>
-		/// <param name="enabled"><c>true</c> to enable composition; otherwise <c>false</c>.</param>
-		public EditorActionResult SetCompositionEnabled(bool enabled) {
-			compositionEnabled = enabled;
-			if (!enabled && HasPreedit()) {
-				return HandleImeCommandMessage(new ImeCommandMessage {
-					Kind = ImeCommandKind.CANCEL_PREEDIT
-				});
+		/// <summary>Ends an IME session using finish semantics.</summary>
+		public EditorActionResult EndImeSession(long sessionId) {
+			if (sessionId <= 0) {
+				return EditorActionResult.Empty;
 			}
-			return EditorActionResult.Empty;
+			IntPtr payloadPtr = NativeMethods.ImeEndSession(nativeHandle, (ulong)sessionId, out UIntPtr payloadSize);
+			return DecodeAction(payloadPtr, payloadSize);
+		}
+
+		/// <summary>Applies one atomic batch of IME commands.</summary>
+		public EditorActionResult ApplyImeCommands(ImeCommandBatch batch) {
+			byte[] payload = CoreProtocol.EncodeImeCommandBatch(batch);
+			IntPtr payloadPtr = NativeMethods.ImeApplyCommands(nativeHandle, payload, (nuint)payload.Length,
+				out UIntPtr payloadSize);
+			return DecodeAction(payloadPtr, payloadSize);
+		}
+
+		/// <summary>Gets the current state of an IME session.</summary>
+		public ImeState GetImeState(long sessionId) {
+			if (sessionId <= 0) {
+				return new ImeState { ResultCode = ImeResultCode.SESSION_MISMATCH };
+			}
+			IntPtr payloadPtr = NativeMethods.ImeGetState(nativeHandle, (ulong)sessionId, out UIntPtr payloadSize);
+			return DecodePayload(payloadPtr, payloadSize, CoreProtocol.DecodeImeState,
+				new ImeState { ResultCode = ImeResultCode.SESSION_MISMATCH });
+		}
+
+		/// <summary>Gets an immutable text slice for an IME session.</summary>
+		public ImeTextContext GetImeContext(long sessionId, ImeTextSource source, long startUtf16, long lengthUtf16) {
+			if (sessionId <= 0) {
+				return new ImeTextContext { ResultCode = ImeResultCode.SESSION_MISMATCH };
+			}
+			IntPtr payloadPtr = NativeMethods.ImeGetContext(nativeHandle, (ulong)sessionId, (int)source,
+				startUtf16, lengthUtf16, out UIntPtr payloadSize);
+			return DecodePayload(payloadPtr, payloadSize, CoreProtocol.DecodeImeTextContext,
+				new ImeTextContext { ResultCode = ImeResultCode.SESSION_MISMATCH });
+		}
+
+		internal void SetCompositionEnabled(bool enabled) {
+			compositionEnabled = enabled;
 		}
 
 		/// <summary>Gets whether IME composition handling is enabled.</summary>
 		/// <returns><c>true</c> when composition is enabled.</returns>
-		public bool IsCompositionEnabled() {
-			return compositionEnabled;
-		}
+		public bool IsCompositionEnabled() => compositionEnabled;
 
 #endregion
 

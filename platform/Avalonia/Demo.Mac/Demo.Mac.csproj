@@ -29,4 +29,15 @@
     <ProjectReference Include="..\Demo.Shared\Demo.Shared.csproj" />
   </ItemGroup>
 
+  <ItemGroup>
+    <None Include="..\..\..\prebuilt\macos\arm64\libsweeteditor.dylib"
+          Condition="Exists('..\..\..\prebuilt\macos\arm64\libsweeteditor.dylib') AND ('$(RuntimeIdentifier)' == '' OR '$(RuntimeIdentifier)' == 'osx-arm64')"
+          CopyToOutputDirectory="PreserveNewest"
+          CopyToPublishDirectory="PreserveNewest" />
+    <None Include="..\..\..\prebuilt\macos\x86_64\libsweeteditor.dylib"
+          Condition="Exists('..\..\..\prebuilt\macos\x86_64\libsweeteditor.dylib') AND '$(RuntimeIdentifier)' == 'osx-x64'"
+          CopyToOutputDirectory="PreserveNewest"
+          CopyToPublishDirectory="PreserveNewest" />
+  </ItemGroup>
+
 </Project>

@@ -11,19 +11,26 @@
 
 #ifdef ENABLE_LOG
   #define LOG_TAG "SWEETEDITOR"
-#include <sweeteditor/buffer.h>
-#if defined(ANDROID)
+  #include <sweeteditor/buffer.h>
+  #if defined(ANDROID)
     #include "android_log.h"
   #elif defined(OHOS)
     #include "ohos_log.h"
   #elif defined(__APPLE__)
     #include <os/log.h>
     #include <sweeteditor/utility.h>
-    #define APPLE_LOG_FORMAT "[%{public}s][%{public}s] \"%{public}s\"-%{public}s:%d %{public}s"
-    #define APPLE_LOG(level, type, ...) do { \
-      auto _log_message_ = StrUtil::formatString(__VA_ARGS__); \
-      os_log_with_type(OS_LOG_DEFAULT, type, APPLE_LOG_FORMAT, level, LOG_TAG, __FILE_NAME__, __FUNCTION__, __LINE__, _log_message_.c_str()); \
-    } while(0)
+    #if defined(__JETBRAINS_IDE__)
+      #define APPLE_LOG(level, type, ...) do { \
+        (void)StrUtil::formatString(__VA_ARGS__); \
+      } while (0)
+    #else
+      #define APPLE_LOG(level, type, ...) do { \
+        auto _log_message_ = StrUtil::formatString(__VA_ARGS__); \
+        os_log_with_type(OS_LOG_DEFAULT, type, \
+                         "[%{public}s][%{public}s] \"%{public}s\"-%{public}s:%d %{public}s", \
+                         level, LOG_TAG, __FILE_NAME__, __FUNCTION__, __LINE__, _log_message_.c_str()); \
+      } while (0)
+    #endif
     #define LOGD(...) APPLE_LOG("D", OS_LOG_TYPE_DEBUG, __VA_ARGS__)
     #define LOGI(...) APPLE_LOG("I", OS_LOG_TYPE_INFO, __VA_ARGS__)
     #define LOGW(...) APPLE_LOG("W", OS_LOG_TYPE_DEFAULT, __VA_ARGS__)

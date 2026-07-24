@@ -97,7 +97,7 @@ namespace SweetEditor {
 			}
 
 			compositionEnabled = enabled;
-			editor.DispatchEditorActionResult(editor.EditorCoreInternal.SetCompositionEnabled(enabled));
+			editor.SetCompositionEnabled(enabled);
 		}
 
 		public bool IsCompositionEnabled() => compositionEnabled;

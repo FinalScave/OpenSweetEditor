@@ -13,7 +13,7 @@ using AvaloniaRect = Avalonia.Rect;
 using AvaloniaSize = Avalonia.Size;
 
 namespace SweetEditor {
-	internal sealed class EditorRenderer : IDisposable {
+	internal sealed class EditorRenderer : IDisposable, ITextMeasurer {
 		private const float InlayTextSizeRatio = 0.86f;
 		private const int MaxLineNumberTextCacheEntries = 8192;
 		private const int MeasureColorArgb = unchecked((int)0xFF000000);
@@ -35,14 +35,6 @@ namespace SweetEditor {
 		private readonly Dictionary<string, bool> textFastPathCache = new(StringComparer.Ordinal);
 		private readonly MeasurePerfStats measurePerfStats = new();
 		private readonly PerfOverlay perfOverlay = new();
-		private readonly MeasureTextWidthCallback measureTextWidthDelegate;
-		private readonly MeasureInlayHintWidthCallback measureInlayHintWidthDelegate;
-		private readonly MeasureIconWidthCallback measureIconWidthDelegate;
-		private readonly GetFontMetricsCallback getFontMetricsDelegate;
-		private readonly IntPtr measureTextWidthCallback;
-		private readonly IntPtr measureInlayHintWidthCallback;
-		private readonly IntPtr measureIconWidthCallback;
-		private readonly IntPtr getFontMetricsCallback;
 
 		private EditorTheme theme;
 		private EditorIconProvider? iconProvider;
@@ -79,14 +71,6 @@ namespace SweetEditor {
 
 		public EditorRenderer(EditorTheme theme) {
 			this.theme = theme;
-			measureTextWidthDelegate = MeasureText;
-			measureInlayHintWidthDelegate = MeasureInlayText;
-			measureIconWidthDelegate = MeasureIconWidth;
-			getFontMetricsDelegate = GetFontMetrics;
-			measureTextWidthCallback = Marshal.GetFunctionPointerForDelegate(measureTextWidthDelegate);
-			measureInlayHintWidthCallback = Marshal.GetFunctionPointerForDelegate(measureInlayHintWidthDelegate);
-			measureIconWidthCallback = Marshal.GetFunctionPointerForDelegate(measureIconWidthDelegate);
-			getFontMetricsCallback = Marshal.GetFunctionPointerForDelegate(getFontMetricsDelegate);
 			UpdateTypefaces();
 		}
 
@@ -95,15 +79,6 @@ namespace SweetEditor {
 		public float EditorTextSize => textSizeDip;
 
 		public string FontFamily => fontFamily;
-
-		public EditorCore.TextMeasurer CreateTextMeasurer() {
-			return new EditorCore.TextMeasurer {
-				MeasureTextWidth = measureTextWidthCallback,
-				MeasureInlayHintWidth = measureInlayHintWidthCallback,
-				MeasureIconWidth = measureIconWidthCallback,
-				GetFontMetrics = getFontMetricsCallback,
-			};
-		}
 
 		public MeasurePerfStats GetMeasurePerfStats() => measurePerfStats;
 
@@ -442,19 +417,7 @@ namespace SweetEditor {
 
 		private double Snap(double value) => Math.Round(value * scale) / scale;
 
-		[UnmanagedFunctionPointer(CallingConvention.Winapi)]
-		private delegate float MeasureTextWidthCallback(IntPtr textPtr, int fontStyle);
-
-		[UnmanagedFunctionPointer(CallingConvention.Winapi)]
-		private delegate float MeasureInlayHintWidthCallback(IntPtr textPtr);
-
-		[UnmanagedFunctionPointer(CallingConvention.Winapi)]
-		private delegate float MeasureIconWidthCallback(int iconId);
-
-		[UnmanagedFunctionPointer(CallingConvention.Winapi)]
-		private delegate void GetFontMetricsCallback(IntPtr arrPtr, UIntPtr length);
-
-		private float MeasureText(IntPtr textPtr, int fontStyle) {
+		float ITextMeasurer.MeasureTextWidth(IntPtr textPtr, int fontStyle) {
 			try {
 				string text = StringFromUtf16(textPtr);
 				if (string.IsNullOrEmpty(text)) {
@@ -466,7 +429,7 @@ namespace SweetEditor {
 			}
 		}
 
-		private float MeasureInlayText(IntPtr textPtr) {
+		float ITextMeasurer.MeasureInlayHintWidth(IntPtr textPtr) {
 			try {
 				string text = StringFromUtf16(textPtr);
 				if (string.IsNullOrEmpty(text)) {
@@ -478,7 +441,7 @@ namespace SweetEditor {
 			}
 		}
 
-		private float MeasureIconWidth(int iconId) {
+		float ITextMeasurer.MeasureIconWidth(int iconId) {
 			try {
 				return OnMeasureIconWidth(iconId);
 			} catch {
@@ -486,7 +449,7 @@ namespace SweetEditor {
 			}
 		}
 
-		private void GetFontMetrics(IntPtr arrPtr, UIntPtr length) {
+		void ITextMeasurer.GetFontMetrics(IntPtr arrPtr, UIntPtr length) {
 			try {
 				OnGetFontMetrics(arrPtr, length);
 			} catch {

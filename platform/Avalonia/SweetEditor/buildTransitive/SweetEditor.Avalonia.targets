@@ -1,0 +1,15 @@
+<Project>
+  <PropertyGroup>
+    <_SweetEditorPackageRoot>$(MSBuildThisFileDirectory)..\</_SweetEditorPackageRoot>
+    <_SweetEditorTargetPlatform Condition="'$(TargetFramework)' != ''">$([MSBuild]::GetTargetPlatformIdentifier('$(TargetFramework)'))</_SweetEditorTargetPlatform>
+    <_SweetEditorIosXcframework>$(_SweetEditorPackageRoot)native\ios\SweetEditorCoreIOS.xcframework</_SweetEditorIosXcframework>
+  </PropertyGroup>
+
+  <ItemGroup Condition="'$(SweetEditorDisableIosNativeReference)' != 'true' and '$(_SweetEditorTargetPlatform)' == 'ios'">
+    <NativeReference Include="$(_SweetEditorIosXcframework)">
+      <Kind>Framework</Kind>
+      <IsCxx>true</IsCxx>
+      <SmartLink>true</SmartLink>
+    </NativeReference>
+  </ItemGroup>
+</Project>

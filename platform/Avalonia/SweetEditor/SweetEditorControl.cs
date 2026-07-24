@@ -71,7 +71,7 @@ namespace SweetEditor {
 		private readonly DispatcherTimer desktopAnimationTimer;
 		private readonly List<CompletionItem> completionItems = new();
 		private readonly Dictionary<int, Point> activeTouchPoints = new();
-		private readonly EditorTextInputClient textInputClient;
+		private readonly InputConnection inputConnection;
 		private readonly EditorPlatformBehavior platformBehavior;
 		private EditorKeyMap keyMap = CreateDefaultEditorKeyMap();
 		private KeyChord pendingKeyChord = KeyChord.Empty;
@@ -158,7 +158,7 @@ namespace SweetEditor {
 				TouchSlop = platformBehavior.DefaultTouchSlop,
 				DoubleTapTimeout = platformBehavior.DefaultDoubleTapTimeout,
 			};
-			editorCore = new EditorCore(renderer.CreateTextMeasurer(), options);
+			editorCore = new EditorCore(renderer, options);
 			decorationProviderManager = new DecorationProviderManager(this);
 			inlineSuggestionDecorationProvider = new InlineSuggestionDecorationProvider(() => inlineSuggestion);
 			completionProviderManager = new CompletionProviderManager(this);
@@ -166,7 +166,7 @@ namespace SweetEditor {
 			newLineActionProviderManager = new NewLineActionProviderManager(this);
 			selectionMenuController = new SelectionMenuController(this);
 			settings = new EditorSettings(this);
-			textInputClient = new EditorTextInputClient(this);
+			inputConnection = new InputConnection(this);
 			if (platformBehavior.EnableDirectPinch) {
 				GestureRecognizers.Add(new PinchGestureRecognizer());
 			}
@@ -246,6 +246,15 @@ namespace SweetEditor {
 
 		internal bool IsMounted => attached && !disposed;
 
+		internal bool CanBeginImeSession =>
+			attached && !disposed && IsFocused && !imeSuppressedByTouch &&
+			!editorCore.IsReadOnly() && editorCore.GetDocument() != null;
+
+		internal void SetCompositionEnabled(bool enabled) {
+			inputConnection.SetCompositionEnabled(enabled);
+			NotifyTextInputStateChanged(force: true);
+		}
+
 		public override void Render(DrawingContext context) {
 			base.Render(context);
 			long renderStartTick = renderer.IsPerfOverlayEnabled() ? Stopwatch.GetTimestamp() : 0;
@@ -299,11 +308,15 @@ namespace SweetEditor {
 			controller?.Bind(this);
 			pendingViewportDecorationRefresh = true;
 			ScheduleViewportUpdate(Bounds.Size, force: true);
+			if (IsFocused && !imeSuppressedByTouch) {
+				inputConnection.BeginSession(true);
+			}
 			NotifyTextInputStateChanged(textViewChanged: true, force: true);
 		}
 
 		protected override void OnDetachedFromVisualTree(VisualTreeAttachmentEventArgs e) {
 			attached = false;
+			inputConnection.EndSession(false);
 			CancelActiveTouchSequence();
 			CancelDirectGestureSessions();
 			animationActive = false;
@@ -347,6 +360,7 @@ namespace SweetEditor {
 				return;
 			}
 
+			inputConnection.BeginSession(true);
 			NotifyTextInputStateChanged(textViewChanged: true);
 		}
 
@@ -356,6 +370,7 @@ namespace SweetEditor {
 				return;
 			}
 
+			inputConnection.EndSession(false);
 			SetImeSuppressedByTouch(platformBehavior.SuppressImeOnTouchDown);
 			pendingKeyChord = KeyChord.Empty;
 			NotifyTextInputStateChanged(force: true);
@@ -486,7 +501,6 @@ namespace SweetEditor {
 					DispatchEditorActionResult(touchPointerDownResult);
 				}
 
-				SetImeSuppressedByTouch(platformBehavior.SuppressImeOnTouchDown);
 				if (touchPendingFocus && !touchPointerMoved &&
 				    IsTouchMovementBeyondFocusThreshold(point, touchDownPosition)) {
 					touchPointerMoved = true;
@@ -597,12 +611,10 @@ namespace SweetEditor {
 					if (allowImeForTap) {
 						bool needsImeActivation = imeSuppressedByTouch || !IsFocused;
 						if (needsImeActivation) {
-							SetImeSuppressedByTouch(false);
 							Focus();
+							SetImeSuppressedByTouch(false);
 							NotifyTextInputStateChanged(textViewChanged: true);
 						}
-					} else {
-						SetImeSuppressedByTouch(platformBehavior.SuppressImeOnTouchDown);
 					}
 				}
 				touchPendingFocus = false;
@@ -680,9 +692,6 @@ namespace SweetEditor {
 			touchPendingFocus = false;
 			touchPointerMoved = true;
 			touchGestureHadScroll = true;
-			if (platformBehavior.SuppressImeOnTouchDown) {
-				SetImeSuppressedByTouch(true);
-			}
 
 			Point origin = e.ScaleOrigin;
 			lastPointerPosition = origin;
@@ -741,9 +750,6 @@ namespace SweetEditor {
 			touchPendingFocus = false;
 			touchPointerMoved = true;
 			touchGestureHadScroll = true;
-			if (platformBehavior.SuppressImeOnTouchDown) {
-				SetImeSuppressedByTouch(true);
-			}
 
 			Point point = lastPointerPosition;
 			if (!directScrollActive) {
@@ -797,9 +803,6 @@ namespace SweetEditor {
 			}
 
 			touchGestureHadScroll = true;
-			if (platformBehavior.SuppressImeOnTouchDown) {
-				SetImeSuppressedByTouch(true);
-			}
 			e.Handled = true;
 		}
 
@@ -950,25 +953,32 @@ namespace SweetEditor {
 		protected override void OnTextInput(TextInputEventArgs e) {
 			base.OnTextInput(e);
 			using InputPerfScope perf = BeginInputPerf("text.input");
-			if (disposed || string.IsNullOrEmpty(e.Text)) {
+			if (disposed || e.Text == null) {
 				return;
 			}
 
-			if (e.Text.All(char.IsControl)) {
+			bool emptyCompositionCommit = e.Text.Length == 0 && inputConnection.HasComposition;
+			if (e.Text.Length == 0 && !emptyCompositionCommit) {
+				return;
+			}
+
+			bool isLineBreak = e.Text is "\n" or "\r" or "\r\n";
+			if (!emptyCompositionCommit && !isLineBreak && e.Text.All(char.IsControl)) {
 				return;
 			}
 
 			pendingKeyChord = KeyChord.Empty;
-			NormalizeSuspiciousImplicitSelectionBeforeDestructiveEdit();
+			if (!inputConnection.HasComposition) {
+				NormalizeSuspiciousImplicitSelectionBeforeDestructiveEdit();
+			}
 
 			if (inlineSuggestion != null) {
 				DismissInlineSuggestionInternal(emitDismissedCallback: true);
 			}
 
-			var result = ShouldCommitTextInputThroughIme()
-				             ? CommitImeText(e.Text)
-				             : InsertConfiguredText(e.Text);
-			DispatchEditorActionResult(result);
+			if (!inputConnection.CommitText(e.Text)) {
+				DispatchEditorActionResult(InsertConfiguredText(e.Text));
+			}
 			e.Handled = true;
 		}
 
@@ -1599,6 +1609,7 @@ namespace SweetEditor {
 				return;
 			}
 
+			inputConnection.Synchronize(result);
 			if (result.GestureType != GestureType.UNDEFINED) {
 				FireGestureEvents(result, ToPoint(result.TapPoint));
 			}
@@ -1613,7 +1624,7 @@ namespace SweetEditor {
 				} else {
 					FlushCore(scheduleTextInputState);
 				}
-			} else if (result.NeedsImeSync) {
+			} else if (ShouldScheduleTextInputStateAfterResult(result)) {
 				ScheduleTextInputStateChanged();
 			}
 		}
@@ -1627,10 +1638,8 @@ namespace SweetEditor {
 				FireTextChanged(result);
 			}
 
-			TextPosition cursor = result.NeedsImeSync ? result.ImeSync.Cursor : result.CursorAfter;
-			TextRange? selection = result.NeedsImeSync
-			                           ? (result.ImeSync.HasSelection ? result.ImeSync.Selection : (TextRange?)null)
-			                           : (result.HasSelectionAfter ? result.SelectionAfter : (TextRange?)null);
+			TextPosition cursor = result.CursorAfter;
+			TextRange? selection = result.HasSelectionAfter ? result.SelectionAfter : (TextRange?)null;
 			if (result.CursorChanged) {
 				CursorChanged?.Invoke(this, new CursorChangedEventArgs(cursor));
 			}
@@ -1655,16 +1664,12 @@ namespace SweetEditor {
 				SyncPlatformScale(result.ScaleAfter);
 				ScaleChanged?.Invoke(this, new ScaleChangedEventArgs(result.ScaleAfter));
 			}
+			UpdateCompletion(result);
 		}
 
 		private static bool ShouldScheduleTextInputStateAfterResult(EditorActionResult result) {
-			if (result.NeedsImeSync) {
-				return true;
-			}
-			if (result.GestureType is GestureType.SCROLL or GestureType.FAST_SCROLL or GestureType.SCALE) {
-				return false;
-			}
-			return result.Source is not(EditorActionSource.DECORATION or EditorActionSource.FOLDING or EditorActionSource.SETUP);
+			return result.ContentChanged || result.CursorChanged || result.SelectionChanged ||
+			       result.CompositionChanged || result.ScrollChanged || result.ScaleChanged;
 		}
 
 		private bool ShouldThrottleTouchMoveFlush(EditorActionResult result) {
@@ -1839,6 +1844,7 @@ namespace SweetEditor {
 			newLineActionProviderManager.Dispose();
 
 			renderModel = null;
+			inputConnection.Dispose();
 			renderer.Dispose();
 			editorCore.Dispose();
 			completionItems.Clear();
@@ -2352,10 +2358,6 @@ namespace SweetEditor {
 			result.SelectionAfter = selection.hasSelection ? selection.range : new TextRange();
 			result.CursorChanged = true;
 			result.SelectionChanged = true;
-			result.NeedsImeSync = true;
-			result.ImeSync.Cursor = cursor;
-			result.ImeSync.HasSelection = selection.hasSelection;
-			result.ImeSync.Selection = selection.hasSelection ? selection.range : new TextRange();
 		}
 
 		private EditorActionResult CreateSelectionStateResult(TextPosition cursorBefore, bool hasSelectionBefore, TextRange selectionBefore) {
@@ -2371,18 +2373,12 @@ namespace SweetEditor {
 				CursorChanged = cursorChanged,
 				SelectionChanged = selectionChanged,
 				NeedsRedraw = cursorChanged || selectionChanged,
-				NeedsImeSync = cursorChanged || selectionChanged,
 				CursorBefore = cursorBefore,
 				CursorAfter = cursor,
 				HasSelectionBefore = hasSelectionBefore,
 				SelectionBefore = hasSelectionBefore ? selectionBefore : new TextRange(),
 				HasSelectionAfter = selection.hasSelection,
-				SelectionAfter = selection.hasSelection ? selection.range : new TextRange(),
-				ImeSync = new ImeSyncSnapshot {
-					Cursor = cursor,
-					HasSelection = selection.hasSelection,
-					Selection = selection.hasSelection ? selection.range : new TextRange()
-				}
+				SelectionAfter = selection.hasSelection ? selection.range : new TextRange()
 			};
 		}
 
@@ -2566,58 +2562,52 @@ namespace SweetEditor {
 				TextChanged?.Invoke(this, new TextChangedEventArgs(editResult.TextChangeKind, editResult.Source, editResult.Changes));
 				decorationProviderManager.OnTextChanged(editResult.Changes);
 			}
-
-			HandleCompletionAfterEdit(editResult);
 		}
 
-		private void HandleCompletionAfterEdit(EditorActionResult? editResult) {
-			if (disposed || editorCore.IsInLinkedEditing()) {
+		private void UpdateCompletion(EditorActionResult result) {
+			if (disposed) {
 				return;
 			}
-
-			TextChange? primaryChange = null;
-			if (editResult?.Changes != null && editResult.Changes.Count > 0) {
-				primaryChange = editResult.Changes[0];
-			}
-
-			bool completionShowing = completionItems.Count > 0;
-			bool hasDeletion = false;
-			if (editResult?.Changes != null) {
-				foreach (TextChange change in editResult.Changes) {
-					if (string.IsNullOrEmpty(change.NewText)) {
-						hasDeletion = true;
-						break;
-					}
-				}
-			}
-
-			if (completionShowing && hasDeletion) {
+			if (result.ImeHostAction != ImeHostAction.NONE) {
 				completionProviderManager.Dismiss();
 				return;
 			}
 
-			string newText = primaryChange?.NewText ?? string.Empty;
-			if (newText.Length == 1) {
-				if (completionProviderManager.IsTriggerCharacter(newText)) {
-					completionProviderManager.TriggerCompletion(CompletionTriggerKind.Character, newText);
-					return;
-				}
+			bool contextChanged = result.ContentChanged || result.CompositionChanged ||
+			                      result.CursorChanged || result.SelectionChanged;
+			if (!contextChanged) {
+				return;
+			}
+			if (editorCore.IsInLinkedEditing()) {
+				completionProviderManager.Dismiss();
+				return;
+			}
+
+			ImeOffsetRange compositionRange = result.ImeState.CompositionRange;
+			bool compositionActive = result.ImeState.SessionId > 0 &&
+			                         compositionRange.StartUtf16 >= 0 &&
+			                         compositionRange.EndUtf16 >= compositionRange.StartUtf16;
+			if (compositionActive) {
+				completionProviderManager.TriggerCompletion(CompletionTriggerKind.Retrigger, null);
+				return;
+			}
+
+			bool completionShowing = completionItems.Count > 0;
+			if (!result.ContentChanged || result.Changes.Count == 0) {
 				if (completionShowing) {
-					completionProviderManager.TriggerCompletion(CompletionTriggerKind.Retrigger, null);
-					return;
-				}
-				char ch = newText[0];
-				if (char.IsLetterOrDigit(ch) || ch == '_') {
-					completionProviderManager.TriggerCompletion(CompletionTriggerKind.Invoked, null);
+					completionProviderManager.Dismiss();
 				}
 				return;
 			}
 
-			if (!completionShowing) {
-				return;
+			string newText = result.Changes[0].NewText;
+			if (newText.Length == 1 && completionProviderManager.IsTriggerCharacter(newText)) {
+				completionProviderManager.TriggerCompletion(CompletionTriggerKind.Character, newText);
+			} else if (completionShowing) {
+				completionProviderManager.TriggerCompletion(CompletionTriggerKind.Retrigger, null);
+			} else if (newText.Length == 1 && (char.IsLetterOrDigit(newText[0]) || newText[0] == '_')) {
+				completionProviderManager.TriggerCompletion(CompletionTriggerKind.Invoked, null);
 			}
-
-			completionProviderManager.TriggerCompletion(CompletionTriggerKind.Retrigger, null);
 		}
 
 		private void AcceptInlineSuggestionInternal() {
@@ -3123,10 +3113,7 @@ namespace SweetEditor {
 				return;
 			}
 
-			if (editorCore.HasPreedit()) {
-				DispatchEditorActionResult(editorCore.HandleImeCommandMessage(new ImeCommandMessage {
-					Kind = ImeCommandKind.CANCEL_PREEDIT
-				}));
+			if (inputConnection.CancelComposition()) {
 				e.Handled = true;
 				return;
 			}
@@ -3237,14 +3224,20 @@ namespace SweetEditor {
 		}
 
 		private void OnTextInputMethodClientRequested(object? sender, TextInputMethodClientRequestedEventArgs e) {
-			e.Client = textInputClient;
+			if (disposed || imeSuppressedByTouch || !IsFocused) {
+				return;
+			}
+			e.Client = inputConnection.GetClient();
+			if (e.Client != null) {
+				inputConnection.NotifyStateChanged(textViewChanged: true, force: true);
+			}
 		}
 
 		private void NotifyTextInputStateChanged(bool textViewChanged = false, bool force = false) {
 			if (!force && (imeSuppressedByTouch || !IsFocused)) {
 				return;
 			}
-			textInputClient.NotifyStateChanged(textViewChanged);
+			inputConnection.NotifyStateChanged(textViewChanged, force);
 			lastTextInputNotificationTickMs = Environment.TickCount64;
 		}
 
@@ -3279,6 +3272,11 @@ namespace SweetEditor {
 				return;
 			}
 			imeSuppressedByTouch = suppressed;
+			if (suppressed) {
+				inputConnection.EndSession(false);
+			} else if (IsFocused) {
+				inputConnection.BeginSession(true);
+			}
 			InputMethod.SetIsInputMethodEnabled(this, !suppressed);
 		}
 
@@ -3310,7 +3308,7 @@ namespace SweetEditor {
 			});
 		}
 
-		private AvaloniaRect GetTextInputCursorRectangle() {
+		internal AvaloniaRect GetTextInputCursorRectangle() {
 			CursorRect cursor = editorCore.GetCursorRect();
 			return new AvaloniaRect(cursor.X, cursor.Y, 1, Math.Max(1f, cursor.Height));
 		}
@@ -3873,18 +3871,6 @@ namespace SweetEditor {
 			return editorCore.InsertText(text);
 		}
 
-		private bool ShouldCommitTextInputThroughIme() {
-			return editorCore.IsCompositionEnabled() &&
-			       (platformBehavior.Kind == EditorPlatformKind.Android || editorCore.HasPreedit());
-		}
-
-		private EditorActionResult CommitImeText(string text) {
-			return editorCore.HandleImeCommandMessage(new ImeCommandMessage {
-				Kind = ImeCommandKind.COMMIT_TEXT,
-				Text = text,
-			});
-		}
-
 		private bool TryInsertAutoClosingPair(string text, out EditorActionResult? result) {
 			result = null;
 			if (text.Length != 1) {
@@ -3964,126 +3950,7 @@ namespace SweetEditor {
 			return true;
 		}
 
-		private string SafeGetTextInputSurroundingText() {
-			try {
-				return GetTextInputSurroundingText();
-			} catch {
-				return string.Empty;
-			}
-		}
-
-		private TextSelection SafeGetTextInputSelection() {
-			try {
-				return GetTextInputSelection();
-			} catch {
-				return new TextSelection(0, 0);
-			}
-		}
-
-		private void SafeApplyTextInputSelection(TextSelection selection) {
-			try {
-				ApplyTextInputSelection(selection);
-			} catch {
-			}
-		}
-
-		private void SafeApplyPreeditText(string? preeditText, int? cursorPos) {
-			try {
-				ApplyPreeditText(preeditText, cursorPos);
-			} catch {
-			}
-		}
-
-		private string GetTextInputSurroundingText() {
-			if (disposed) {
-				return string.Empty;
-			}
-
-			Document? document = editorCore.GetDocument();
-			if (document == null) {
-				return string.Empty;
-			}
-
-			TextPosition cursor = editorCore.GetCursorPosition();
-			int lineCount = document.GetLineCount();
-			if (cursor.Line < 0 || cursor.Line >= lineCount) {
-				return string.Empty;
-			}
-
-			return document.GetLineText(cursor.Line) ?? string.Empty;
-		}
-
-		private TextSelection GetTextInputSelection() {
-			string surroundingText = GetTextInputSurroundingText();
-			int max = surroundingText.Length;
-			TextPosition cursor = editorCore.GetCursorPosition();
-			var selection = editorCore.GetSelection();
-
-			if (!selection.hasSelection ||
-			    selection.range.Start.Line != cursor.Line ||
-			    selection.range.End.Line != cursor.Line) {
-				int caret = Math.Clamp(cursor.Column, 0, max);
-				return new TextSelection(caret, caret);
-			}
-
-			int start = Math.Clamp(Math.Min(selection.range.Start.Column, selection.range.End.Column), 0, max);
-			int end = Math.Clamp(Math.Max(selection.range.Start.Column, selection.range.End.Column), 0, max);
-			return new TextSelection(start, end);
-		}
-
-		private void ApplyTextInputSelection(TextSelection selection) {
-			if (disposed) {
-				return;
-			}
-
-			Document? document = editorCore.GetDocument();
-			if (document == null) {
-				return;
-			}
-
-			TextPosition cursor = editorCore.GetCursorPosition();
-			int lineCount = document.GetLineCount();
-			if (cursor.Line < 0 || cursor.Line >= lineCount) {
-				return;
-			}
-
-			string lineText = document.GetLineText(cursor.Line) ?? string.Empty;
-			int max = lineText.Length;
-			int start = Math.Clamp(selection.Start, 0, max);
-			int end = Math.Clamp(selection.End, 0, max);
-			if (start == end && !editorCore.GetSelection().hasSelection) {
-				return;
-			}
-			SetSelection(cursor.Line, start, cursor.Line, end);
-		}
-
-		private void ApplyPreeditText(string? preeditText, int? cursorPos) {
-			if (disposed || !editorCore.IsCompositionEnabled()) {
-				return;
-			}
-
-			string text = preeditText ?? string.Empty;
-			if (string.IsNullOrEmpty(text)) {
-				if (editorCore.HasPreedit()) {
-					DispatchEditorActionResult(editorCore.HandleImeCommandMessage(new ImeCommandMessage {
-						Kind = ImeCommandKind.CANCEL_PREEDIT
-					}));
-				}
-				return;
-			}
-
-			ImeCommandMessage message = new ImeCommandMessage {
-				Kind = ImeCommandKind.SET_PREEDIT_TEXT,
-				Text = text
-			};
-			if (cursorPos.HasValue) {
-				int safeCursor = Math.Clamp(cursorPos.Value, 0, text.Length);
-				message.Selection = new ImeOffsetRange { Start = safeCursor, End = safeCursor };
-			}
-			DispatchEditorActionResult(editorCore.HandleImeCommandMessage(message));
-		}
-
-		private void ExecuteTextInputContextMenuAction(ContextMenuAction action) {
+		internal void ExecuteTextInputContextMenuAction(ContextMenuAction action) {
 			switch (action) {
 				case ContextMenuAction.Copy:
 					CopyToClipboard();
@@ -4116,49 +3983,5 @@ namespace SweetEditor {
 			}
 		}
 
-		private sealed class EditorTextInputClient : TextInputMethodClient {
-			private readonly SweetEditorControl owner;
-
-			public EditorTextInputClient(SweetEditorControl owner) {
-				this.owner = owner;
-			}
-
-			public override global::Avalonia.Visual TextViewVisual => owner;
-
-			public override bool SupportsPreedit => owner.editorCore.IsCompositionEnabled();
-
-			public override bool SupportsSurroundingText => owner.editorCore.IsCompositionEnabled();
-
-			public override string SurroundingText => owner.SafeGetTextInputSurroundingText();
-
-			public override AvaloniaRect CursorRectangle => owner.GetTextInputCursorRectangle();
-
-			public override TextSelection Selection {
-				get => owner.SafeGetTextInputSelection();
-				set => owner.SafeApplyTextInputSelection(value);
-			}
-
-			public override void SetPreeditText(string? preeditText) {
-				SetPreeditText(preeditText, null);
-			}
-
-			public override void SetPreeditText(string? preeditText, int? cursorPos) {
-				owner.SafeApplyPreeditText(preeditText, cursorPos);
-			}
-
-			public override void ExecuteContextMenuAction(ContextMenuAction action) {
-				owner.ExecuteTextInputContextMenuAction(action);
-			}
-
-			public void NotifyStateChanged(bool textViewChanged) {
-				if (textViewChanged) {
-					RaiseTextViewVisualChanged();
-				}
-
-				RaiseCursorRectangleChanged();
-				RaiseSelectionChanged();
-				RaiseSurroundingTextChanged();
-			}
-		}
 	}
 }
