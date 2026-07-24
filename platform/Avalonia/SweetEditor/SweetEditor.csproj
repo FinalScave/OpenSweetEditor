@@ -8,6 +8,30 @@
     <GenerateDocumentationFile>true</GenerateDocumentationFile>
     <NoWarn>$(NoWarn);CS1591</NoWarn>
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+    <PackageId>SweetEditor.Avalonia</PackageId>
+    <Title>SweetEditor for Avalonia</Title>
+    <Authors>Scave</Authors>
+    <Company>Mobile-IPE</Company>
+    <Product>SweetEditor</Product>
+    <Version>1.0.0-rc1</Version>
+    <Description>Cross-platform code editor control for Avalonia, powered by SweetEditor C++.</Description>
+    <PackageProjectUrl>https://github.com/FinalScave/SweetEditor</PackageProjectUrl>
+    <RepositoryUrl>https://github.com/FinalScave/SweetEditor</RepositoryUrl>
+    <RepositoryType>git</RepositoryType>
+    <PackageLicenseExpression>MIT</PackageLicenseExpression>
+    <PackageTags>editor;code-editor;avalonia;syntax-highlighting;cpp;ide-editor</PackageTags>
+    <PackageReadmeFile>README.md</PackageReadmeFile>
+    <RepoRoot>$(MSBuildThisFileDirectory)..\..\..\</RepoRoot>
+    <SweetEditorNativeWinX64>$(RepoRoot)prebuilt\windows\x64\sweeteditor.dll</SweetEditorNativeWinX64>
+    <SweetEditorNativeLinuxX64>$(RepoRoot)prebuilt\linux\x86_64\libsweeteditor.so</SweetEditorNativeLinuxX64>
+    <SweetEditorNativeLinuxArm64>$(RepoRoot)prebuilt\linux\aarch64\libsweeteditor.so</SweetEditorNativeLinuxArm64>
+    <SweetEditorNativeOsxX64>$(RepoRoot)prebuilt\macos\x86_64\libsweeteditor.dylib</SweetEditorNativeOsxX64>
+    <SweetEditorNativeOsxArm64>$(RepoRoot)prebuilt\macos\arm64\libsweeteditor.dylib</SweetEditorNativeOsxArm64>
+    <SweetEditorNativeAndroidArm64>$(RepoRoot)prebuilt\android\arm64-v8a\libsweeteditor.so</SweetEditorNativeAndroidArm64>
+    <SweetEditorNativeAndroidX64>$(RepoRoot)prebuilt\android\x86_64\libsweeteditor.so</SweetEditorNativeAndroidX64>
+    <SweetEditorNativeIosXcframeworkZip>$(RepoRoot)prebuilt\ios\SweetEditorCoreIOS.xcframework.zip</SweetEditorNativeIosXcframeworkZip>
+    <SweetEditorPackNativeRoot>$(BaseIntermediateOutputPath)$(Configuration)\pack-native\</SweetEditorPackNativeRoot>
+    <SweetEditorPackIosXcframework>$(SweetEditorPackNativeRoot)ios\SweetEditorCoreIOS.xcframework\</SweetEditorPackIosXcframework>
   </PropertyGroup>
 
   <PropertyGroup Condition="'$(Configuration)' == 'Debug'">
@@ -20,22 +44,55 @@
   </ItemGroup>
 
   <ItemGroup>
-    <None Include="..\..\..\prebuilt\windows\x64\sweeteditor.dll"
-          Condition="Exists('..\..\..\prebuilt\windows\x64\sweeteditor.dll') AND ('$(RuntimeIdentifier)' == '' OR $([System.String]::Copy('$(RuntimeIdentifier)').StartsWith('win')))"
-          CopyToOutputDirectory="PreserveNewest"
-          CopyToPublishDirectory="PreserveNewest" />
-    <None Include="..\..\..\prebuilt\linux\x86_64\libsweeteditor.so"
-          Condition="Exists('..\..\..\prebuilt\linux\x86_64\libsweeteditor.so') AND ('$(RuntimeIdentifier)' == '' OR $([System.String]::Copy('$(RuntimeIdentifier)').StartsWith('linux')))"
-          CopyToOutputDirectory="PreserveNewest"
-          CopyToPublishDirectory="PreserveNewest" />
-    <None Include="..\..\..\prebuilt\macos\arm64\libsweeteditor.dylib"
-          Condition="Exists('..\..\..\prebuilt\macos\arm64\libsweeteditor.dylib') AND ('$(RuntimeIdentifier)' == '' OR '$(RuntimeIdentifier)' == 'osx-arm64')"
-          CopyToOutputDirectory="PreserveNewest"
-          CopyToPublishDirectory="PreserveNewest" />
-    <None Include="..\..\..\prebuilt\macos\x86_64\libsweeteditor.dylib"
-          Condition="Exists('..\..\..\prebuilt\macos\x86_64\libsweeteditor.dylib') AND ('$(RuntimeIdentifier)' == 'osx-x64')"
-          CopyToOutputDirectory="PreserveNewest"
-          CopyToPublishDirectory="PreserveNewest" />
+    <None Include="README.md" Pack="true" PackagePath="" />
+    <None Include="buildTransitive\SweetEditor.Avalonia.targets" Pack="true" PackagePath="buildTransitive\" />
+    <None Include="$(SweetEditorNativeWinX64)" Pack="true"
+          PackagePath="runtimes\win-x64\native\sweeteditor.dll" />
+    <None Include="$(SweetEditorNativeLinuxX64)" Pack="true"
+          PackagePath="runtimes\linux-x64\native\libsweeteditor.so" />
+    <None Include="$(SweetEditorNativeLinuxArm64)" Pack="true"
+          PackagePath="runtimes\linux-arm64\native\libsweeteditor.so" />
+    <None Include="$(SweetEditorNativeOsxX64)" Pack="true"
+          PackagePath="runtimes\osx-x64\native\libsweeteditor.dylib" />
+    <None Include="$(SweetEditorNativeOsxArm64)" Pack="true"
+          PackagePath="runtimes\osx-arm64\native\libsweeteditor.dylib" />
+    <None Include="$(SweetEditorNativeAndroidArm64)" Pack="true"
+          PackagePath="runtimes\android-arm64\native\libsweeteditor.so" />
+    <None Include="$(SweetEditorNativeAndroidX64)" Pack="true"
+          PackagePath="runtimes\android-x64\native\libsweeteditor.so" />
   </ItemGroup>
+
+  <Target Name="ValidateSweetEditorNative" BeforeTargets="Pack">
+    <Error Condition="!Exists('$(SweetEditorNativeWinX64)')"
+           Text="Missing native library: $(SweetEditorNativeWinX64)." />
+    <Error Condition="!Exists('$(SweetEditorNativeLinuxX64)')"
+           Text="Missing native library: $(SweetEditorNativeLinuxX64)." />
+    <Error Condition="!Exists('$(SweetEditorNativeLinuxArm64)')"
+           Text="Missing native library: $(SweetEditorNativeLinuxArm64)." />
+    <Error Condition="!Exists('$(SweetEditorNativeOsxX64)')"
+           Text="Missing native library: $(SweetEditorNativeOsxX64)." />
+    <Error Condition="!Exists('$(SweetEditorNativeOsxArm64)')"
+           Text="Missing native library: $(SweetEditorNativeOsxArm64)." />
+    <Error Condition="!Exists('$(SweetEditorNativeAndroidArm64)')"
+           Text="Missing native library: $(SweetEditorNativeAndroidArm64)." />
+    <Error Condition="!Exists('$(SweetEditorNativeAndroidX64)')"
+           Text="Missing native library: $(SweetEditorNativeAndroidX64)." />
+    <Error Condition="!Exists('$(SweetEditorNativeIosXcframeworkZip)')"
+           Text="Missing iOS XCFramework archive: $(SweetEditorNativeIosXcframeworkZip)." />
+  </Target>
+
+  <Target Name="PrepareSweetEditorIosXcframeworkForPack" BeforeTargets="_GetPackageFiles">
+    <RemoveDir Directories="$(SweetEditorPackNativeRoot)ios" />
+    <MakeDir Directories="$(SweetEditorPackNativeRoot)ios" />
+    <Unzip SourceFiles="$(SweetEditorNativeIosXcframeworkZip)"
+           DestinationFolder="$(SweetEditorPackNativeRoot)ios" />
+    <Error Condition="!Exists('$(SweetEditorPackIosXcframework)Info.plist')"
+           Text="Failed to extract iOS XCFramework from $(SweetEditorNativeIosXcframeworkZip)." />
+    <ItemGroup>
+      <None Include="$(SweetEditorPackIosXcframework)**\*"
+            Pack="true"
+            PackagePath="native\ios\SweetEditorCoreIOS.xcframework" />
+    </ItemGroup>
+  </Target>
 
 </Project>

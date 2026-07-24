@@ -3,7 +3,7 @@ param(
     [ValidateSet("menu", "status", "package", "publish", "resume")]
     [string]$Action = "menu",
 
-    [ValidateSet("native", "android", "swing", "winforms", "flutter", "ohos")]
+    [ValidateSet("native", "android", "swing", "winforms", "avalonia", "flutter", "ohos")]
     [string[]]$Targets = @(),
 
     [string[]]$VersionOverride = @()
@@ -16,7 +16,7 @@ $ScriptDir = Split-Path -Parent $MyInvocation.MyCommand.Path
 $ProjectDir = [System.IO.Path]::GetFullPath((Join-Path $ScriptDir ".."))
 $ReleaseDir = Join-Path $ProjectDir "build\release"
 $StatePath = Join-Path $ReleaseDir "release-state.json"
-$TargetOrder = @("native", "android", "swing", "winforms", "flutter", "ohos")
+$TargetOrder = @("native", "android", "swing", "winforms", "avalonia", "flutter", "ohos")
 $VersionOverrides = @{}
 
 foreach ($item in $VersionOverride) {
@@ -125,6 +125,7 @@ function Get-TargetDefinitions {
         [pscustomobject]@{ Key = "android"; Label = "Android"; Registry = "Maven Central"; PackageId = "com.qiplat:sweeteditor"; Version = Get-GradleVersion (Join-Path $ProjectDir "platform\Android\sweeteditor\build.gradle"); Path = Join-Path $ProjectDir "platform\Android"; Repository = $null },
         [pscustomobject]@{ Key = "swing"; Label = "Swing"; Registry = "Maven Central"; PackageId = "com.qiplat:sweeteditor-swing"; Version = Get-GradleVersion (Join-Path $ProjectDir "platform\Swing\sweeteditor\build.gradle"); Path = Join-Path $ProjectDir "platform\Swing"; Repository = $null },
         [pscustomobject]@{ Key = "winforms"; Label = "WinForms / NuGet"; Registry = "NuGet.org"; PackageId = "SweetEditor"; Version = Get-NuGetVersion (Join-Path $ProjectDir "platform\WinForms\SweetEditor\SweetEditor.csproj"); Path = Join-Path $ProjectDir "platform\WinForms\SweetEditor"; Repository = $null },
+        [pscustomobject]@{ Key = "avalonia"; Label = "Avalonia / NuGet"; Registry = "NuGet.org"; PackageId = "SweetEditor.Avalonia"; Version = Get-NuGetVersion (Join-Path $ProjectDir "platform\Avalonia\SweetEditor\SweetEditor.csproj"); Path = Join-Path $ProjectDir "platform\Avalonia\SweetEditor"; Repository = $null },
         [pscustomobject]@{ Key = "flutter"; Label = "Flutter / Dart"; Registry = "pub.dev"; PackageId = "sweeteditor"; Version = Get-PubVersion (Join-Path $ProjectDir "platform\Flutter\sweeteditor\pubspec.yaml"); Path = Join-Path $ProjectDir "platform\Flutter\sweeteditor"; Repository = $null },
         [pscustomobject]@{ Key = "ohos"; Label = "OHOS"; Registry = "OHPM"; PackageId = "@qiplat/sweeteditor"; Version = Get-Json5Version (Join-Path $ProjectDir "platform\OHOS\sweeteditor\oh-package.json5"); Path = Join-Path $ProjectDir "platform\OHOS"; Repository = $null }
     )
@@ -162,6 +163,13 @@ function Get-VersionEditSpecs {
             return @(
                 [pscustomobject]@{ Path = Join-Path $ProjectDir "platform\WinForms\SweetEditor\SweetEditor.csproj"; Pattern = '(?m)^(\s*<Version>)([^<]+)(</Version>\s*)$' },
                 [pscustomobject]@{ Path = Join-Path $ProjectDir "platform\WinForms\SweetEditor\README.md"; Pattern = '(?m)^(\s*dotnet add package SweetEditor --version\s+)([^\s]+)(\s*)$' }
+            )
+        }
+        "avalonia" {
+            return @(
+                [pscustomobject]@{ Path = Join-Path $ProjectDir "platform\Avalonia\SweetEditor\SweetEditor.csproj"; Pattern = '(?m)^(\s*<Version>)([^<]+)(</Version>\s*)$' },
+                [pscustomobject]@{ Path = Join-Path $ProjectDir "platform\Avalonia\SweetEditor\README.md"; Pattern = '(?m)^(\s*dotnet add package SweetEditor\.Avalonia --version\s+)([^\s]+)(\s*)$' },
+                [pscustomobject]@{ Path = Join-Path $ProjectDir "platform\Avalonia\SweetEditor\README.md"; Pattern = '(?m)^(\s*<PackageReference Include="SweetEditor\.Avalonia" Version=")([^"]+)(".*)$' }
             )
         }
         "flutter" {
@@ -478,6 +486,7 @@ function Test-NativeAbi {
             switch ($targetKey) {
                 "swing" { @("linux", "macos", "windows") | ForEach-Object { $platforms.Add($_) | Out-Null } }
                 "winforms" { $platforms.Add("windows") | Out-Null }
+                "avalonia" { @("android", "ios", "linux", "macos", "windows") | ForEach-Object { $platforms.Add($_) | Out-Null } }
                 "flutter" { @("android", "ios", "linux", "macos", "windows") | ForEach-Object { $platforms.Add($_) | Out-Null } }
             }
         }
@@ -519,17 +528,17 @@ function Test-NativeAbi {
 }
 
 function Test-NuGetPackageContents {
-    param([Parameter(Mandatory = $true)][string]$PackagePath)
+    param(
+        [Parameter(Mandatory = $true)][string]$PackagePath,
+        [Parameter(Mandatory = $true)][string[]]$RequiredEntries
+    )
 
     Add-Type -AssemblyName System.IO.Compression
     Add-Type -AssemblyName System.IO.Compression.FileSystem
     $archive = [System.IO.Compression.ZipFile]::OpenRead($PackagePath)
     try {
         $entries = @($archive.Entries.FullName | ForEach-Object { $_.Replace('\', '/') })
-        $requiredEntries = @(
-            "runtimes/win-x64/native/sweeteditor.dll"
-        )
-        $missing = @($requiredEntries | Where-Object { $_ -notin $entries })
+        $missing = @($RequiredEntries | Where-Object { $_ -notin $entries })
         if ($missing.Count -gt 0) {
             throw "NuGet package is missing required entries: $($missing -join ', ')"
         }
@@ -561,7 +570,28 @@ function Invoke-PackageTarget {
             $outputDir = Join-Path $ReleaseDir "winforms"
             Ensure-Directory $outputDir
             Invoke-External -FilePath "dotnet" -Arguments @("pack", (Join-Path $Target.Path "SweetEditor.csproj"), "-c", "Release", "-o", $outputDir, "/p:PackageVersion=$Version") -WorkingDirectory $ProjectDir
-            Test-NuGetPackageContents -PackagePath (Join-Path $outputDir "SweetEditor.$Version.nupkg")
+            Test-NuGetPackageContents -PackagePath (Join-Path $outputDir "SweetEditor.$Version.nupkg") -RequiredEntries @(
+                "runtimes/win-x64/native/sweeteditor.dll"
+            )
+        }
+        "avalonia" {
+            $outputDir = Join-Path $ReleaseDir "avalonia"
+            Ensure-Directory $outputDir
+            Invoke-External -FilePath "dotnet" -Arguments @("pack", (Join-Path $Target.Path "SweetEditor.csproj"), "-c", "Release", "-o", $outputDir, "/p:PackageVersion=$Version") -WorkingDirectory $ProjectDir
+            Test-NuGetPackageContents -PackagePath (Join-Path $outputDir "SweetEditor.Avalonia.$Version.nupkg") -RequiredEntries @(
+                "lib/net10.0/SweetEditor.Avalonia.dll",
+                "buildTransitive/SweetEditor.Avalonia.targets",
+                "runtimes/win-x64/native/sweeteditor.dll",
+                "runtimes/linux-x64/native/libsweeteditor.so",
+                "runtimes/linux-arm64/native/libsweeteditor.so",
+                "runtimes/osx-x64/native/libsweeteditor.dylib",
+                "runtimes/osx-arm64/native/libsweeteditor.dylib",
+                "runtimes/android-arm64/native/libsweeteditor.so",
+                "runtimes/android-x64/native/libsweeteditor.so",
+                "native/ios/SweetEditorCoreIOS.xcframework/Info.plist",
+                "native/ios/SweetEditorCoreIOS.xcframework/ios-arm64/SweetEditorCoreIOS.framework/SweetEditorCoreIOS",
+                "native/ios/SweetEditorCoreIOS.xcframework/ios-arm64-simulator/SweetEditorCoreIOS.framework/SweetEditorCoreIOS"
+            )
         }
         "flutter" {
             Invoke-External -FilePath "dart" -Arguments @("tool/sync_native_binaries.dart") -WorkingDirectory $Target.Path
@@ -613,7 +643,7 @@ function Assert-PublishRequirements {
     foreach ($item in $Items) {
         switch ($item.Target.Key) {
             "native" { Assert-GitHubAuthentication }
-            "winforms" {
+            { $_ -in @("winforms", "avalonia") } {
                 if (-not $env:NUGET_API_KEY) {
                     throw "NUGET_API_KEY is required to publish NuGet packages."
                 }
@@ -654,6 +684,13 @@ function Invoke-PublishTarget {
         }
         "winforms" {
             $packagePath = Join-Path $ReleaseDir "winforms\SweetEditor.$Version.nupkg"
+            if (-not (Test-Path -LiteralPath $packagePath)) {
+                throw "NuGet package was not found: $packagePath"
+            }
+            Invoke-External -FilePath "dotnet" -Arguments @("nuget", "push", $packagePath, "--api-key", $env:NUGET_API_KEY, "--source", "https://api.nuget.org/v3/index.json", "--skip-duplicate") -WorkingDirectory $ProjectDir -HideArguments
+        }
+        "avalonia" {
+            $packagePath = Join-Path $ReleaseDir "avalonia\SweetEditor.Avalonia.$Version.nupkg"
             if (-not (Test-Path -LiteralPath $packagePath)) {
                 throw "NuGet package was not found: $packagePath"
             }
@@ -738,7 +775,7 @@ function Show-ReleasePlan {
 function Invoke-PackageItems {
     param([Parameter(Mandatory = $true)][object[]]$Items)
 
-    if ($Items.Target.Key | Where-Object { $_ -in @("native", "swing", "winforms", "flutter") }) {
+    if ($Items.Target.Key | Where-Object { $_ -in @("native", "swing", "winforms", "avalonia", "flutter") }) {
         Test-NativeAbi -TargetKeys @($Items.Target.Key)
     }
 
@@ -794,7 +831,7 @@ function Invoke-PublishItems {
             Set-ReleaseStateEntry -State $state -Target $item.Target.Key -Status "Skipped" -Message "Version already exists."
         }
     }
-    if ($pending.Target.Key | Where-Object { $_ -in @("native", "swing", "winforms", "flutter") }) {
+    if ($pending.Target.Key | Where-Object { $_ -in @("native", "swing", "winforms", "avalonia", "flutter") }) {
         Test-NativeAbi -TargetKeys @($pending.Target.Key)
     }
 
@@ -925,7 +962,7 @@ function Show-MainMenu {
                     }
                 }
                 "2" {
-                    $editableTargets = @("android", "swing", "winforms", "flutter", "ohos")
+                    $editableTargets = @("android", "swing", "winforms", "avalonia", "flutter", "ohos")
                     $selected = Read-SingleTargetSelection -AllowedTargets $editableTargets -Prompt "Select the target to update"
                     if ($selected) {
                         $target = Get-TargetDefinition $selected

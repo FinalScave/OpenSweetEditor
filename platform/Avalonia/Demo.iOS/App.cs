@@ -28,9 +28,7 @@ public sealed class App : Application
     public override void OnFrameworkInitializationCompleted()
     {
         if (ApplicationLifetime is ISingleViewApplicationLifetime singleView)
-        {
             singleView.MainView = new DeferredMainViewHost();
-        }
 
         base.OnFrameworkInitializationCompleted();
     }
