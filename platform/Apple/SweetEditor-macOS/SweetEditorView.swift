@@ -705,7 +705,7 @@ public class SweetEditorView: NSView, NSTextInputClient, CompletionEditorAccesso
             }
         }
         let changes = textChanges(from: result)
-        if result.content_changed || !changes.isEmpty {
+        if !changes.isEmpty {
             decorationProviderManager?.onTextChanged(changes: changes)
             onTextChanged?(TextChangedEvent(
                 changes: changes,
@@ -1491,9 +1491,7 @@ public class SweetEditorView: NSView, NSTextInputClient, CompletionEditorAccesso
             }
         }
 
-        let editResult = textInputConnection.isSessionActive
-            ? textInputConnection.commitText(text, replacementRange: replacementRange)
-            : editorCore.insertText(text)
+        let editResult = textInputConnection.commitText(text, replacementRange: replacementRange)
         dispatchEditorActionResult(editResult)
     }
 
@@ -1732,8 +1730,8 @@ public class SweetEditorView: NSView, NSTextInputClient, CompletionEditorAccesso
     }
 
     private func textChanges(from result: EditorActionResult?) -> [TextChange] {
-        guard let result, result.content_changed || !result.changes.isEmpty else { return [] }
-        return textChanges(from: result.changes)
+        guard let result, !result.text_changes.isEmpty else { return [] }
+        return textChanges(from: result.text_changes)
     }
 
     private func textChanges(from rawChanges: [TextChange]) -> [TextChange] {

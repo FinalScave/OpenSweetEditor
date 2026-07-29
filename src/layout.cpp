@@ -458,7 +458,7 @@ namespace NS_SWEETEDITOR {
       }
 
       // Gutter icon hit-test
-      const Vector<GutterIcon> gutter_icons = m_decoration_manager_->getEditingLineGutterIcons(hit_line);
+      const Vector<GutterIcon>& gutter_icons = m_decoration_manager_->getLineGutterIcons(hit_line);
       if (!gutter_icons.empty() && icon_size > 0 && screen_point.y >= item_top
           && screen_point.y < item_top + icon_size) {
         if (m_layout_metrics_.max_gutter_icons == 0) {
@@ -529,7 +529,7 @@ namespace NS_SWEETEDITOR {
       } else if (run.type == VisualRunType::LINK) {
         if (click_x >= run_x && click_x < run_right) {
           const size_t source_line = runSourceLine(vl, run);
-          LineLayoutDecorations decorations = m_decoration_manager_->getEditingLineLayoutDecorations(source_line);
+          LineLayoutDecorations decorations = m_decoration_manager_->getLineLayoutDecorations(source_line);
           for (const LinkSpan& link : decorations.links) {
             if (run.column >= link.column && run.column < static_cast<size_t>(link.column) + link.length) {
               return {HitTargetType::LINK, source_line, link.column, 0};
@@ -1102,7 +1102,7 @@ namespace NS_SWEETEDITOR {
         if (prev.height >= 0) {
           h = prev.height;
         } else {
-          bool has_codelens = !m_decoration_manager_->getEditingLineCodeLens(i - 1).empty();
+          bool has_codelens = !m_decoration_manager_->getLineCodeLens(i - 1).empty();
           h = has_codelens ? default_height * 2 : default_height;
         }
         if (h == run_height && run_count > 0) {
@@ -1202,14 +1202,14 @@ namespace NS_SWEETEDITOR {
     float line_height = getLineHeight();
     const float base_start_y = start_y; // Save original start_y for phantom continuation y calculation
 
-    const Vector<CodeLensItem> line_codelens_items = m_decoration_manager_->getEditingLineCodeLens(line_index);
+    const Vector<CodeLensItem>& line_codelens_items = m_decoration_manager_->getLineCodeLens(line_index);
     const bool has_codelens = !line_codelens_items.empty();
     if (has_codelens) {
       start_y += line_height;
     }
 
     // Build runs for original line (includes first phantom line segment)
-    LineLayoutDecorations decorations = m_decoration_manager_->getEditingLineLayoutDecorations(line_index);
+    LineLayoutDecorations decorations = m_decoration_manager_->getLineLayoutDecorations(line_index);
     Vector<VisualRun> all_runs;
     buildLineRuns(line_index, line_text, decorations, all_runs);
 
@@ -1747,7 +1747,7 @@ namespace NS_SWEETEDITOR {
       if (run.type == VisualRunType::LINK) {
         auto it = line_decoration_cache.find(source_line);
         if (it == line_decoration_cache.end()) {
-          LineLayoutDecorations decorations = m_decoration_manager_->getEditingLineLayoutDecorations(source_line);
+          LineLayoutDecorations decorations = m_decoration_manager_->getLineLayoutDecorations(source_line);
           it = line_decoration_cache.emplace(source_line, std::move(decorations)).first;
         }
         for (const LinkSpan& link : it->second.links) {
@@ -2266,7 +2266,7 @@ namespace NS_SWEETEDITOR {
     const U16String& end_text = m_document_->getLineU16TextRef(end_line_idx);
 
     // Use buildLineRuns to get complete runs for the tail line (with highlight styles)
-    LineLayoutDecorations end_decorations = m_decoration_manager_->getEditingLineLayoutDecorations(end_line_idx);
+    LineLayoutDecorations end_decorations = m_decoration_manager_->getLineLayoutDecorations(end_line_idx);
     Vector<VisualRun> end_runs;
     buildLineRuns(end_line_idx, end_text, end_decorations, end_runs);
 
@@ -2360,7 +2360,7 @@ namespace NS_SWEETEDITOR {
 
   void TextLayout::buildGutterIconRenderItems(size_t logical_line, float line_top_screen, float gutter_offset,
                                               Vector<GutterIconRenderItem>& out_items) const {
-    const Vector<GutterIcon> gutter_icons = m_decoration_manager_->getEditingLineGutterIcons(logical_line);
+    const Vector<GutterIcon>& gutter_icons = m_decoration_manager_->getLineGutterIcons(logical_line);
     if (gutter_icons.empty()) return;
 
     const float line_height = getLineHeight();

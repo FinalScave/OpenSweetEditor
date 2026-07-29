@@ -19,7 +19,7 @@ TEST_CASE("Sequential single-char insertions are merged into one undo step") {
   REQUIRE(editor.canUndo());
 
   EditorActionResult undo_result = editor.undo();
-  REQUIRE(undo_result.content_changed);
+  REQUIRE_FALSE(undo_result.text_changes.empty());
   CHECK(undo_result.source == EditorActionSource::PROGRAMMATIC);
   CHECK(undo_result.text_change_kind == TextChangeKind::UNDO);
   CHECK(document->getU8Text().empty());
@@ -27,7 +27,7 @@ TEST_CASE("Sequential single-char insertions are merged into one undo step") {
   CHECK(editor.canRedo());
 
   EditorActionResult redo_result = editor.redo();
-  REQUIRE(redo_result.content_changed);
+  REQUIRE_FALSE(redo_result.text_changes.empty());
   CHECK(redo_result.source == EditorActionSource::PROGRAMMATIC);
   CHECK(redo_result.text_change_kind == TextChangeKind::REDO);
   CHECK(document->getU8Text() == "abc");
@@ -44,19 +44,19 @@ TEST_CASE("Move line down is undoable as one atomic operation") {
   editor.setCursorPosition({0, 0});
 
   EditorActionResult move_result = editor.moveLineDown();
-  REQUIRE(move_result.content_changed);
+  REQUIRE_FALSE(move_result.text_changes.empty());
   CHECK(move_result.source == EditorActionSource::PROGRAMMATIC);
   CHECK(move_result.text_change_kind == TextChangeKind::MOVE);
   CHECK(document->getU8Text() == "b\na\nc");
   CHECK(editor.getCursorPosition() == (TextPosition{1, 0}));
 
   EditorActionResult undo_result = editor.undo();
-  REQUIRE(undo_result.content_changed);
+  REQUIRE_FALSE(undo_result.text_changes.empty());
   CHECK(document->getU8Text() == "a\nb\nc");
   CHECK(editor.getCursorPosition() == (TextPosition{0, 0}));
 
   EditorActionResult redo_result = editor.redo();
-  REQUIRE(redo_result.content_changed);
+  REQUIRE_FALSE(redo_result.text_changes.empty());
   CHECK(document->getU8Text() == "b\na\nc");
   CHECK(editor.getCursorPosition() == (TextPosition{1, 0}));
 }
@@ -70,15 +70,15 @@ TEST_CASE("Move line down preserves directional selection through undo and redo"
   editor.setViewport({800, 600});
   editor.setSelection({{1, 1}, {0, 0}});
 
-  REQUIRE(editor.moveLineDown().content_changed);
+  REQUIRE_FALSE(editor.moveLineDown().text_changes.empty());
   CHECK(document->getU8Text() == "c\na\nb");
   CHECK(editor.getSelection() == (TextRange{{2, 1}, {1, 0}}));
 
-  REQUIRE(editor.undo().content_changed);
+  REQUIRE_FALSE(editor.undo().text_changes.empty());
   CHECK(document->getU8Text() == "a\nb\nc");
   CHECK(editor.getSelection() == (TextRange{{1, 1}, {0, 0}}));
 
-  REQUIRE(editor.redo().content_changed);
+  REQUIRE_FALSE(editor.redo().text_changes.empty());
   CHECK(document->getU8Text() == "c\na\nb");
   CHECK(editor.getSelection() == (TextRange{{2, 1}, {1, 0}}));
 }
@@ -92,16 +92,16 @@ TEST_CASE("Sequential forward deletions are merged into one undo step") {
   editor.setViewport({800, 600});
   editor.setCursorPosition({0, 0});
 
-  REQUIRE(editor.deleteForward().content_changed);
-  REQUIRE(editor.deleteForward().content_changed);
-  REQUIRE(editor.deleteForward().content_changed);
+  REQUIRE_FALSE(editor.deleteForward().text_changes.empty());
+  REQUIRE_FALSE(editor.deleteForward().text_changes.empty());
+  REQUIRE_FALSE(editor.deleteForward().text_changes.empty());
   CHECK(document->getU8Text().empty());
 
-  REQUIRE(editor.undo().content_changed);
+  REQUIRE_FALSE(editor.undo().text_changes.empty());
   CHECK(document->getU8Text() == "abc");
   CHECK_FALSE(editor.canUndo());
 
-  REQUIRE(editor.redo().content_changed);
+  REQUIRE_FALSE(editor.redo().text_changes.empty());
   CHECK(document->getU8Text().empty());
 }
 
@@ -114,16 +114,16 @@ TEST_CASE("Sequential backspaces are merged into one undo step") {
   editor.setViewport({800, 600});
   editor.setCursorPosition({0, 3});
 
-  REQUIRE(editor.backspace().content_changed);
-  REQUIRE(editor.backspace().content_changed);
-  REQUIRE(editor.backspace().content_changed);
+  REQUIRE_FALSE(editor.backspace().text_changes.empty());
+  REQUIRE_FALSE(editor.backspace().text_changes.empty());
+  REQUIRE_FALSE(editor.backspace().text_changes.empty());
   CHECK(document->getU8Text().empty());
 
-  REQUIRE(editor.undo().content_changed);
+  REQUIRE_FALSE(editor.undo().text_changes.empty());
   CHECK(document->getU8Text() == "abc");
   CHECK_FALSE(editor.canUndo());
 
-  REQUIRE(editor.redo().content_changed);
+  REQUIRE_FALSE(editor.redo().text_changes.empty());
   CHECK(document->getU8Text().empty());
 }
 
@@ -139,7 +139,7 @@ TEST_CASE("New edit clears redo stack after undo") {
   editor.insertText("d");
   REQUIRE(document->getU8Text() == "abcd");
 
-  REQUIRE(editor.undo().content_changed);
+  REQUIRE_FALSE(editor.undo().text_changes.empty());
   CHECK(document->getU8Text() == "abc");
   REQUIRE(editor.canRedo());
 
@@ -157,12 +157,12 @@ TEST_CASE("Undo and redo restore directional selection") {
   editor.setViewport({800, 600});
   editor.setSelection({{0, 8}, {0, 2}});
 
-  REQUIRE(editor.insertText("X").content_changed);
-  REQUIRE(editor.undo().content_changed);
+  REQUIRE_FALSE(editor.insertText("X").text_changes.empty());
+  REQUIRE_FALSE(editor.undo().text_changes.empty());
   CHECK(editor.getSelection() == (TextRange{{0, 8}, {0, 2}}));
   CHECK(editor.getCursorPosition() == (TextPosition{0, 2}));
 
-  REQUIRE(editor.redo().content_changed);
+  REQUIRE_FALSE(editor.redo().text_changes.empty());
   CHECK_FALSE(editor.hasSelection());
   CHECK(editor.getCursorPosition() == (TextPosition{0, 3}));
 }
@@ -181,12 +181,12 @@ TEST_CASE("Undo and redo restore caret affinity") {
   editor.moveCursorRight();
   REQUIRE(editor.getCaretAffinity() == CaretAffinity::UPSTREAM);
 
-  REQUIRE(editor.insertText("X").content_changed);
-  REQUIRE(editor.undo().content_changed);
+  REQUIRE_FALSE(editor.insertText("X").text_changes.empty());
+  REQUIRE_FALSE(editor.undo().text_changes.empty());
   CHECK(editor.getCursorPosition() == (TextPosition{0, 6}));
   CHECK(editor.getCaretAffinity() == CaretAffinity::UPSTREAM);
 
-  REQUIRE(editor.redo().content_changed);
+  REQUIRE_FALSE(editor.redo().text_changes.empty());
   CHECK(editor.getCursorPosition() == (TextPosition{0, 7}));
   CHECK(editor.getCaretAffinity() == CaretAffinity::DOWNSTREAM);
 }

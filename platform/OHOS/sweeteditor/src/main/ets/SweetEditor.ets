@@ -241,7 +241,6 @@ export struct SweetEditor {
   @State private selectionMenuTop: number = 0;
 
   aboutToAppear(): void {
-    this.inputConnection.onAppear();
     try {
       const defaultDisplay = display.getDefaultDisplaySync();
       this.density = defaultDisplay.densityPixels;
@@ -1508,7 +1507,7 @@ export struct SweetEditor {
   }
 
   private dispatchStateEvents(result: EditorActionResult): void {
-    if (result.contentChanged) {
+    if (result.textChanges.length > 0) {
       this.dispatchTextChanged(result);
     }
     this.updateCompletion(result);
@@ -2136,8 +2135,8 @@ export struct SweetEditor {
 
   private dispatchTextChanged(result: EditorActionResult): void {
     const textChanges: TextChange[] = [];
-    if (result.changes && result.changes.length > 0) {
-      for (const change of result.changes) {
+    if (result.textChanges.length > 0) {
+      for (const change of result.textChanges) {
         textChanges.push({ range: change.range, newText: change.newText });
       }
       this.eventBus.emit('textChanged', new TextChangedEvent(textChanges, result.textChangeKind, result.source));
@@ -2172,13 +2171,24 @@ export struct SweetEditor {
       return;
     }
 
-    const contextChanged = result.contentChanged || result.compositionChanged ||
+    const contextChanged = result.textChanges.length > 0 || result.compositionChanged ||
       result.cursorChanged || result.selectionChanged;
     if (!contextChanged) {
       return;
     }
 
     const popupShowing = this.completionPopupController !== null && this.completionPopupController.isShowing();
+    if (result.textChanges.length === 0) {
+      if (popupShowing) {
+        this.completionProviderManager.dismiss();
+      }
+      return;
+    }
+    if (result.textChanges.length !== 1) {
+      this.completionProviderManager.dismiss();
+      return;
+    }
+
     const compositionRange = result.imeState.compositionRange;
     const compositionActive = result.imeState.sessionId !== 0 &&
       compositionRange.startUtf16 >= 0 && compositionRange.endUtf16 >= 0;
@@ -2187,14 +2197,7 @@ export struct SweetEditor {
       return;
     }
 
-    if (!result.contentChanged || result.changes.length === 0) {
-      if (popupShowing) {
-        this.completionProviderManager.dismiss();
-      }
-      return;
-    }
-
-    const newText = result.changes[0].newText;
+    const newText = result.textChanges[0].newText;
     const triggerText = newText.length === 1 ? newText :
       (result.compositionChanged ? this.lastCodePoint(newText) : '');
     if (triggerText.length > 0 && this.completionProviderManager.isTriggerCharacter(triggerText)) {

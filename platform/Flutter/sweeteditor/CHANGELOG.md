@@ -28,7 +28,7 @@
 
 ### Flutter Integration and Packaging
 
-- Integrate Flutter text input, including the delta input model on Android, IME composition, surrounding text, platform text actions, focus, hardware keyboards, clipboard commands, mouse pointers, touch and mouse gestures, drag selection, scrolling, and scaling.
+- Integrate Flutter text input through one session-based delta stream on Android, iOS, macOS, and Windows, including finite editing-buffer synchronization, IME composition, surrounding text, platform text actions, focus, hardware keyboards, clipboard commands, mouse pointers, touch and mouse gestures, drag selection, scrolling, and scaling.
 - Adapt input, gutter, mouse-cursor, selection-handle, scrollbar, font, and selection-menu behavior between mobile and desktop targets.
 - Use Dart FFI over the shared SweetEditor C ABI and expose typed Dart action, render, configuration, decoration, search, IME, and visual models.
 - Select and bundle native libraries through Dart code assets for Windows x64, Linux x64 and arm64, Android `arm64-v8a` and `x86_64`, macOS x64 and arm64, iOS device arm64, and iOS simulator arm64.

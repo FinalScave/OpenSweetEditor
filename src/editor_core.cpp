@@ -7,7 +7,6 @@
 #include <sweeteditor/editor_core.h>
 #include <sweeteditor/utility.h>
 #include "logging.h"
-#include "ime_projection.hpp"
 #include "render_composer.hpp"
 #include "text_boundary.hpp"
 
@@ -113,8 +112,8 @@ namespace NS_SWEETEDITOR {
 
   EditorActionResult EditorCore::loadDocument(const SharedPtr<Document>& document) {
     const ActionSnapshot before = captureActionSnapshot();
+    cancelActiveComposition();
     cancelLinkedEditingInternal();
-    cancelPreedit();
     closeImeSession();
     m_undo_manager_->clear();
     m_interaction_->resetForDocumentLoad();
@@ -137,7 +136,7 @@ namespace NS_SWEETEDITOR {
     m_text_layout_->loadDocument(document);
     syncFoldState();
     m_caret_ = {};
-    setCursorPosition({});
+    setCursorPositionInternal({});
     m_view_state_.scroll_x = 0.0f;
     m_view_state_.scroll_y = 0.0f;
     m_visible_line_range_ = {};
@@ -194,7 +193,7 @@ namespace NS_SWEETEDITOR {
           if (lines[mid].height >= 0) {
             h = lines[mid].height;
           } else {
-            bool has_codelens = !m_decorations_->getEditingLineCodeLens(mid).empty();
+            bool has_codelens = !m_decorations_->getLineCodeLens(mid).empty();
             h = has_codelens ? old_line_height * 2 : old_line_height;
           }
           if (line_y + h <= scroll_y) {
@@ -209,7 +208,7 @@ namespace NS_SWEETEDITOR {
         if (lines[anchor_line].height >= 0) {
           anchor_h = lines[anchor_line].height;
         } else {
-          bool has_codelens = !m_decorations_->getEditingLineCodeLens(anchor_line).empty();
+          bool has_codelens = !m_decorations_->getLineCodeLens(anchor_line).empty();
           anchor_h = has_codelens ? old_line_height * 2 : old_line_height;
         }
         anchor_fraction = (anchor_h > 0) ? (scroll_y - anchor_y) / anchor_h : 0.0f;
@@ -237,7 +236,7 @@ namespace NS_SWEETEDITOR {
           if (line.height >= 0) {
             old_height = line.height;
           } else {
-            bool has_codelens = !m_decorations_->getEditingLineCodeLens(line_index).empty();
+            bool has_codelens = !m_decorations_->getLineCodeLens(line_index).empty();
             old_height = has_codelens ? old_line_height * 2 : old_line_height;
           }
           return std::max(new_line_height, old_height * wrap_scale_ratio);
@@ -606,8 +605,7 @@ namespace NS_SWEETEDITOR {
         before, std::move(interaction_result), EditorActionSource::GESTURE, event.type, gesture_decoration_changed);
     if (resolution.contentChanged()) {
       action.text_change_kind = resolution.change_kind;
-      action.changes = std::move(resolution.changes);
-      action.content_changed = true;
+      action.text_changes = std::move(resolution.changes);
       action.needs_redraw = true;
     }
     return action;
@@ -654,9 +652,8 @@ namespace NS_SWEETEDITOR {
     };
     if (m_document_ == nullptr) return make_result(false);
 
-    if (hasPreedit() && event.key_code == KeyCode::ESCAPE) {
-      cancelPreedit();
-      return make_result(true);
+    if (hasComposition() && event.key_code == KeyCode::ESCAPE) {
+      return make_result(true, cancelActiveComposition());
     }
 
     TextEditResult resolution;
@@ -678,6 +675,10 @@ namespace NS_SWEETEDITOR {
         return make_result(true, std::move(resolution));
       }
       if (event.key_code == KeyCode::ESCAPE) {
+        if (hasComposition()) {
+          resolution = cancelActiveComposition();
+          return make_result(true, std::move(resolution));
+        }
         cancelLinkedEditingInternal();
         return make_result(true);
       }
@@ -914,7 +915,7 @@ namespace NS_SWEETEDITOR {
       return lhs.end < rhs.end;
     });
     for (size_t i = 1; i < sorted_ranges.size(); ++i) {
-      if (sorted_ranges[i - 1].overlaps(sorted_ranges[i])) {
+      if (sorted_ranges[i - 1].conflictsForBatchEdit(sorted_ranges[i])) {
         return finishAction(before, EditorActionSource::PROGRAMMATIC, false, std::move(edit_result));
       }
     }
@@ -923,7 +924,7 @@ namespace NS_SWEETEDITOR {
     if (!has_real_edits) {
       if (primary_cursor != m_caret_.active || hasSelection()) {
         setCursorPositionInternal(primary_cursor);
-        clearSelection();
+        m_caret_.clearSelection();
         ensureCursorVisible();
         edit_result.markHandled();
         edit_result.cursor_after = m_caret_.active;
@@ -958,7 +959,7 @@ namespace NS_SWEETEDITOR {
     operation.cursor_before = caret_before.active;
     if (operation.contentChanged()) {
       setCursorPositionInternal(primary_cursor);
-      clearSelection();
+      m_caret_.clearSelection();
       ensureCursorVisible();
       recordHistory(operation.changes, caret_before, m_caret_);
     }
@@ -1207,7 +1208,7 @@ namespace NS_SWEETEDITOR {
     if (edit_result.contentChanged()) {
       const TextPosition cursor_after = calcPositionAfterInsert(matches.front().range.start, replacement_texts.front());
       setCursorPositionInternal(cursor_after);
-      clearSelection();
+      m_caret_.clearSelection();
       edit_result.cursor_after = m_caret_.active;
       recordHistory(edit_result.changes, caret_before, m_caret_);
     } else {
@@ -1242,19 +1243,7 @@ namespace NS_SWEETEDITOR {
     }
     const uint64_t generation = m_search_generation_->load();
     if (state->generation == generation) {
-      SearchState projected = *state;
-      if (projected.has_current_match) {
-        const std::optional<TextRange> range =
-            ImeProjection::projectCommittedRange(*m_document_, getCompositionState(), projected.current_range);
-        if (range.has_value()) {
-          projected.current_range = *range;
-        } else {
-          projected.current_index = -1;
-          projected.has_current_match = false;
-          projected.current_range = {};
-        }
-      }
-      return projected;
+      return *state;
     }
 
     SearchState stale_state = *state;
@@ -1271,7 +1260,7 @@ namespace NS_SWEETEDITOR {
     const ActionSnapshot before = captureActionSnapshot();
     TextEditResult resolution = finishCompositionForAction();
     setCursorPositionInternal(position);
-    clearSelection();
+    m_caret_.clearSelection();
     return finishAction(before, EditorActionSource::PROGRAMMATIC, true, std::move(resolution));
   }
 
@@ -1524,10 +1513,13 @@ namespace NS_SWEETEDITOR {
   EditorActionResult EditorCore::setReadOnly(bool read_only) {
     const ActionSnapshot before = captureActionSnapshot();
     TextEditResult resolution;
-    if (read_only && hasPreedit()) {
+    if (read_only && hasComposition()) {
       resolution = finishCompositionForAction();
     }
     m_settings_.read_only = read_only;
+    if (read_only && m_ime_session_.has_value()) {
+      closeImeSession();
+    }
     LOGD("EditorCore::setReadOnly, read_only = %s", read_only ? "true" : "false");
     return finishAction(before, EditorActionSource::PROGRAMMATIC, true, std::move(resolution));
   }
@@ -1572,8 +1564,8 @@ namespace NS_SWEETEDITOR {
   EditorActionResult EditorCore::startLinkedEditing(Vector<TabStopGroup>&& groups) {
     const ActionSnapshot before = captureActionSnapshot();
     TextEditResult resolution = finishCompositionForAction();
-    startLinkedEditingInternal(std::move(groups));
-    return finishAction(before, EditorActionSource::LINKED_EDITING, true, std::move(resolution));
+    const bool handled = startLinkedEditingInternal(std::move(groups));
+    return finishAction(before, EditorActionSource::LINKED_EDITING, handled, std::move(resolution));
   }
 
   bool EditorCore::isInLinkedEditing() const {
@@ -1596,8 +1588,9 @@ namespace NS_SWEETEDITOR {
 
   EditorActionResult EditorCore::cancelLinkedEditing() {
     const ActionSnapshot before = captureActionSnapshot();
+    TextEditResult resolution = finishCompositionForAction();
     cancelLinkedEditingInternal();
-    return finishAction(before, EditorActionSource::LINKED_EDITING, true);
+    return finishAction(before, EditorActionSource::LINKED_EDITING, true, std::move(resolution));
   }
 
   EditorActionResult EditorCore::finishLinkedEditing() {
@@ -1653,8 +1646,8 @@ namespace NS_SWEETEDITOR {
     if (m_document_ == nullptr) return finishAction(before, EditorActionSource::PROGRAMMATIC, false);
 
     scrollToLine(line, ScrollBehavior::GOTO_CENTER);
-    clearSelection();
-    setCursorPosition({line, column});
+    m_caret_.clearSelection();
+    setCursorPositionInternal({line, static_cast<uint32_t>(column)});
     ensureCursorVisible();
     LOGD("EditorCore::gotoLine, line = %zu, column = %zu, cursor = %s", line, column, m_caret_.active.dump().c_str());
     return finishAction(before, EditorActionSource::PROGRAMMATIC, true);
@@ -1734,7 +1727,7 @@ namespace NS_SWEETEDITOR {
   EditorActionResult EditorCore::setLineSpans(size_t line, SpanLayer layer, Vector<StyleSpan>&& spans) {
     const ActionSnapshot before = captureActionSnapshot();
     m_decorations_->setLineSpans(line, layer, std::move(spans));
-    if (hasPreedit()) {
+    if (hasComposition()) {
       markAllLinesDirty();
       return finishAction(before, EditorActionSource::DECORATION, true, {}, true, true);
     }
@@ -1759,7 +1752,7 @@ namespace NS_SWEETEDITOR {
       }
       if (line < min_line) min_line = line;
     }
-    if (hasPreedit()) {
+    if (hasComposition()) {
       markAllLinesDirty();
       return finishAction(before, EditorActionSource::DECORATION, true, {}, true, true);
     }
@@ -1770,7 +1763,7 @@ namespace NS_SWEETEDITOR {
   EditorActionResult EditorCore::setLineInlayHints(size_t line, Vector<InlayHint>&& hints) {
     const ActionSnapshot before = captureActionSnapshot();
     m_decorations_->setLineInlayHints(line, std::move(hints));
-    if (hasPreedit()) {
+    if (hasComposition()) {
       markAllLinesDirty();
       return finishAction(before, EditorActionSource::DECORATION, true, {}, true, true);
     }
@@ -1794,7 +1787,7 @@ namespace NS_SWEETEDITOR {
       }
       if (line < min_line) min_line = line;
     }
-    if (hasPreedit()) {
+    if (hasComposition()) {
       markAllLinesDirty();
       return finishAction(before, EditorActionSource::DECORATION, true, {}, true, true);
     }
@@ -1805,7 +1798,7 @@ namespace NS_SWEETEDITOR {
   EditorActionResult EditorCore::setLinePhantomTexts(size_t line, Vector<PhantomText>&& phantoms) {
     const ActionSnapshot before = captureActionSnapshot();
     m_decorations_->setLinePhantomTexts(line, std::move(phantoms));
-    if (hasPreedit()) {
+    if (hasComposition()) {
       markAllLinesDirty();
       return finishAction(before, EditorActionSource::DECORATION, true, {}, true, true);
     }
@@ -1829,7 +1822,7 @@ namespace NS_SWEETEDITOR {
       }
       if (line < min_line) min_line = line;
     }
-    if (hasPreedit()) {
+    if (hasComposition()) {
       markAllLinesDirty();
       return finishAction(before, EditorActionSource::DECORATION, true, {}, true, true);
     }
@@ -1900,7 +1893,7 @@ namespace NS_SWEETEDITOR {
   EditorActionResult EditorCore::setLineLinks(size_t line, Vector<LinkSpan>&& links) {
     const ActionSnapshot before = captureActionSnapshot();
     m_decorations_->setLineLinks(line, std::move(links));
-    if (hasPreedit()) {
+    if (hasComposition()) {
       markAllLinesDirty();
       return finishAction(before, EditorActionSource::DECORATION, true, {}, true, true);
     }
@@ -1924,7 +1917,7 @@ namespace NS_SWEETEDITOR {
       }
       if (line < min_line) min_line = line;
     }
-    if (hasPreedit()) {
+    if (hasComposition()) {
       markAllLinesDirty();
       return finishAction(before, EditorActionSource::DECORATION, true, {}, true, true);
     }
@@ -1941,7 +1934,7 @@ namespace NS_SWEETEDITOR {
   }
 
   U8String EditorCore::getLinkTargetAt(size_t line, size_t column) const {
-    LineLayoutDecorations decorations = m_decorations_->getEditingLineLayoutDecorations(line);
+    LineLayoutDecorations decorations = m_decorations_->getLineLayoutDecorations(line);
     for (const LinkSpan& link : decorations.links) {
       const size_t end = static_cast<size_t>(link.column) + link.length;
       if (column >= link.column && column < end) {
@@ -2276,8 +2269,26 @@ namespace NS_SWEETEDITOR {
     snapshot.scale = m_view_state_.scale;
     snapshot.pointer_cursor_type = m_pointer_cursor_type_;
     snapshot.active_hit_target = getActiveHitTarget();
-    snapshot.composition = getCompositionState();
+    if (getCompositionState().has_value()) {
+      snapshot.composition_range = getCompositionState()->current_range;
+    }
     snapshot.ime_session_active = m_ime_session_.has_value();
+    if (isImeTextUpdateSession()) {
+      const EditingBufferState& buffer = *m_ime_session_->editing_buffer;
+      const size_t base = m_document_->getCharIndexFromPosition(buffer.document_range.start);
+      snapshot.ime_buffer_selection = {
+          ImeCoordinateSpace::EDITING_BUFFER,
+          static_cast<int64_t>(m_document_->getCharIndexFromPosition(m_caret_.anchor) - base),
+          static_cast<int64_t>(m_document_->getCharIndexFromPosition(m_caret_.active) - base),
+          m_caret_.active_affinity};
+      if (getCompositionState().has_value()) {
+        const TextRange range = getCompositionState()->current_range;
+        snapshot.ime_buffer_composition = {
+            ImeCoordinateSpace::EDITING_BUFFER,
+            static_cast<int64_t>(m_document_->getCharIndexFromPosition(range.start) - base),
+            static_cast<int64_t>(m_document_->getCharIndexFromPosition(range.end) - base)};
+      }
+    }
     return snapshot;
   }
 
@@ -2287,8 +2298,8 @@ namespace NS_SWEETEDITOR {
     result.handled = handled || edit_result.handled;
     result.source = source;
     result.text_change_kind = edit_result.contentChanged() ? edit_result.change_kind : TextChangeKind::NONE;
-    result.changes = std::move(edit_result.changes);
-    result.content_changed = !result.changes.empty();
+    result.text_changes = std::move(edit_result.changes);
+    const bool text_changed = !result.text_changes.empty();
 
     result.cursor_before = before.caret.active;
     result.cursor_after = m_caret_.active;
@@ -2321,24 +2332,16 @@ namespace NS_SWEETEDITOR {
 
     const bool active_hit_target_changed = before.active_hit_target != getActiveHitTarget();
     const InteractionAnimationState animation_state = m_interaction_->resolveAnimationState();
-    result.composition_changed = before.composition != getCompositionState();
+    const std::optional<TextRange> composition_range =
+        getCompositionState().has_value() ? std::optional(getCompositionState()->current_range) : std::nullopt;
+    result.composition_changed =
+        before.composition_range.has_value() != composition_range.has_value()
+        || (before.composition_range.has_value() && !(*before.composition_range == *composition_range));
     result.decoration_changed = decoration_changed;
     const bool ime_state_changed =
-        result.content_changed || result.cursor_changed || result.selection_changed || result.composition_changed;
-    const bool restart_text_update_session =
-        source != EditorActionSource::IME && isImeTextUpdateSession() && ime_state_changed;
-    const bool session_invalidated =
-        source != EditorActionSource::IME && before.ime_session_active && !m_ime_session_.has_value();
-    if (session_invalidated || restart_text_update_session) {
-      if (restart_text_update_session) {
-        closeImeSession();
-      }
-      result.ime_host_action = m_settings_.read_only ? ImeHostAction::CLOSE_SESSION : ImeHostAction::RESTART_SESSION;
-      result.ime_state = emptyImeState(ImeResultCode::OK);
-    } else {
-      result.ime_state = buildImeState();
-    }
-    result.needs_redraw = force_redraw || result.content_changed || result.cursor_changed || result.selection_changed
+        text_changed || result.cursor_changed || result.selection_changed || result.composition_changed;
+    finalizeImeStateAfterAction(before, source, ime_state_changed, result);
+    result.needs_redraw = force_redraw || text_changed || result.cursor_changed || result.selection_changed
                           || result.scroll_changed || result.scale_changed || result.composition_changed
                           || active_hit_target_changed || result.decoration_changed || animation_state.needs_redraw;
     result.animation_flags = animation_state.flags;
@@ -2828,7 +2831,7 @@ namespace NS_SWEETEDITOR {
     // Keep cursor on the newly inserted empty line
     if (result.contentChanged()) {
       setCursorPositionInternal({line, 0});
-      clearSelection();
+      m_caret_.clearSelection();
       result.cursor_after = m_caret_.active;
       recordHistory(result.changes, caret_before, m_caret_);
     }
@@ -2853,9 +2856,9 @@ namespace NS_SWEETEDITOR {
     if (m_document_ == nullptr || m_settings_.read_only) return {};
 
     TextEditResult resolution;
-    if (hasPreedit()) {
-      const bool owns_text = ImeProjection::ownsCompositionText(*getCompositionState());
-      resolution = cancelPreedit();
+    if (hasComposition()) {
+      const bool owns_text = getCompositionState()->text_change.has_value();
+      resolution = cancelActiveComposition();
       resolution.markHandled();
       if (owns_text) {
         return resolution;
@@ -2886,9 +2889,9 @@ namespace NS_SWEETEDITOR {
     if (m_document_ == nullptr || m_settings_.read_only) return {};
 
     TextEditResult resolution;
-    if (hasPreedit()) {
-      const bool owns_text = ImeProjection::ownsCompositionText(*getCompositionState());
-      resolution = cancelPreedit();
+    if (hasComposition()) {
+      const bool owns_text = getCompositionState()->text_change.has_value();
+      resolution = cancelActiveComposition();
       resolution.markHandled();
       if (owns_text) {
         return resolution;
@@ -2916,17 +2919,16 @@ namespace NS_SWEETEDITOR {
   }
 
   TextEditResult EditorCore::finishCompositionForAction() {
-    if (!hasPreedit()) {
+    if (!hasComposition()) {
       return {};
     }
-    TextEditResult result = finishPreedit();
+    TextEditResult result = finishActiveComposition();
     result.markHandled();
     return result;
   }
 
   void EditorCore::appendTextEditResult(TextEditResult& target, TextEditResult&& source) {
     target.handled = target.handled || source.handled;
-    target.editing_content_changed = target.editing_content_changed || source.editing_content_changed;
     target.mergeChangeKind(source.change_kind);
     if (!source.changes.empty()) {
       target.changes.insert(target.changes.end(), std::make_move_iterator(source.changes.begin()),
@@ -2960,17 +2962,21 @@ namespace NS_SWEETEDITOR {
 
     // If tab stops exist, start linked editing
     if (!parse_result.groups.empty()) {
-      m_linked_editing_session_ = makeUnique<LinkedEditingSession>(std::move(parse_result.groups));
-      activateCurrentTabStop();
+      startLinkedEditingInternal(std::move(parse_result.groups));
     }
 
     LOGD("EditorCore::insertSnippet, cursor = %s", m_caret_.active.dump().c_str());
     return edit_result;
   }
 
-  void EditorCore::startLinkedEditingInternal(Vector<TabStopGroup>&& groups) {
-    if (m_document_ == nullptr || m_settings_.read_only) return;
-    if (groups.empty()) return;
+  bool EditorCore::startLinkedEditingInternal(Vector<TabStopGroup>&& groups) {
+    if (m_document_ == nullptr || m_settings_.read_only || !areValidLinkedEditingGroups(groups)) return false;
+
+    std::sort(groups.begin(), groups.end(), [](const TabStopGroup& lhs, const TabStopGroup& rhs) {
+      if (lhs.index == 0 && rhs.index != 0) return false;
+      if (lhs.index != 0 && rhs.index == 0) return true;
+      return lhs.index < rhs.index;
+    });
 
     // Exit existing linked editing session
     if (m_linked_editing_session_) {
@@ -2982,6 +2988,7 @@ namespace NS_SWEETEDITOR {
     activateCurrentTabStop();
 
     LOGD("EditorCore::startLinkedEditing, cursor = %s", m_caret_.active.dump().c_str());
+    return true;
   }
 
   bool EditorCore::linkedEditingNextTabStopInternal() {
@@ -3018,38 +3025,51 @@ namespace NS_SWEETEDITOR {
     TextPosition final_pos = m_linked_editing_session_->finalCursorPosition();
     m_linked_editing_session_->cancel();
     m_linked_editing_session_.reset();
-    setCursorPosition(final_pos);
-    clearSelection();
+    setCursorPositionInternal(final_pos);
+    m_caret_.clearSelection();
     ensureCursorVisible();
   }
 
-  bool EditorCore::hasValidLinkedEditingGroup() const {
-    if (!isInLinkedEditing()) return false;
-    const TabStopGroup* group = m_linked_editing_session_->currentGroup();
-    if (group == nullptr || group->ranges.empty()) return false;
+  bool EditorCore::areValidLinkedEditingGroups(const Vector<TabStopGroup>& groups) const {
+    if (m_document_ == nullptr || groups.empty()) return false;
 
-    for (size_t index = 0; index < group->ranges.size(); ++index) {
-      const TextRange& range = group->ranges[index];
-      if (range.end < range.start) return false;
-      for (size_t previous = 0; previous < index; ++previous) {
-        const TextRange& other = group->ranges[previous];
-        const bool collapsed_collision =
-            range.isCollapsed() ? other.start <= range.start && range.start <= other.end
-                                : other.isCollapsed() && range.start <= other.start && other.start <= range.end;
-        if (range.overlaps(other) || collapsed_collision) {
-          return false;
+    HashSet<uint32_t> indices;
+    for (size_t group_index = 0; group_index < groups.size(); ++group_index) {
+      const TabStopGroup& group = groups[group_index];
+      if (group.ranges.empty() || !indices.insert(group.index).second) return false;
+      for (size_t range_index = 0; range_index < group.ranges.size(); ++range_index) {
+        const TextRange& range = group.ranges[range_index];
+        if (!isDocumentRangeValid(range)) return false;
+        for (size_t previous = 0; previous < range_index; ++previous) {
+          if (range.conflictsForBatchEdit(group.ranges[previous])) return false;
+        }
+        for (size_t previous_group = 0; previous_group < group_index; ++previous_group) {
+          for (const TextRange& other : groups[previous_group].ranges) {
+            if (range.isCollapsed() && other.isCollapsed()) continue;
+            if (range.conflictsForBatchEdit(other)) return false;
+          }
         }
       }
     }
     return true;
   }
 
-  std::optional<Vector<TextEdit>> EditorCore::planLinkedEdit(const TextRange& range, const U8String& text) const {
-    if (!hasValidLinkedEditingGroup() || m_document_ == nullptr || range.end < range.start) return std::nullopt;
+  bool EditorCore::hasValidLinkedEditingGroup() const {
+    if (!isInLinkedEditing()) return false;
+    const TabStopGroup* group = m_linked_editing_session_->currentGroup();
+    if (group == nullptr) return false;
+    return areValidLinkedEditingGroups({*group});
+  }
+
+  bool EditorCore::planLinkedEdit(const TextRange& range, const U8String& text, Vector<TextEdit>& edits,
+                                  Vector<std::optional<size_t>>& owners) const {
+    edits.clear();
+    owners.clear();
+    if (!hasValidLinkedEditingGroup() || m_document_ == nullptr || range.end < range.start) return false;
     const TabStopGroup* group = m_linked_editing_session_->currentGroup();
     const size_t line_count = m_document_->getLineCount();
     for (const TextRange& group_range : group->ranges) {
-      if (group_range.start.line >= line_count || group_range.end.line >= line_count) return std::nullopt;
+      if (group_range.start.line >= line_count || group_range.end.line >= line_count) return false;
       const U16String& start_line = m_document_->getLineU16TextRef(group_range.start.line);
       const U16String& end_line = group_range.start.line == group_range.end.line
                                       ? start_line
@@ -3057,24 +3077,24 @@ namespace NS_SWEETEDITOR {
       if (group_range.start.column > start_line.size() || group_range.end.column > end_line.size()
           || !UnicodeUtil::isCodePointBoundary(start_line, group_range.start.column)
           || !UnicodeUtil::isCodePointBoundary(end_line, group_range.end.column)) {
-        return std::nullopt;
+        return false;
       }
     }
     const TextRange& primary = group->ranges[0];
-    if (range.start < primary.start || primary.end < range.end) return std::nullopt;
+    if (range.start < primary.start || primary.end < range.end) return false;
 
     const U8String final_text =
         m_document_->getU8Text({primary.start, range.start}) + text + m_document_->getU8Text({range.end, primary.end});
-    const Vector<std::pair<TextRange, U8String>> linked_edits =
-        m_linked_editing_session_->computeLinkedEdits(final_text);
-    Vector<TextEdit> plan;
-    plan.reserve(linked_edits.size());
-    for (const auto& [edit_range, edit_text] : linked_edits) {
-      if (m_document_->getU8Text(edit_range) != edit_text) {
-        plan.push_back({edit_range, edit_text});
+    edits.reserve(group->ranges.size());
+    owners.reserve(group->ranges.size());
+    for (size_t range_index = 0; range_index < group->ranges.size(); ++range_index) {
+      const TextRange& edit_range = group->ranges[range_index];
+      if (m_document_->getU8Text(edit_range) != final_text) {
+        edits.push_back({edit_range, final_text});
+        owners.push_back(range_index);
       }
     }
-    return plan;
+    return true;
   }
 
   TextEditResult EditorCore::applyLinkedEditWithResult(const TextRange& range, const U8String& text) {
@@ -3083,27 +3103,27 @@ namespace NS_SWEETEDITOR {
 
     const TabStopGroup* group = m_linked_editing_session_->currentGroup();
     if (group == nullptr || group->ranges.empty()) return result;
-    const std::optional<Vector<TextEdit>> plan = planLinkedEdit(range, text);
-    if (!plan.has_value()) return result;
+    Vector<TextEdit> plan;
+    Vector<std::optional<size_t>> owners;
+    if (!planLinkedEdit(range, text, plan, owners)) return result;
     const size_t caret_offset =
         StrUtil::utf16Length(m_document_->getU8Text({group->ranges[0].start, range.start}) + text);
 
     const CaretState caret_before = m_caret_;
-    if (!plan->empty()) {
-      result = applyEditBatch(*plan);
-      if (!result.contentChanged()) return {};
+    if (!plan.empty()) {
+      LinkedEditingSession staged_session = *m_linked_editing_session_;
+      if (!staged_session.adjustRangesForEditBatch(plan, owners)) return result;
 
-      for (const TextEdit& edit : *plan) {
-        TextPosition new_end = calcPositionAfterInsert(edit.range.start, edit.new_text);
-        m_linked_editing_session_->adjustRangesForEdit(edit.range, new_end);
-      }
+      result = applyEditBatch(plan);
+      if (!result.contentChanged()) return {};
+      *m_linked_editing_session_ = std::move(staged_session);
     }
 
     group = m_linked_editing_session_->currentGroup();
     if (group && !group->ranges.empty()) {
       const size_t primary_start = m_document_->getCharIndexFromPosition(group->ranges[0].start);
       setCursorPositionInternal(m_document_->getPositionFromCharIndex(primary_start + caret_offset));
-      clearSelection();
+      m_caret_.clearSelection();
     }
 
     result.markHandled(range.isCollapsed() ? TextChangeKind::INSERTION
@@ -3125,11 +3145,11 @@ namespace NS_SWEETEDITOR {
     const TextRange& primary = group->ranges[0];
     if (primary.start == primary.end) {
       // Empty range: only move cursor
-      setCursorPosition(primary.start);
-      clearSelection();
+      setCursorPositionInternal(primary.start);
+      m_caret_.clearSelection();
     } else {
       // Has default text: select it
-      setSelection(primary);
+      setSelectionInternal(primary);
     }
     ensureCursorVisible();
   }
@@ -3505,6 +3525,7 @@ namespace NS_SWEETEDITOR {
 
     struct PendingEdit {
       TextEdit edit;
+      U8String old_text;
       bool keep_fold_collapsed{false};
       size_t fold_tail_owner_line{0};
     };
@@ -3519,6 +3540,8 @@ namespace NS_SWEETEDITOR {
 
       PendingEdit item;
       item.edit = {safe_range, edit.new_text};
+      item.old_text = m_document_->getU8Text(safe_range);
+      if (item.old_text == item.edit.new_text) continue;
       item.fold_tail_owner_line = line_count;
 
       const bool single_line_text =
@@ -3556,13 +3579,13 @@ namespace NS_SWEETEDITOR {
     result.changes.reserve(pending.size());
     size_t first_affected_line = line_count;
 
-    for (const PendingEdit& item : pending) {
+    // Changes are published in the same descending order used for physical writes, so consumers can replay them.
+    for (auto it = pending.rbegin(); it != pending.rend(); ++it) {
+      const PendingEdit& item = *it;
       const TextRange& range = item.edit.range;
       TextChange change;
       change.range = range;
-      if (!range.isCollapsed()) {
-        change.old_text = m_document_->getU8Text(range);
-      }
+      change.old_text = item.old_text;
       change.new_text = item.edit.new_text;
       result.changes.push_back(std::move(change));
       document_edits.push_back(item.edit);
@@ -3598,6 +3621,18 @@ namespace NS_SWEETEDITOR {
                                  const CaretState& caret_after, bool allows_merge) {
     if (changes.empty()) return;
 
+    Vector<const TextChange*> ordered_changes;
+    ordered_changes.reserve(changes.size());
+    for (const TextChange& change : changes) {
+      ordered_changes.push_back(&change);
+    }
+    std::sort(ordered_changes.begin(), ordered_changes.end(), [](const TextChange* lhs, const TextChange* rhs) {
+      if (lhs->range.start != rhs->range.start) {
+        return lhs->range.start < rhs->range.start;
+      }
+      return lhs->range.end < rhs->range.end;
+    });
+
     HistoryEntry entry;
     entry.redo_replacements.reserve(changes.size());
     entry.undo_replacements.reserve(changes.size());
@@ -3605,7 +3640,8 @@ namespace NS_SWEETEDITOR {
     TextPosition previous_source_end;
     TextPosition previous_target_end;
 
-    for (const TextChange& change : changes) {
+    for (const TextChange* change_ptr : ordered_changes) {
+      const TextChange& change = *change_ptr;
       TextRange current_range = change.range;
       if (has_previous_change) {
         const auto transform_after_previous = [&](const TextPosition& position) {
@@ -3645,7 +3681,7 @@ namespace NS_SWEETEDITOR {
         change.new_text.empty() ? change.range.start : calcPositionAfterInsert(change.range.start, change.new_text);
 
     setCursorPositionInternal(new_cursor);
-    clearSelection();
+    m_caret_.clearSelection();
     edit_result.cursor_after = m_caret_.active;
 
     if (record_undo) {
@@ -3700,29 +3736,10 @@ namespace NS_SWEETEDITOR {
         ll.is_layout_dirty = true;
       }
     }
-    const std::optional<CompositionState>& composition = getCompositionState();
-    const bool has_projection =
-        composition.has_value() && ImeProjection::hasNonIdentityProjection(*m_document_, *composition);
-    TextPosition baseline_end;
-    int64_t composition_line_delta = 0;
-    if (has_projection) {
-      baseline_end = ImeProjection::baselineRange(*composition).end;
-      composition_line_delta =
-          static_cast<int64_t>(composition->current_range.end.line) - static_cast<int64_t>(baseline_end.line);
-    }
-
     // Start line of each fold region needs relayout (fold state changes affect FOLD_PLACEHOLDER generation)
     for (const auto& fr : m_decorations_->getFoldRegions()) {
-      size_t start_line = fr.start_line;
-      size_t end_line = fr.end_line;
-      if (has_projection && end_line >= composition->current_range.start.line) {
-        if (start_line > baseline_end.line) {
-          start_line = TextPosition{start_line, 0}.withLineDelta(composition_line_delta).line;
-          end_line = TextPosition{end_line, 0}.withLineDelta(composition_line_delta).line;
-        } else {
-          continue;
-        }
-      }
+      const size_t start_line = fr.start_line;
+      const size_t end_line = fr.end_line;
       if (start_line < lines.size()) {
         lines[start_line].is_layout_dirty = true;
       }
@@ -3752,9 +3769,9 @@ namespace NS_SWEETEDITOR {
 
   void EditorCore::placeCursorAt(const PointF& screen_point) {
     const CaretHit hit = m_text_layout_->hitTestPointer(screen_point);
-    setCursorPosition(hit.position);
+    setCursorPositionInternal(hit.position);
     m_caret_.active_affinity = hit.affinity;
-    clearSelection();
+    m_caret_.clearSelection();
     m_has_preferred_cursor_x_ = false;
     LOGD("EditorCore::placeCursorAt, pos = %s", hit.position.dump().c_str());
   }
@@ -3766,8 +3783,8 @@ namespace NS_SWEETEDITOR {
     size_t line = pos.line;
     const U16String& line_text = m_document_->getLineU16TextRef(line);
     if (line_text.empty()) {
-      setCursorPosition(pos);
-      clearSelection();
+      setCursorPositionInternal(pos);
+      m_caret_.clearSelection();
       return;
     }
 
@@ -3783,7 +3800,7 @@ namespace NS_SWEETEDITOR {
     }
 
     TextRange range = TextBoundaryUtil::findWordRangeInLine(line, line_text, anchor);
-    setSelection(range);
+    setSelectionInternal(range);
     LOGD("EditorCore::selectWordAt, selection = %s", range.dump().c_str());
   }
 

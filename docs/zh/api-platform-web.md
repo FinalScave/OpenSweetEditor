@@ -290,15 +290,14 @@ function createEditor(module, host) {
 
 ### IME 协议
 
-    _editor_ime_has_preedit
-    _editor_ime_handle_command_message
-    _editor_ime_handle_text_update_message
-    _editor_ime_get_keyboard_script_class
-    _editor_ime_get_sync_snapshot
-    _editor_ime_get_command_input_context
-    _editor_ime_get_text_update_input_context
+    _editor_ime_begin_session
+    _editor_ime_end_session
+    _editor_ime_apply_commands
+    _editor_ime_apply_text_updates
+    _editor_ime_get_state
+    _editor_ime_get_context
 
-SweetEditor 只提供共享 IME 协议。宿主仍需把浏览器 composition、beforeinput、键盘、选区和候选 UI 行为接入这些消息。
+SweetEditor 只提供共享的会话式 IME 协议。宿主仍需把浏览器 composition、beforeinput、键盘、选区、生命周期和候选 UI 行为映射为 command 或 text-update batch。
 
 ## 导出的 Emscripten Runtime Methods
 
@@ -327,7 +326,7 @@ C ABI 模块额外导出：
 - `ScrollMetrics`
 - 与搜索无关的装饰和折叠模型
 - Linked Editing 模型
-- IME 消息、同步快照和输入上下文
+- IME 命令/TextUpdate 批次、权威状态和有限文本上下文
 
 返回的二进制数据必须通过 `_free_binary_data` 释放。返回的 UTF-8 和 UTF-16 字符串必须通过各自匹配的 free 函数释放。
 

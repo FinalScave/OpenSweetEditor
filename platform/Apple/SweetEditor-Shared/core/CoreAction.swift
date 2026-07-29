@@ -90,7 +90,6 @@ public struct EditorActionResult {
     public var needs_redraw: Bool = false
     public var source: EditorActionSource = .NONE
     public var text_change_kind: TextChangeKind = .NONE
-    public var content_changed: Bool = false
     public var cursor_changed: Bool = false
     public var selection_changed: Bool = false
     public var scroll_changed: Bool = false
@@ -101,7 +100,7 @@ public struct EditorActionResult {
     public var animation_flags: Int32 = 0
     public var next_animation_delay_ms: Int32 = 0
     public var interaction_flags: Int32 = 0
-    public var changes: [TextChange] = []
+    public var text_changes: [TextChange] = []
     public var cursor_before: TextPosition = TextPosition()
     public var cursor_after: TextPosition = TextPosition()
     public var has_selection_before: Bool = false
@@ -125,12 +124,11 @@ public struct EditorActionResult {
     public var modifiers: Int32 = KeyModifier.NONE
     public var command: Int32 = 0
 
-    public init(handled: Bool = false, needs_redraw: Bool = false, source: EditorActionSource = .NONE, text_change_kind: TextChangeKind = .NONE, content_changed: Bool = false, cursor_changed: Bool = false, selection_changed: Bool = false, scroll_changed: Bool = false, scale_changed: Bool = false, pointer_cursor_changed: Bool = false, composition_changed: Bool = false, decoration_changed: Bool = false, animation_flags: Int32 = 0, next_animation_delay_ms: Int32 = 0, interaction_flags: Int32 = 0, changes: [TextChange] = [], cursor_before: TextPosition = TextPosition(), cursor_after: TextPosition = TextPosition(), has_selection_before: Bool = false, has_selection_after: Bool = false, selection_before: TextRange = TextRange(), selection_after: TextRange = TextRange(), scroll_x_before: Float = 0, scroll_y_before: Float = 0, scroll_x_after: Float = 0, scroll_y_after: Float = 0, scale_before: Float = 1, scale_after: Float = 1, pointer_cursor_before: PointerCursorType = .TEXT, pointer_cursor_after: PointerCursorType = .TEXT, ime_host_action: ImeHostAction = .NONE, ime_state: ImeState = ImeState(), gesture_type: GestureType = .UNDEFINED, gesture_event_type: EventType = .UNDEFINED, tap_point: PointF = PointF(), hit_target: HitTarget = HitTarget(), modifiers: Int32 = KeyModifier.NONE, command: Int32 = 0) {
+    public init(handled: Bool = false, needs_redraw: Bool = false, source: EditorActionSource = .NONE, text_change_kind: TextChangeKind = .NONE, cursor_changed: Bool = false, selection_changed: Bool = false, scroll_changed: Bool = false, scale_changed: Bool = false, pointer_cursor_changed: Bool = false, composition_changed: Bool = false, decoration_changed: Bool = false, animation_flags: Int32 = 0, next_animation_delay_ms: Int32 = 0, interaction_flags: Int32 = 0, text_changes: [TextChange] = [], cursor_before: TextPosition = TextPosition(), cursor_after: TextPosition = TextPosition(), has_selection_before: Bool = false, has_selection_after: Bool = false, selection_before: TextRange = TextRange(), selection_after: TextRange = TextRange(), scroll_x_before: Float = 0, scroll_y_before: Float = 0, scroll_x_after: Float = 0, scroll_y_after: Float = 0, scale_before: Float = 1, scale_after: Float = 1, pointer_cursor_before: PointerCursorType = .TEXT, pointer_cursor_after: PointerCursorType = .TEXT, ime_host_action: ImeHostAction = .NONE, ime_state: ImeState = ImeState(), gesture_type: GestureType = .UNDEFINED, gesture_event_type: EventType = .UNDEFINED, tap_point: PointF = PointF(), hit_target: HitTarget = HitTarget(), modifiers: Int32 = KeyModifier.NONE, command: Int32 = 0) {
         self.handled = handled
         self.needs_redraw = needs_redraw
         self.source = source
         self.text_change_kind = text_change_kind
-        self.content_changed = content_changed
         self.cursor_changed = cursor_changed
         self.selection_changed = selection_changed
         self.scroll_changed = scroll_changed
@@ -141,7 +139,7 @@ public struct EditorActionResult {
         self.animation_flags = animation_flags
         self.next_animation_delay_ms = next_animation_delay_ms
         self.interaction_flags = interaction_flags
-        self.changes = changes
+        self.text_changes = text_changes
         self.cursor_before = cursor_before
         self.cursor_after = cursor_after
         self.has_selection_before = has_selection_before

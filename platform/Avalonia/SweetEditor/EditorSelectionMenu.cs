@@ -132,7 +132,7 @@ namespace SweetEditor {
 			hasSelection = result.HasSelectionAfter;
 			coreBlocked = result.HasActiveInteraction || result.NeedsViewportMotion;
 
-			if (result.ContentChanged || !hasSelection) {
+			if (result.TextChanges.Count > 0 || !hasSelection) {
 				Dismiss();
 				return;
 			}

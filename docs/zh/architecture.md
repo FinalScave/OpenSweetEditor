@@ -269,7 +269,7 @@ void adjustForEdit(const TextRange& old_range, const TextPosition& new_end);
 
 EditorCore 是最顶层的类，组合所有子模块并提供完整的编辑器 API。
 
-`EditorCore` 直接持有 IME composition state 和短生命周期编辑事务，实现位于 `src/editor_core_ime.cpp`；可复用的 committed → editing 坐标投影保持为 `src/ime_projection.cpp` 中的源码私有能力。公开 API 仍通过 `applyImeCommands(...)`、`applyImeTextUpdates(...)` 等语义入口暴露。
+`EditorCore` 直接持有 IME composition state 和短生命周期编辑事务，实现位于 `src/editor_core_ime.cpp`。通用的无状态文本位置变换集中在 `src/text_edit_utils.cpp`，composition baseline 映射则由 IME 事务按需构造，不保留独立投影层。公开 API 仍通过 `applyImeCommands(...)`、`applyImeTextUpdates(...)` 等语义入口暴露。
 
 #### 内部组件
 
@@ -318,7 +318,7 @@ TextEditResult applyEdit(const TextRange& range, const U8String& new_text, bool 
 4. 自动展开被编辑区域的折叠（`autoUnfoldForEdit`）
 5. 标记受影响行的布局为 dirty
 6. 推入 undo 栈
-7. 返回精确变更信息，供外层 `EditorActionResult.changes` / `contentChanged` 使用
+7. 返回精确变更信息，供外层 `EditorActionResult.text_changes` 使用
 
 ---
 
@@ -586,8 +586,8 @@ free_editor(editor);
         │
         ▼
   接入层统一分发 EditorActionResult
-        │  · 根据 changes/contentChanged 派发文本事件
-        │  · 根据 needsImeSync 同步输入法状态
+        │  · 根据 text_changes 派发文本事件
+        │  · 执行 imeHostAction，并消费权威 imeState
         │  · 根据 animationFlags / nextAnimationDelayMs 调度动画 tick
         │  · 根据 needsRedraw 决定是否刷新渲染模型
         │
@@ -632,7 +632,7 @@ free_editor(editor);
         │
         ▼
   汇入 EditorActionResult
-        │  {contentChanged, changes, cursorChanged, selectionChanged, needsRedraw, ...}
+        │  {textChanges, cursorChanged, selectionChanged, needsRedraw, ...}
         ▼
   接入层统一分发 EditorActionResult
         │

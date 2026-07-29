@@ -104,7 +104,6 @@ class EditorActionResult {
     this.needsRedraw = false,
     this.source = EditorActionSource.none,
     this.textChangeKind = TextChangeKind.none,
-    this.contentChanged = false,
     this.cursorChanged = false,
     this.selectionChanged = false,
     this.scrollChanged = false,
@@ -115,7 +114,7 @@ class EditorActionResult {
     this.animationFlags = 0,
     this.nextAnimationDelayMs = 0,
     this.interactionFlags = 0,
-    this.changes = const [],
+    this.textChanges = const [],
     this.cursorBefore = const TextPosition(),
     this.cursorAfter = const TextPosition(),
     this.hasSelectionBefore = false,
@@ -144,7 +143,6 @@ class EditorActionResult {
   final bool needsRedraw;
   final EditorActionSource source;
   final TextChangeKind textChangeKind;
-  final bool contentChanged;
   final bool cursorChanged;
   final bool selectionChanged;
   final bool scrollChanged;
@@ -155,7 +153,7 @@ class EditorActionResult {
   final int animationFlags;
   final int nextAnimationDelayMs;
   final int interactionFlags;
-  final List<TextChange> changes;
+  final List<TextChange> textChanges;
   final TextPosition cursorBefore;
   final TextPosition cursorAfter;
   final bool hasSelectionBefore;

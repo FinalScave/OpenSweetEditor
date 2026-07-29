@@ -93,8 +93,8 @@ public class SelectionMenuController {
     public void onEditorActionResult(@NonNull EditorActionResult result) {
         coreBlocked = result.hasActiveInteraction() || result.needsViewportMotion();
 
-        if (result.contentChanged || !result.hasSelectionAfter) {
-            if (result.contentChanged) {
+        if (!result.textChanges.isEmpty() || !result.hasSelectionAfter) {
+            if (!result.textChanges.isEmpty()) {
                 clearSelectionHandles();
             }
             dismiss();

@@ -1005,7 +1005,6 @@ public:
     if (!writeI32(value.needs_redraw ? 1 : 0)) return false;
     if (!writeI32(static_cast<int32_t>(value.source))) return false;
     if (!writeI32(static_cast<int32_t>(value.text_change_kind))) return false;
-    if (!writeI32(value.content_changed ? 1 : 0)) return false;
     if (!writeI32(value.cursor_changed ? 1 : 0)) return false;
     if (!writeI32(value.selection_changed ? 1 : 0)) return false;
     if (!writeI32(value.scroll_changed ? 1 : 0)) return false;
@@ -1016,7 +1015,7 @@ public:
     if (!writeU32(static_cast<uint32_t>(value.animation_flags))) return false;
     if (!writeU32(static_cast<uint32_t>(value.next_animation_delay_ms))) return false;
     if (!writeU32(static_cast<uint32_t>(value.interaction_flags))) return false;
-    if (!writeList(value.changes)) return false;
+    if (!writeList(value.text_changes)) return false;
     if (!write(value.cursor_before)) return false;
     if (!write(value.cursor_after)) return false;
     if (!writeI32(value.has_selection_before ? 1 : 0)) return false;

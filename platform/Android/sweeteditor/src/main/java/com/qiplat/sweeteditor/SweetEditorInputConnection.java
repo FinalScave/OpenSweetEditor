@@ -351,10 +351,10 @@ public class SweetEditorInputConnection extends BaseInputConnection {
     }
 
     private void executeHostAction(ImeHostAction hostAction) {
-        if (hostAction != ImeHostAction.RESTART_SESSION
+        if ((hostAction != ImeHostAction.CLOSE_SESSION
+                && hostAction != ImeHostAction.RESTART_SESSION)
                 || !mEditor.isCurrentInputConnection(this)
-                || !mEditor.hasFocus()
-                || mEditor.getEditorCore().isReadOnly()) {
+                || !mEditor.hasFocus()) {
             return;
         }
         InputMethodManager manager = getInputMethodManager();
@@ -416,7 +416,7 @@ public class SweetEditorInputConnection extends BaseInputConnection {
     }
 
     private static boolean needsImeNotification(EditorActionResult result) {
-        return result.contentChanged || result.cursorChanged
+        return !result.textChanges.isEmpty() || result.cursorChanged
                 || result.selectionChanged || result.compositionChanged;
     }
 

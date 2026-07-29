@@ -2,6 +2,7 @@
 using System;
 using System.Collections.Generic;
 using Avalonia.Input.TextInput;
+using Avalonia.Threading;
 using AvaloniaRect = Avalonia.Rect;
 
 namespace SweetEditor {
@@ -21,6 +22,7 @@ namespace SweetEditor {
 		private bool pendingSelectionChanged;
 		private bool pendingSurroundingTextChanged;
 		private bool pendingCursorRectangleChanged;
+		private long lifecycleVersion;
 		private bool disposed;
 
 		internal InputConnection(SweetEditorControl owner) {
@@ -33,31 +35,43 @@ namespace SweetEditor {
 
 		internal void BeginSession(bool newGeneration = false) {
 			if (newGeneration) {
+				lifecycleVersion++;
 				restartBlocked = false;
 			}
+			BeginSessionCore(null);
+		}
+
+		private bool BeginSessionCore(EditorTextInputClient? reusableClient) {
 			if (disposed || IsActive || restartBlocked || !owner.CanBeginImeSession) {
-				return;
+				return false;
 			}
 
 			ImeState next = owner.EditorCoreInternal.BeginImeSession(ImeMutationModel.COMMAND);
 			if (next.ResultCode != ImeResultCode.OK || next.SessionId <= 0) {
-				return;
+				return false;
 			}
 
 			state = next;
-			client = new EditorTextInputClient(this, next.SessionId);
+			if (reusableClient == null) {
+				client = new EditorTextInputClient(this, next.SessionId);
+			} else {
+				reusableClient.Rebind(next.SessionId);
+				client = reusableClient;
+			}
 			context = null;
 			contextValid = false;
 			pendingSelectionChanged = true;
 			pendingSurroundingTextChanged = true;
 			pendingCursorRectangleChanged = true;
+			return true;
 		}
 
 		internal void EndSession(bool resetNativeComposition) {
+			lifecycleVersion++;
 			long sessionId = IsActive ? state.SessionId : 0;
 			EditorTextInputClient? previousClient = client;
 			restartBlocked = true;
-			ClearBinding();
+			ClearBinding(true);
 			if (sessionId > 0) {
 				owner.DispatchEditorActionResult(owner.EditorCoreInternal.EndImeSession(sessionId));
 			}
@@ -120,9 +134,29 @@ namespace SweetEditor {
 			}
 			if (result.ImeHostAction != ImeHostAction.NONE) {
 				EditorTextInputClient? previousClient = client;
+				bool hostHadComposition = HasComposition;
+				long version = ++lifecycleVersion;
 				restartBlocked = true;
-				ClearBinding();
-				previousClient?.NotifyReset();
+				ClearBinding(false);
+				if (result.ImeHostAction == ImeHostAction.CLOSE_SESSION) {
+					previousClient?.NotifyReset();
+					return;
+				}
+				if (result.ImeHostAction == ImeHostAction.RESTART_SESSION && previousClient != null) {
+					if (hostHadComposition) {
+						previousClient.NotifyReset();
+					}
+					Dispatcher.UIThread.Post(() => {
+						if (disposed || version != lifecycleVersion || !owner.CanBeginImeSession ||
+						    !ReferenceEquals(client, previousClient)) {
+							return;
+						}
+						restartBlocked = false;
+						if (BeginSessionCore(previousClient)) {
+							NotifyStateChanged(textViewChanged: true, force: true);
+						}
+					}, DispatcherPriority.Input);
+				}
 				return;
 			}
 			if (!IsActive) {
@@ -136,15 +170,15 @@ namespace SweetEditor {
 			}
 
 			if (!applyingImeCommands &&
-			    (result.ContentChanged || result.CursorChanged || result.SelectionChanged || result.CompositionChanged)) {
+			    (result.TextChanges.Count > 0 || result.CursorChanged || result.SelectionChanged || result.CompositionChanged)) {
 				ClearPendingCompositionTarget();
 			}
-			if (result.ContentChanged || result.CursorChanged || result.SelectionChanged || result.CompositionChanged) {
+			if (result.TextChanges.Count > 0 || result.CursorChanged || result.SelectionChanged || result.CompositionChanged) {
 				contextValid = false;
 			}
 			if (!applyingImeCommands) {
 				pendingSelectionChanged |= result.CursorChanged || result.SelectionChanged || result.CompositionChanged;
-				pendingSurroundingTextChanged |= result.ContentChanged || result.CompositionChanged;
+				pendingSurroundingTextChanged |= result.TextChanges.Count > 0 || result.CompositionChanged;
 			}
 			pendingCursorRectangleChanged |= result.CursorChanged || result.SelectionChanged ||
 			                                 result.CompositionChanged || result.ScrollChanged || result.ScaleChanged;
@@ -170,6 +204,18 @@ namespace SweetEditor {
 			pendingSelectionChanged = false;
 			pendingSurroundingTextChanged = false;
 			pendingCursorRectangleChanged = false;
+		}
+
+		internal void ResumeSessionIfPossible() {
+			EditorTextInputClient? reusableClient = client;
+			if (reusableClient == null || !owner.CanBeginImeSession) {
+				return;
+			}
+			lifecycleVersion++;
+			restartBlocked = false;
+			if (BeginSessionCore(reusableClient)) {
+				NotifyStateChanged(textViewChanged: true, force: true);
+			}
 		}
 
 		public void Dispose() {
@@ -340,7 +386,7 @@ namespace SweetEditor {
 				? long.MaxValue
 				: last + SurroundingTextMarginUtf16;
 			ImeTextContext next = owner.EditorCoreInternal.GetImeContext(
-				state.SessionId, ImeTextSource.COMMITTED, start, end - start);
+				state.SessionId, ImeTextSource.EDITING, start, end - start);
 			if (next.ResultCode != ImeResultCode.OK ||
 			    !TryGetLocalSelection(next, out _, out _)) {
 				return false;
@@ -354,28 +400,22 @@ namespace SweetEditor {
 		private static bool TryGetLocalSelection(ImeTextContext source, out int start, out int end) {
 			start = 0;
 			end = 0;
-			if (!IsSelection(source.Selection)) {
+			if (!IsSelection(source.Selection) ||
+			    source.Selection.CoordinateSpace != ImeCoordinateSpace.CONTEXT_SLICE) {
 				return false;
 			}
 
-			long sliceStart = source.SliceStartUtf16;
-			if (sliceStart < 0 || sliceStart > long.MaxValue - source.Text.Length) {
-				return false;
-			}
-			long sliceEnd = sliceStart + source.Text.Length;
 			long normalizedStart = Math.Min(source.Selection.AnchorUtf16, source.Selection.ActiveUtf16);
 			long normalizedEnd = Math.Max(source.Selection.AnchorUtf16, source.Selection.ActiveUtf16);
-			if (normalizedStart < sliceStart || normalizedEnd > sliceEnd) {
+			if (normalizedStart < 0 || normalizedEnd > source.Text.Length) {
 				return false;
 			}
 
-			long localStart = normalizedStart - sliceStart;
-			long localEnd = normalizedEnd - sliceStart;
-			if (localStart > int.MaxValue || localEnd > int.MaxValue) {
+			if (normalizedStart > int.MaxValue || normalizedEnd > int.MaxValue) {
 				return false;
 			}
-			start = (int)localStart;
-			end = (int)localEnd;
+			start = (int)normalizedStart;
+			end = (int)normalizedEnd;
 			return true;
 		}
 
@@ -388,10 +428,12 @@ namespace SweetEditor {
 			return IsActive && sessionId == state.SessionId && ReferenceEquals(source, client);
 		}
 
-		private void ClearBinding() {
+		private void ClearBinding(bool clearClient) {
 			state = new ImeState();
 			context = null;
-			client = null;
+			if (clearClient) {
+				client = null;
+			}
 			ClearPendingCompositionTarget();
 			contextValid = false;
 			pendingSelectionChanged = false;
@@ -451,11 +493,15 @@ namespace SweetEditor {
 
 		private sealed class EditorTextInputClient : TextInputMethodClient {
 			private readonly InputConnection owner;
-			private readonly long sessionId;
+			private long sessionId;
 
 			internal EditorTextInputClient(InputConnection owner, long sessionId) {
 				this.owner = owner;
 				this.sessionId = sessionId;
+			}
+
+			internal void Rebind(long nextSessionId) {
+				sessionId = nextSessionId;
 			}
 
 			public override global::Avalonia.Visual TextViewVisual => owner.owner;

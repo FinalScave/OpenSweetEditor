@@ -301,7 +301,6 @@ EDITOR_API const uint8_t* editor_get_layout_metrics(intptr_t editor_handle, size
 ///   bool_i32 needs_redraw
 ///   enum_i32 source
 ///   enum_i32 text_change_kind
-///   bool_i32 content_changed
 ///   bool_i32 cursor_changed
 ///   bool_i32 selection_changed
 ///   bool_i32 scroll_changed
@@ -312,7 +311,7 @@ EDITOR_API const uint8_t* editor_get_layout_metrics(intptr_t editor_handle, size
 ///   u32 animation_flags
 ///   u32 next_animation_delay_ms
 ///   u32 interaction_flags
-///   List<TextChange> changes
+///   List<TextChange> text_changes
 ///   TextPosition cursor_before
 ///   TextPosition cursor_after
 ///   bool_i32 has_selection_before

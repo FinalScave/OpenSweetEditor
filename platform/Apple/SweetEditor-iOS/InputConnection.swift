@@ -32,6 +32,7 @@ final class InputConnection {
 
     private unowned let owner: SweetEditorView
     private let imeSession: ImeSession
+    private var lifecycleVersion: UInt64 = 0
 
     init(owner: SweetEditorView) {
         self.owner = owner
@@ -84,10 +85,15 @@ final class InputConnection {
     }
 
     func beginSession() -> Bool {
-        imeSession.isActive || imeSession.begin()
+        if imeSession.isActive {
+            return true
+        }
+        lifecycleVersion &+= 1
+        return imeSession.begin()
     }
 
     func endSession() -> EditorActionResult? {
+        lifecycleVersion &+= 1
         imeSession.end()
     }
 
@@ -101,7 +107,7 @@ final class InputConnection {
     }
 
     func commitText(_ text: String) -> EditorActionResult? {
-        guard imeSession.isActive else { return nil }
+        guard beginSession() else { return nil }
         return imeSession.commitText(text)
     }
 
@@ -114,7 +120,7 @@ final class InputConnection {
     }
 
     func setMarkedText(_ markedText: String?, selectedRange: NSRange) {
-        guard imeSession.isActive else { return }
+        guard beginSession() else { return }
         owner.dispatchEditorActionResult(
             imeSession.updateComposition(markedText ?? "", selectedRange: selectedRange),
             notifyInputDelegate: false
@@ -129,11 +135,42 @@ final class InputConnection {
         )
     }
 
-    func syncEditorActionResult(_ result: EditorActionResult) {
+    func syncEditorActionResult(
+        _ result: EditorActionResult,
+        notifyInputDelegate: Bool
+    ) -> Bool {
         imeSession.synchronize(result)
-        if result.ime_host_action != .NONE {
+        if result.ime_host_action == .CLOSE_SESSION {
+            lifecycleVersion &+= 1
             owner.resignFirstResponder()
+            return false
         }
+        guard result.ime_host_action == .RESTART_SESSION else {
+            return false
+        }
+
+        lifecycleVersion &+= 1
+        let version = lifecycleVersion
+        let notifyText = notifyInputDelegate
+            && (!result.text_changes.isEmpty || result.composition_changed)
+        let notifySelection = notifyInputDelegate
+            && (result.cursor_changed || result.selection_changed)
+        DispatchQueue.main.async { [weak self] in
+            guard let self,
+                  version == self.lifecycleVersion,
+                  self.owner.isFirstResponder,
+                  !self.owner.editorCore.isReadOnly(),
+                  self.imeSession.begin() else {
+                return
+            }
+            if notifyText {
+                self.inputDelegate?.textDidChange(self.owner)
+            }
+            if notifySelection {
+                self.inputDelegate?.selectionDidChange(self.owner)
+            }
+        }
+        return notifyInputDelegate
     }
 
     func beginningOfDocument() -> UITextPosition {

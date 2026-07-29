@@ -51,6 +51,7 @@ export class InputConnection {
   private attached: boolean = false;
   private wantsAttachment: boolean = false;
   private wantsKeyboard: boolean = false;
+  private keyboardRecoveryAttempted: boolean = false;
   private keyboardVisible: boolean = false;
   private windowId: number = -1;
   private editorGlobalX: number = 0;
@@ -78,7 +79,6 @@ export class InputConnection {
       this.keyboardVisible = true;
     } else {
       this.keyboardVisible = false;
-      this.attached = false;
     }
   };
   private readonly onSetPreviewText = (text: string, range: inputMethod.Range): void => {
@@ -91,10 +91,6 @@ export class InputConnection {
 
   constructor(owner: SweetEditor) {
     this.owner = owner;
-  }
-
-  onAppear(): void {
-    this.register();
   }
 
   private register(): void {
@@ -151,6 +147,7 @@ export class InputConnection {
   showSoftKeyboard(): void {
     this.wantsAttachment = true;
     this.wantsKeyboard = true;
+    this.keyboardRecoveryAttempted = false;
     this.scheduleAttach();
   }
 
@@ -186,7 +183,7 @@ export class InputConnection {
       this.state = next;
     }
 
-    const textChanged = result.contentChanged || result.cursorChanged || result.selectionChanged ||
+    const textChanged = result.textChanges.length > 0 || result.cursorChanged || result.selectionChanged ||
       result.compositionChanged;
     const cursorChanged = textChanged || result.scrollChanged || result.scaleChanged;
     this.scheduleSync(textChanged, cursorChanged);
@@ -228,18 +225,22 @@ export class InputConnection {
 
   private enqueueAttach(): void {
     const version = this.lifecycleVersion;
+    // Serialize controller operations and discard work queued for an obsolete focus lifecycle.
     this.lifecycleQueue = this.lifecycleQueue.then(async (): Promise<void> => {
       if (version !== this.lifecycleVersion || !this.wantsAttachment) {
         return;
       }
       if (this.attached) {
+        if (!this.beginSession()) {
+          this.closeBrokenAttachment(true);
+          return;
+        }
         if (this.wantsKeyboard) {
           try {
             await this.controller.showTextInput(inputMethod.RequestKeyboardReason.TOUCH);
           } catch (error) {
             hilog.error(HILOG_DOMAIN, TAG, 'show input method failed %{public}s', `${error}`);
-            this.attached = false;
-            this.enqueueAttach();
+            await this.recoverFailedKeyboardRequest(version);
             return;
           }
           if (version === this.lifecycleVersion) {
@@ -263,15 +264,24 @@ export class InputConnection {
         await this.controller.attach(false, textConfig);
       } catch (error) {
         hilog.error(HILOG_DOMAIN, TAG, 'attach input method failed %{public}s', `${error}`);
-        this.closeOwnedSession();
+        if (version === this.lifecycleVersion) {
+          this.closeBrokenAttachment(false);
+        }
         return;
       }
       if (version !== this.lifecycleVersion || !this.wantsAttachment) {
+        await this.controller.detach().catch(() => {});
+        this.attached = false;
         return;
       }
       this.attached = true;
+      // Real devices only deliver editor callbacks reliably when registration follows attachment.
       this.unregister();
       this.register();
+      if (!this.registered) {
+        this.closeBrokenAttachment(false);
+        return;
+      }
       if (this.windowId >= 0) {
         this.controller.setCallingWindow(this.windowId).catch(() => {});
       }
@@ -280,6 +290,7 @@ export class InputConnection {
           await this.controller.showTextInput(inputMethod.RequestKeyboardReason.TOUCH);
         } catch (error) {
           hilog.error(HILOG_DOMAIN, TAG, 'show input method failed %{public}s', `${error}`);
+          await this.recoverFailedKeyboardRequest(version);
           return;
         }
         if (version !== this.lifecycleVersion) {
@@ -304,6 +315,37 @@ export class InputConnection {
     }).catch(() => {
       this.attached = false;
     });
+  }
+
+  private closeBrokenAttachment(hideKeyboard: boolean): void {
+    this.wantsAttachment = false;
+    this.wantsKeyboard = false;
+    this.keyboardVisible = false;
+    this.attached = false;
+    this.lifecycleVersion++;
+    this.closeOwnedSession();
+    this.unregister();
+    this.enqueueDetach(hideKeyboard);
+  }
+
+  private async recoverFailedKeyboardRequest(version: number): Promise<void> {
+    if (version !== this.lifecycleVersion || !this.wantsAttachment) {
+      return;
+    }
+    if (this.keyboardRecoveryAttempted) {
+      this.closeBrokenAttachment(false);
+      return;
+    }
+    // A failed show request gets one full detach/attach recovery before the binding is closed.
+    this.keyboardRecoveryAttempted = true;
+    this.keyboardVisible = false;
+    this.attached = false;
+    this.closeOwnedSession();
+    this.unregister();
+    await this.controller.detach().catch(() => {});
+    if (version === this.lifecycleVersion && this.wantsAttachment) {
+      this.enqueueAttach();
+    }
   }
 
   private beginSession(): boolean {
@@ -341,6 +383,7 @@ export class InputConnection {
   }
 
   private handleHostAction(action: ImeHostAction): void {
+    const hadComposition = this.hasComposition();
     this.state = emptyImeState();
     if (action === ImeHostAction.CLOSE_SESSION) {
       this.wantsAttachment = false;
@@ -350,16 +393,32 @@ export class InputConnection {
       this.enqueueDetach(true);
       return;
     }
-    this.restartSession();
+    this.restartSession(hadComposition);
   }
 
-  private restartSession(): void {
+  private restartSession(resetNativeComposition: boolean = this.hasComposition()): void {
     const shouldReattach = this.wantsAttachment;
-    const shouldShowKeyboard = this.keyboardVisible || this.wantsKeyboard;
+    const pendingKeyboardRequest = this.wantsKeyboard;
+    const shouldShowKeyboard = this.keyboardVisible || pendingKeyboardRequest;
     this.state = emptyImeState();
     this.wantsAttachment = shouldReattach;
-    this.wantsKeyboard = shouldShowKeyboard;
+    this.wantsKeyboard = resetNativeComposition ? shouldShowKeyboard : pendingKeyboardRequest;
     const version = ++this.lifecycleVersion;
+    if (!resetNativeComposition) {
+      setTimeout(() => {
+        if (version !== this.lifecycleVersion || !this.wantsAttachment) {
+          return;
+        }
+        if (!this.attached) {
+          this.enqueueAttach();
+          return;
+        }
+        if (this.beginSession()) {
+          this.scheduleSync(true, true);
+        }
+      }, 0);
+      return;
+    }
     this.lifecycleQueue = this.lifecycleQueue.then(async (): Promise<void> => {
       await this.controller.detach().catch(() => {});
       this.attached = false;
@@ -425,16 +484,32 @@ export class InputConnection {
     if (!this.attached || !this.refreshState()) {
       return;
     }
+    const version = this.lifecycleVersion;
     if (syncText) {
       const context = this.context(ImeTextSource.EDITING, 0, -1);
       if (context !== null) {
         const selection = this.selectionRange(context.selection, context.totalLengthUtf16);
-        this.controller.changeSelection(context.text, selection.start, selection.end).catch(() => {});
+        this.controller.changeSelection(context.text, selection.start, selection.end).catch((error: Error) => {
+          this.handlePlatformSyncFailure(version, 'changeSelection', error);
+        });
       }
     }
-    if (syncCursor) {
-      this.controller.updateCursor(this.buildCursorInfo()).catch(() => {});
+    if (version !== this.lifecycleVersion || !this.attached) {
+      return;
     }
+    if (syncCursor) {
+      this.controller.updateCursor(this.buildCursorInfo()).catch((error: Error) => {
+        this.handlePlatformSyncFailure(version, 'updateCursor', error);
+      });
+    }
+  }
+
+  private handlePlatformSyncFailure(version: number, operation: string, error: Error): void {
+    if (version !== this.lifecycleVersion || !this.attached) {
+      return;
+    }
+    hilog.error(HILOG_DOMAIN, TAG, '%{public}s failed %{public}s', operation, `${error}`);
+    this.closeBrokenAttachment(false);
   }
 
   private apply(commands: ImeCommand[]): void {
@@ -505,7 +580,6 @@ export class InputConnection {
     const update = new ImeCommand();
     update.kind = ImeCommandKind.UPDATE_COMPOSITION;
     update.text = text;
-    let selectionOffset = text.length;
 
     if (!this.hasComposition()) {
       update.targetRange = documentRange;
@@ -513,16 +587,7 @@ export class InputConnection {
       const composition = this.state.compositionRange;
       const isWholeComposition = documentRange.startUtf16 === composition.startUtf16 &&
         documentRange.endUtf16 === composition.endUtf16;
-      const isInsideComposition = composition.startUtf16 <= documentRange.startUtf16 &&
-        documentRange.endUtf16 <= composition.endUtf16;
-      if (isWholeComposition) {
-        selectionOffset = text.length;
-      } else if (isInsideComposition) {
-        const relativeStart = documentRange.startUtf16 - composition.startUtf16;
-        update.targetRange = this.range(ImeCoordinateSpace.COMPOSITION, relativeStart,
-          documentRange.endUtf16 - composition.startUtf16);
-        selectionOffset = relativeStart + text.length;
-      } else {
+      if (!isWholeComposition) {
         const finish = new ImeCommand();
         finish.kind = ImeCommandKind.FINISH_COMPOSITION;
         commands.push(finish);
@@ -530,7 +595,6 @@ export class InputConnection {
       }
     }
 
-    update.selectionAfter = this.selection(ImeCoordinateSpace.COMPOSITION, selectionOffset, selectionOffset);
     commands.push(update);
     this.apply(commands);
   }
@@ -649,7 +713,7 @@ export class InputConnection {
     if (!this.refreshState() || !this.hasSelection()) {
       return 0;
     }
-    return Math.min(this.state.selection.anchorUtf16, this.state.selection.activeUtf16);
+    return this.state.selection.activeUtf16;
   }
 
   private normalizedRange(range: inputMethod.Range): ImeOffsetRange | null {

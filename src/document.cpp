@@ -63,7 +63,7 @@ namespace NS_SWEETEDITOR {
         return lhs.range.end < rhs.range.end;
       });
       for (size_t index = 1; index < prepared.size(); ++index) {
-        if (edits[prepared[index - 1]].range.overlaps(edits[prepared[index]].range)) {
+        if (edits[prepared[index - 1]].range.conflictsForBatchEdit(edits[prepared[index]].range)) {
           throw std::invalid_argument("Document replacement ranges overlap");
         }
       }

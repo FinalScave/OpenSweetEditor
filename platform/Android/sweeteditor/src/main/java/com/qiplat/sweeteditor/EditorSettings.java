@@ -210,9 +210,13 @@ public class EditorSettings {
     }
 
     public void setReadOnly(boolean readOnly) {
+        boolean wasReadOnly = mReadOnly;
         mReadOnly = readOnly;
         EditorActionResult result = mEditor.getEditorCore().setReadOnly(readOnly);
         mEditor.dispatchEditorActionResult(result);
+        if (wasReadOnly && !readOnly) {
+            mEditor.restartInputConnectionIfFocused();
+        }
     }
 
     public boolean isReadOnly() {

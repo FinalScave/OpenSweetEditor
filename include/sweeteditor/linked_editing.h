@@ -5,6 +5,7 @@
 #define SWEETEDITOR_LINKED_EDITING_H
 
 #include <cstdint>
+#include <optional>
 #include <sweeteditor/macro.h>
 #include <sweeteditor/foundation.h>
 
@@ -79,16 +80,10 @@ namespace NS_SWEETEDITOR {
     /// Get index of current group in groups
     size_t currentGroupIndex() const;
 
-    /// Compute linked edits: generate replace operations for all ranges in current group
-    /// Replace operations are sorted by document position in descending order (replace from back to front to avoid offset issues)
-    /// @param new_text New text
-    /// @return List of (old_range, new_text) for each replace operation, in descending order
-    Vector<std::pair<TextRange, U8String>> computeLinkedEdits(const U8String& new_text) const;
-
-    /// Update offsets of all ranges after a text edit
-    /// @param old_range Old range that was replaced
-    /// @param new_end New end position after replacement
-    void adjustRangesForEdit(const TextRange& old_range, const TextPosition& new_end);
+    /// Update every linked range for one shared-pre-state edit batch.
+    /// active_group_owners uses an active-group range index for owned replacements and nullopt for external edits.
+    bool adjustRangesForEditBatch(const Vector<TextEdit>& edits,
+                                  const Vector<std::optional<size_t>>& active_group_owners);
 
     /// Get highlight info for all tab stops (for rendering)
     Vector<LinkedEditingHighlight> getAllHighlights() const;

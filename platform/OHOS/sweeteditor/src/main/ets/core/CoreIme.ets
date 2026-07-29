@@ -44,6 +44,7 @@ export enum ImeHostAction {
   NONE = 0,
   CLOSE_SESSION = 1,
   RESTART_SESSION = 2,
+  SYNC_EDITING_STATE = 3,
 }
 
 export function imeHostActionFromValue(value: number): ImeHostAction {
@@ -51,6 +52,7 @@ export function imeHostActionFromValue(value: number): ImeHostAction {
     case 0: return ImeHostAction.NONE;
     case 1: return ImeHostAction.CLOSE_SESSION;
     case 2: return ImeHostAction.RESTART_SESSION;
+    case 3: return ImeHostAction.SYNC_EDITING_STATE;
     default: throw new Error('Unknown ImeHostAction value: ' + value);
   }
 }

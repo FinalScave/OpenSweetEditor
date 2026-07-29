@@ -1978,10 +1978,10 @@ public class SweetEditor extends View {
     // ==================== Event Dispatch (Internal) ====================
 
     private void dispatchTextChanged(@NonNull EditorActionResult editResult) {
-        if (editResult.contentChanged && !editResult.changes.isEmpty()) {
-            mEventBus.publish(new TextChangedEvent(editResult.changes, editResult.textChangeKind, editResult.source));
+        if (!editResult.textChanges.isEmpty()) {
+            mEventBus.publish(new TextChangedEvent(editResult.textChanges, editResult.textChangeKind, editResult.source));
             if (mDecorationProviderManager != null) {
-                mDecorationProviderManager.onTextChanged(editResult.changes);
+                mDecorationProviderManager.onTextChanged(editResult.textChanges);
             }
             if (mContextMenuController != null) {
                 mContextMenuController.onTextChanged();
@@ -1998,7 +1998,7 @@ public class SweetEditor extends View {
                 && result.imeState.compositionRange != null
                 && result.imeState.compositionRange.startUtf16 >= 0
                 && result.imeState.compositionRange.endUtf16 >= 0;
-        boolean contextChanged = result.contentChanged || result.compositionChanged
+        boolean contextChanged = !result.textChanges.isEmpty() || result.compositionChanged
                 || result.cursorChanged || result.selectionChanged;
         if (!contextChanged) return;
         boolean completionActive = mCompletionProviderManager.isActive();
@@ -2007,24 +2007,24 @@ public class SweetEditor extends View {
             return;
         }
 
+        if (result.textChanges.isEmpty()) {
+            mCompletionProviderManager.dismiss();
+            return;
+        }
+        if (result.textChanges.size() != 1) {
+            mCompletionProviderManager.dismiss();
+            return;
+        }
         if (compositionActive) {
             mCompletionProviderManager.triggerCompletion(CompletionContext.TriggerKind.RETRIGGER, null);
             return;
         }
-        if (!result.contentChanged) {
-            mCompletionProviderManager.dismiss();
-            return;
-        }
-        if (result.changes.isEmpty()) {
-            mCompletionProviderManager.dismiss();
-            return;
-        }
 
-        TextChange primaryChange = result.changes.get(0);
-        String triggerText = primaryChange.newText.length() == 1
-                ? primaryChange.newText
+        TextChange change = result.textChanges.get(0);
+        String triggerText = change.newText.length() == 1
+                ? change.newText
                 : result.compositionChanged
-                        ? lastCodePoint(primaryChange.newText)
+                        ? lastCodePoint(change.newText)
                         : "";
         if (!triggerText.isEmpty() && mCompletionProviderManager.isTriggerCharacter(triggerText)) {
             mCompletionProviderManager.triggerCompletion(CompletionContext.TriggerKind.CHARACTER, triggerText);
@@ -2177,7 +2177,7 @@ public class SweetEditor extends View {
     }
 
     private void dispatchStateEvents(@NonNull EditorActionResult result) {
-        if (result.contentChanged) {
+        if (!result.textChanges.isEmpty()) {
             dispatchTextChanged(result);
         }
         updateCompletion(result);
@@ -2319,6 +2319,16 @@ public class SweetEditor extends View {
 
     boolean isCurrentInputConnection(SweetEditorInputConnection inputConnection) {
         return mInputConnection == inputConnection;
+    }
+
+    void restartInputConnectionIfFocused() {
+        if (!hasFocus()) {
+            return;
+        }
+        InputMethodManager manager = getInputMethodManager();
+        if (manager != null) {
+            manager.restartInput(this);
+        }
     }
 
     void logInputPerf(long startNanos, String tag) {

@@ -376,8 +376,6 @@ namespace NS_SWEETEDITOR {
   struct TextEditResult {
     /// Whether the edit request was handled.
     bool handled{false};
-    /// Whether the current editing text changed, including provisional IME text.
-    bool editing_content_changed{false};
     /// Semantic kind of document text changes.
     TextChangeKind change_kind{TextChangeKind::NONE};
     /// List of all changes (normal edit: 1; atomic batch/undo/redo: maybe many)

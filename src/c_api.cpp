@@ -44,7 +44,7 @@ static const uint8_t* protocolToBinary(const T& value, size_t* out_size, size_t 
 }
 
 static const uint8_t* editorActionResultToBinary(const EditorActionResult& result, size_t* out_size) {
-  return protocolToBinary(result, out_size, 256 + result.changes.size() * 32);
+  return protocolToBinary(result, out_size, 256 + result.text_changes.size() * 32);
 }
 
 class CTextMeasurer : public TextMeasurer {

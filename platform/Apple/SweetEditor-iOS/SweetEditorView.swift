@@ -773,7 +773,7 @@ public class SweetEditorView: UIView, UIKeyInput, UITextInput, UITextInputTraits
             }
         }
         let changes = textChanges(from: result)
-        if result.content_changed || !changes.isEmpty {
+        if !changes.isEmpty {
             decorationProviderManager?.onTextChanged(changes: changes)
             onTextChanged?(TextChangedEvent(
                 changes: changes,
@@ -800,13 +800,16 @@ public class SweetEditorView: UIView, UIKeyInput, UITextInput, UITextInputTraits
         if result.scale_changed {
             onScaleChanged?(ScaleChangedEvent(scale: result.scale_after))
         }
-        textInputConnection.syncEditorActionResult(result)
+        let deferredInputDelegateNotification = textInputConnection.syncEditorActionResult(
+            result,
+            notifyInputDelegate: notifyInputDelegate
+        )
         completionProviderManager?.update(
             for: result,
             isLinkedEditing: editorCore.isInLinkedEditing()
         )
-        if notifyInputDelegate {
-            if result.content_changed || !changes.isEmpty {
+        if notifyInputDelegate && !deferredInputDelegateNotification {
+            if !changes.isEmpty || result.composition_changed {
                 inputDelegate?.textDidChange(self)
             }
             if result.cursor_changed || result.selection_changed {
@@ -1194,9 +1197,7 @@ public class SweetEditorView: UIView, UIKeyInput, UITextInput, UITextInputTraits
                 committedText = action.text
             }
         }
-        let editResult = textInputConnection.isSessionActive
-            ? textInputConnection.commitText(committedText)
-            : editorCore.insertText(committedText)
+        let editResult = textInputConnection.commitText(committedText)
         dispatchEditorActionResult(editResult, notifyInputDelegate: false)
     }
 
@@ -1494,8 +1495,8 @@ public class SweetEditorView: UIView, UIKeyInput, UITextInput, UITextInputTraits
     }
 
     private func textChanges(from result: EditorActionResult?) -> [TextChange] {
-        guard let result, result.content_changed || !result.changes.isEmpty else { return [] }
-        return textChanges(from: result.changes)
+        guard let result, !result.text_changes.isEmpty else { return [] }
+        return textChanges(from: result.text_changes)
     }
 
     private func textChanges(from rawChanges: [TextChange]) -> [TextChange] {

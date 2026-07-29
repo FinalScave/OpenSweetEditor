@@ -34,6 +34,7 @@ namespace NS_SWEETEDITOR {
     bool contains(const TextPosition& pos) const;
     bool isCollapsed() const;
     bool overlaps(const TextRange& other) const;
+    bool conflictsForBatchEdit(const TextRange& other) const;
     TextRange normalized() const;
     TextPosition transformPositionAfterEdit(TextPosition position, const TextPosition& new_end) const;
     U8String dump() const;

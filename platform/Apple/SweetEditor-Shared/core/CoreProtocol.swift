@@ -785,7 +785,6 @@ enum CoreProtocol {
         guard let needs_redraw = reader.readBoolI32() else { return nil }
         guard let source = readEditorActionSource(&reader) else { return nil }
         guard let text_change_kind = readTextChangeKind(&reader) else { return nil }
-        guard let content_changed = reader.readBoolI32() else { return nil }
         guard let cursor_changed = reader.readBoolI32() else { return nil }
         guard let selection_changed = reader.readBoolI32() else { return nil }
         guard let scroll_changed = reader.readBoolI32() else { return nil }
@@ -796,7 +795,7 @@ enum CoreProtocol {
         guard let animation_flags = reader.readInt32() else { return nil }
         guard let next_animation_delay_ms = reader.readInt32() else { return nil }
         guard let interaction_flags = reader.readInt32() else { return nil }
-        guard let changes = readTextChangeList(&reader) else { return nil }
+        guard let text_changes = readTextChangeList(&reader) else { return nil }
         guard let cursor_before = readTextPosition(&reader) else { return nil }
         guard let cursor_after = readTextPosition(&reader) else { return nil }
         guard let has_selection_before = reader.readBoolI32() else { return nil }
@@ -819,7 +818,7 @@ enum CoreProtocol {
         guard let hit_target = readHitTarget(&reader) else { return nil }
         guard let modifiers = reader.readInt32() else { return nil }
         guard let command = reader.readInt32() else { return nil }
-        return EditorActionResult(handled: handled, needs_redraw: needs_redraw, source: source, text_change_kind: text_change_kind, content_changed: content_changed, cursor_changed: cursor_changed, selection_changed: selection_changed, scroll_changed: scroll_changed, scale_changed: scale_changed, pointer_cursor_changed: pointer_cursor_changed, composition_changed: composition_changed, decoration_changed: decoration_changed, animation_flags: animation_flags, next_animation_delay_ms: next_animation_delay_ms, interaction_flags: interaction_flags, changes: changes, cursor_before: cursor_before, cursor_after: cursor_after, has_selection_before: has_selection_before, has_selection_after: has_selection_after, selection_before: selection_before, selection_after: selection_after, scroll_x_before: scroll_x_before, scroll_y_before: scroll_y_before, scroll_x_after: scroll_x_after, scroll_y_after: scroll_y_after, scale_before: scale_before, scale_after: scale_after, pointer_cursor_before: pointer_cursor_before, pointer_cursor_after: pointer_cursor_after, ime_host_action: ime_host_action, ime_state: ime_state, gesture_type: gesture_type, gesture_event_type: gesture_event_type, tap_point: tap_point, hit_target: hit_target, modifiers: modifiers, command: command)
+        return EditorActionResult(handled: handled, needs_redraw: needs_redraw, source: source, text_change_kind: text_change_kind, cursor_changed: cursor_changed, selection_changed: selection_changed, scroll_changed: scroll_changed, scale_changed: scale_changed, pointer_cursor_changed: pointer_cursor_changed, composition_changed: composition_changed, decoration_changed: decoration_changed, animation_flags: animation_flags, next_animation_delay_ms: next_animation_delay_ms, interaction_flags: interaction_flags, text_changes: text_changes, cursor_before: cursor_before, cursor_after: cursor_after, has_selection_before: has_selection_before, has_selection_after: has_selection_after, selection_before: selection_before, selection_after: selection_after, scroll_x_before: scroll_x_before, scroll_y_before: scroll_y_before, scroll_x_after: scroll_x_after, scroll_y_after: scroll_y_after, scale_before: scale_before, scale_after: scale_after, pointer_cursor_before: pointer_cursor_before, pointer_cursor_after: pointer_cursor_after, ime_host_action: ime_host_action, ime_state: ime_state, gesture_type: gesture_type, gesture_event_type: gesture_event_type, tap_point: tap_point, hit_target: hit_target, modifiers: modifiers, command: command)
     }
 
     static func decodeEditorActionResult(_ data: Data) -> EditorActionResult? {

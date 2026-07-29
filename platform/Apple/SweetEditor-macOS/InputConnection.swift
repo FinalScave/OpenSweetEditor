@@ -5,6 +5,7 @@ import SweetEditorShared
 final class InputConnection {
     private unowned let owner: SweetEditorView
     private let imeSession: ImeSession
+    private var lifecycleVersion: UInt64 = 0
 
     init(owner: SweetEditorView) {
         self.owner = owner
@@ -28,10 +29,15 @@ final class InputConnection {
     }
 
     func beginSession() -> Bool {
-        imeSession.isActive || imeSession.begin()
+        if imeSession.isActive {
+            return true
+        }
+        lifecycleVersion &+= 1
+        return imeSession.begin()
     }
 
     func endSession() -> EditorActionResult? {
+        lifecycleVersion &+= 1
         imeSession.end()
     }
 
@@ -40,7 +46,7 @@ final class InputConnection {
     }
 
     func commitText(_ text: String, replacementRange: NSRange) -> EditorActionResult? {
-        guard imeSession.isActive else { return nil }
+        guard beginSession() else { return nil }
         let range = replacementRange.location == NSNotFound ? nil : replacementRange
         return imeSession.commitText(text, replacementRange: range)
     }
@@ -50,7 +56,7 @@ final class InputConnection {
         selectedRange: NSRange,
         replacementRange: NSRange
     ) -> EditorActionResult? {
-        guard imeSession.isActive else { return nil }
+        guard beginSession() else { return nil }
         let range = replacementRange.location == NSNotFound ? nil : replacementRange
         return imeSession.updateComposition(text, selectedRange: selectedRange, replacementRange: range)
     }
@@ -78,10 +84,30 @@ final class InputConnection {
     }
 
     func synchronize(_ result: EditorActionResult) {
+        let hadComposition = imeSession.hasComposition
         imeSession.synchronize(result)
-        if result.ime_host_action != .NONE {
-            owner.inputContext?.discardMarkedText()
+        if result.ime_host_action == .CLOSE_SESSION {
+            lifecycleVersion &+= 1
             owner.window?.makeFirstResponder(nil)
+            return
+        }
+        guard result.ime_host_action == .RESTART_SESSION else {
+            return
+        }
+
+        lifecycleVersion &+= 1
+        let version = lifecycleVersion
+        if hadComposition {
+            owner.inputContext?.discardMarkedText()
+        }
+        DispatchQueue.main.async { [weak self] in
+            guard let self,
+                  version == self.lifecycleVersion,
+                  self.owner.window?.firstResponder === self.owner,
+                  !self.owner.editorCore.isReadOnly() else {
+                return
+            }
+            _ = self.imeSession.begin()
         }
     }
 }

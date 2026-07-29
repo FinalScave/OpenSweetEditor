@@ -769,85 +769,73 @@ class EditorCore {
     );
   }
 
-  bool get hasPreedit {
-    _ensureOpen();
-    return bindings.editor_ime_has_preedit(_handle) != 0;
-  }
-
-  EditorActionResult handleImeCommandMessage(ImeCommandMessage message) {
-    _ensureOpen();
-    final bytes = CoreProtocol.encodeImeCommandMessage(message);
-    return _callWithBinaryActionData(
-      bytes,
-      (ptr, len, outSize) => bindings.editor_ime_handle_command_message(
-        _handle,
-        ptr,
-        len,
-        outSize,
-      ),
-    );
-  }
-
-  EditorActionResult handleImeTextUpdateMessage(ImeTextUpdateMessage message) {
-    _ensureOpen();
-    final bytes = CoreProtocol.encodeImeTextUpdateMessage(message);
-    return _callWithBinaryActionData(
-      bytes,
-      (ptr, len, outSize) => bindings.editor_ime_handle_text_update_message(
-        _handle,
-        ptr,
-        len,
-        outSize,
-      ),
-    );
-  }
-
-  ImeScriptClass getImeKeyboardScriptClass() {
-    _ensureOpen();
-    return ImeScriptClass.fromValue(
-      bindings.editor_ime_get_keyboard_script_class(_handle),
-    );
-  }
-
-  ImeSyncSnapshot getImeSyncSnapshot() {
+  ImeState beginImeSession(ImeMutationModel mutationModel) {
     _ensureOpen();
     return _callAndParse(
-      const ImeSyncSnapshot(),
-      (outSize) => bindings.editor_ime_get_sync_snapshot(_handle, outSize),
-      CoreProtocol.decodeImeSyncSnapshotFromPointer,
-    );
-  }
-
-  ImeInputContext getImeCommandInputContext(int beforeLength, int afterLength) {
-    _ensureOpen();
-    return _callAndParse(
-      const ImeInputContext(),
-      (outSize) => bindings.editor_ime_get_command_input_context(
+      const ImeState(resultCode: ImeResultCode.rejected),
+      (outSize) => bindings.editor_ime_begin_session(
         _handle,
-        beforeLength,
-        afterLength,
+        mutationModel.value,
         outSize,
       ),
-      CoreProtocol.decodeImeInputContextFromPointer,
+      CoreProtocol.decodeImeStateFromPointer,
     );
   }
 
-  ImeInputContext getImeTextUpdateInputContext(
-    ImeTextUpdateScope scope,
-    int beforeLength,
-    int afterLength,
+  EditorActionResult endImeSession(int sessionId) {
+    _ensureOpen();
+    return _callAndParseAction(
+      (outSize) => bindings.editor_ime_end_session(_handle, sessionId, outSize),
+    );
+  }
+
+  EditorActionResult applyImeCommands(ImeCommandBatch batch) {
+    _ensureOpen();
+    final bytes = CoreProtocol.encodeImeCommandBatch(batch);
+    return _callWithBinaryActionData(
+      bytes,
+      (ptr, len, outSize) =>
+          bindings.editor_ime_apply_commands(_handle, ptr, len, outSize),
+    );
+  }
+
+  EditorActionResult applyImeTextUpdates(ImeTextUpdateBatch batch) {
+    _ensureOpen();
+    final bytes = CoreProtocol.encodeImeTextUpdateBatch(batch);
+    return _callWithBinaryActionData(
+      bytes,
+      (ptr, len, outSize) =>
+          bindings.editor_ime_apply_text_updates(_handle, ptr, len, outSize),
+    );
+  }
+
+  ImeState getImeState(int sessionId) {
+    _ensureOpen();
+    return _callAndParse(
+      const ImeState(resultCode: ImeResultCode.sessionMismatch),
+      (outSize) => bindings.editor_ime_get_state(_handle, sessionId, outSize),
+      CoreProtocol.decodeImeStateFromPointer,
+    );
+  }
+
+  ImeTextContext getImeContext(
+    int sessionId,
+    ImeTextSource source,
+    int startUtf16,
+    int lengthUtf16,
   ) {
     _ensureOpen();
     return _callAndParse(
-      const ImeInputContext(),
-      (outSize) => bindings.editor_ime_get_text_update_input_context(
+      const ImeTextContext(resultCode: ImeResultCode.rejected),
+      (outSize) => bindings.editor_ime_get_context(
         _handle,
-        scope.value,
-        beforeLength,
-        afterLength,
+        sessionId,
+        source.value,
+        startUtf16,
+        lengthUtf16,
         outSize,
       ),
-      CoreProtocol.decodeImeInputContextFromPointer,
+      CoreProtocol.decodeImeTextContextFromPointer,
     );
   }
 

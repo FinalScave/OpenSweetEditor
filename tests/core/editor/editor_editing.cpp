@@ -15,15 +15,15 @@ TEST_CASE("EditorCore normalizes selection before insert replacement") {
   editor.setSelection({{0, 11}, {0, 6}});
   EditorActionResult result = editor.insertText("X");
 
-  REQUIRE(result.content_changed);
+  REQUIRE_FALSE(result.text_changes.empty());
   CHECK(result.source == EditorActionSource::PROGRAMMATIC);
   CHECK(result.text_change_kind == TextChangeKind::REPLACEMENT);
   CHECK(document->getU8Text() == "hello X");
   CHECK(editor.getCursorPosition() == (TextPosition{0, 7}));
   CHECK_FALSE(editor.hasSelection());
-  REQUIRE(result.changes.size() == 1);
-  CHECK(result.changes[0].old_text == "world");
-  CHECK(result.changes[0].new_text == "X");
+  REQUIRE(result.text_changes.size() == 1);
+  CHECK(result.text_changes[0].old_text == "world");
+  CHECK(result.text_changes[0].new_text == "X");
 }
 
 TEST_CASE("EditorCore insertText with empty string deletes selection") {
@@ -37,15 +37,15 @@ TEST_CASE("EditorCore insertText with empty string deletes selection") {
   editor.setSelection({{0, 6}, {0, 11}});
   EditorActionResult result = editor.insertText("");
 
-  REQUIRE(result.content_changed);
+  REQUIRE_FALSE(result.text_changes.empty());
   CHECK(result.source == EditorActionSource::PROGRAMMATIC);
   CHECK(result.text_change_kind == TextChangeKind::DELETION);
   CHECK(document->getU8Text() == "hello ");
   CHECK(editor.getCursorPosition() == (TextPosition{0, 6}));
   CHECK_FALSE(editor.hasSelection());
-  REQUIRE(result.changes.size() == 1);
-  CHECK(result.changes[0].old_text == "world");
-  CHECK(result.changes[0].new_text == "");
+  REQUIRE(result.text_changes.size() == 1);
+  CHECK(result.text_changes[0].old_text == "world");
+  CHECK(result.text_changes[0].new_text == "");
 }
 
 TEST_CASE("EditorCore insertText with empty string and no selection is no-op") {
@@ -59,7 +59,7 @@ TEST_CASE("EditorCore insertText with empty string and no selection is no-op") {
   editor.setCursorPosition({0, 3});
   EditorActionResult result = editor.insertText("");
 
-  CHECK_FALSE(result.content_changed);
+  CHECK(result.text_changes.empty());
   CHECK(document->getU8Text() == "hello");
   CHECK(editor.getCursorPosition() == (TextPosition{0, 3}));
 }
@@ -78,21 +78,23 @@ TEST_CASE("EditorCore applyTextEdits applies one atomic batch and keeps primary 
 
   EditorActionResult result = editor.applyTextEdits(std::move(edits));
 
-  REQUIRE(result.content_changed);
+  REQUIRE_FALSE(result.text_changes.empty());
   CHECK(result.source == EditorActionSource::PROGRAMMATIC);
   CHECK(result.text_change_kind == TextChangeKind::MIXED);
   CHECK(document->getU8Text() == "import demo\nfun run()");
   CHECK(editor.getCursorPosition() == (TextPosition{1, 7}));
-  REQUIRE(result.changes.size() == 2);
+  REQUIRE(result.text_changes.size() == 2);
+  CHECK(result.text_changes[0].range == (TextRange{{0, 4}, {0, 8}}));
+  CHECK(result.text_changes[1].range == (TextRange{{0, 0}, {0, 0}}));
 
   EditorActionResult undo_result = editor.undo();
-  REQUIRE(undo_result.content_changed);
+  REQUIRE_FALSE(undo_result.text_changes.empty());
   CHECK(undo_result.text_change_kind == TextChangeKind::UNDO);
   CHECK(document->getU8Text() == "fun call()");
   CHECK(editor.getCursorPosition() == (TextPosition{0, 0}));
 
   EditorActionResult redo_result = editor.redo();
-  REQUIRE(redo_result.content_changed);
+  REQUIRE_FALSE(redo_result.text_changes.empty());
   CHECK(redo_result.text_change_kind == TextChangeKind::REDO);
   CHECK(document->getU8Text() == "import demo\nfun run()");
   CHECK(editor.getCursorPosition() == (TextPosition{1, 7}));
@@ -112,15 +114,40 @@ TEST_CASE("EditorCore applyTextEdits allows insertion at replacement end") {
 
   EditorActionResult result = editor.applyTextEdits(std::move(edits));
 
-  REQUIRE(result.content_changed);
+  REQUIRE_FALSE(result.text_changes.empty());
   CHECK(document->getU8Text() == "runAsync()");
   CHECK(editor.getCursorPosition() == (TextPosition{0, 3}));
 
-  REQUIRE(editor.undo().content_changed);
+  REQUIRE_FALSE(editor.undo().text_changes.empty());
   CHECK(document->getU8Text() == "call()");
 
-  REQUIRE(editor.redo().content_changed);
+  REQUIRE_FALSE(editor.redo().text_changes.empty());
   CHECK(document->getU8Text() == "runAsync()");
+}
+
+TEST_CASE("EditorCore applyTextEdits allows insertion at replacement start") {
+  EditorOptions options;
+  EditorCore editor(makeShared<FixedWidthTextMeasurer>(), options);
+
+  SharedPtr<Document> document = makeShared<LineArrayDocument>("call()");
+  editor.loadDocument(document);
+  editor.setViewport({800, 600});
+
+  Vector<TextEdit> edits;
+  edits.push_back({{{0, 0}, {0, 4}}, "run"});
+  edits.push_back({{{0, 0}, {0, 0}}, "Async"});
+
+  EditorActionResult result = editor.applyTextEdits(std::move(edits));
+
+  REQUIRE(result.text_changes.size() == 2);
+  CHECK(result.text_changes[0].range == (TextRange{{0, 0}, {0, 4}}));
+  CHECK(result.text_changes[1].range == (TextRange{{0, 0}, {0, 0}}));
+  CHECK(document->getU8Text() == "Asyncrun()");
+
+  REQUIRE_FALSE(editor.undo().text_changes.empty());
+  CHECK(document->getU8Text() == "call()");
+  REQUIRE_FALSE(editor.redo().text_changes.empty());
+  CHECK(document->getU8Text() == "Asyncrun()");
 }
 
 TEST_CASE("EditorCore applyTextEdits preserves inverse coordinates across line changes") {
@@ -135,13 +162,13 @@ TEST_CASE("EditorCore applyTextEdits preserves inverse coordinates across line c
   edits.push_back({{{0, 0}, {0, 2}}, "A\nX"});
   edits.push_back({{{2, 0}, {3, 0}}, ""});
 
-  REQUIRE(editor.applyTextEdits(std::move(edits)).content_changed);
+  REQUIRE_FALSE(editor.applyTextEdits(std::move(edits)).text_changes.empty());
   CHECK(document->getU8Text() == "A\nX\nbb\ndd");
 
-  REQUIRE(editor.undo().content_changed);
+  REQUIRE_FALSE(editor.undo().text_changes.empty());
   CHECK(document->getU8Text() == "aa\nbb\ncc\ndd");
 
-  REQUIRE(editor.redo().content_changed);
+  REQUIRE_FALSE(editor.redo().text_changes.empty());
   CHECK(document->getU8Text() == "A\nX\nbb\ndd");
 }
 
@@ -155,13 +182,13 @@ TEST_CASE("EditorCore applyTextEdits creates a history merge barrier") {
 
   Vector<TextEdit> edits;
   edits.push_back({{{0, 0}, {0, 0}}, "a"});
-  REQUIRE(editor.applyTextEdits(std::move(edits)).content_changed);
-  REQUIRE(editor.insertText("b").content_changed);
+  REQUIRE_FALSE(editor.applyTextEdits(std::move(edits)).text_changes.empty());
+  REQUIRE_FALSE(editor.insertText("b").text_changes.empty());
   CHECK(document->getU8Text() == "ab");
 
-  REQUIRE(editor.undo().content_changed);
+  REQUIRE_FALSE(editor.undo().text_changes.empty());
   CHECK(document->getU8Text() == "a");
-  REQUIRE(editor.undo().content_changed);
+  REQUIRE_FALSE(editor.undo().text_changes.empty());
   CHECK(document->getU8Text().empty());
 }
 
@@ -180,7 +207,7 @@ TEST_CASE("EditorCore applyTextEdits ignores collapsed empty edits for content a
   EditorActionResult result = editor.applyTextEdits(std::move(edits));
 
   CHECK_FALSE(result.handled);
-  CHECK_FALSE(result.content_changed);
+  CHECK(result.text_changes.empty());
   CHECK_FALSE(result.cursor_changed);
   CHECK(document->getU8Text() == "hello");
   CHECK(editor.getCursorPosition() == (TextPosition{0, 2}));
@@ -202,7 +229,7 @@ TEST_CASE("EditorCore applyTextEdits moves cursor for collapsed empty primary ed
   EditorActionResult result = editor.applyTextEdits(std::move(edits));
 
   REQUIRE(result.handled);
-  CHECK_FALSE(result.content_changed);
+  CHECK(result.text_changes.empty());
   CHECK(result.cursor_changed);
   CHECK(document->getU8Text() == "hello");
   CHECK(editor.getCursorPosition() == (TextPosition{0, 4}));
@@ -223,10 +250,10 @@ TEST_CASE("EditorCore applyTextEdits transforms collapsed empty primary cursor t
 
   EditorActionResult result = editor.applyTextEdits(std::move(edits));
 
-  REQUIRE(result.content_changed);
+  REQUIRE_FALSE(result.text_changes.empty());
   CHECK(document->getU8Text() == "import demo\nfun call()");
   CHECK(editor.getCursorPosition() == (TextPosition{1, 4}));
-  REQUIRE(result.changes.size() == 1);
+  REQUIRE(result.text_changes.size() == 1);
   CHECK(editor.canUndo());
 }
 
@@ -244,7 +271,7 @@ TEST_CASE("EditorCore applyTextEdits ignores no-op edits during overlap validati
 
   EditorActionResult result = editor.applyTextEdits(std::move(edits));
 
-  REQUIRE(result.content_changed);
+  REQUIRE_FALSE(result.text_changes.empty());
   CHECK(document->getU8Text() == "aXXdef");
   CHECK(editor.getCursorPosition() == (TextPosition{0, 3}));
 }
@@ -265,7 +292,7 @@ TEST_CASE("EditorCore applyTextEdits rejects overlapping real edits") {
   EditorActionResult result = editor.applyTextEdits(std::move(edits));
 
   CHECK_FALSE(result.handled);
-  CHECK_FALSE(result.content_changed);
+  CHECK(result.text_changes.empty());
   CHECK(document->getU8Text() == "abcdef");
   CHECK_FALSE(editor.canUndo());
 }
@@ -286,7 +313,7 @@ TEST_CASE("EditorCore keeps collapsed fold when editing a projected tail") {
   CHECK(editor.getCursorPosition() == (TextPosition{2, 1}));
 
   EditorActionResult result = editor.insertText(";");
-  REQUIRE(result.content_changed);
+  REQUIRE_FALSE(result.text_changes.empty());
   CHECK(document->getU8Text() == "if {\n  body\n};");
   CHECK_FALSE(editor.isLineVisible(2));
   CHECK(editor.getCursorPosition() == (TextPosition{2, 2}));
@@ -307,7 +334,7 @@ TEST_CASE("EditorCore unfolds folded region for multiline projected tail edits")
   editor.setCursorPosition({2, 1});
   EditorActionResult result = editor.insertText("\n");
 
-  REQUIRE(result.content_changed);
+  REQUIRE_FALSE(result.text_changes.empty());
   CHECK(editor.isLineVisible(1));
   CHECK(editor.isLineVisible(2));
 }
@@ -326,7 +353,7 @@ TEST_CASE("EditorCore Enter keeps current line indent by default") {
   EditorActionResult key_result = editor.handleKeyEvent(event);
 
   REQUIRE(key_result.handled);
-  REQUIRE(key_result.content_changed);
+  REQUIRE_FALSE(key_result.text_changes.empty());
   CHECK(key_result.source == EditorActionSource::KEYBOARD);
   CHECK(key_result.text_change_kind == TextChangeKind::INSERTION);
   CHECK(document->getU8Text() == "  foo\n  ");
@@ -349,7 +376,7 @@ TEST_CASE("EditorCore Tab inserts spaces to the next tab stop when insertSpaces 
   EditorActionResult key_result = editor.handleKeyEvent(event);
 
   REQUIRE(key_result.handled);
-  REQUIRE(key_result.content_changed);
+  REQUIRE_FALSE(key_result.text_changes.empty());
   CHECK(document->getU8Text() == "    foo");
   CHECK(editor.getCursorPosition() == (TextPosition{0, 4}));
 }
@@ -366,7 +393,7 @@ TEST_CASE("EditorCore backspace removes one surrogate pair as a single glyph") {
 
   EditorActionResult result = editor.backspace();
 
-  REQUIRE(result.content_changed);
+  REQUIRE_FALSE(result.text_changes.empty());
   CHECK(result.source == EditorActionSource::PROGRAMMATIC);
   CHECK(result.text_change_kind == TextChangeKind::DELETION);
   CHECK(document->getU8Text() == "AB");
@@ -474,7 +501,7 @@ TEST_CASE("EditorCore deleteForward removes one surrogate pair as a single glyph
 
   EditorActionResult result = editor.deleteForward();
 
-  REQUIRE(result.content_changed);
+  REQUIRE_FALSE(result.text_changes.empty());
   CHECK(document->getU8Text() == "AB");
   CHECK(editor.getCursorPosition() == (TextPosition{0, 1}));
 }
@@ -497,7 +524,7 @@ TEST_CASE("EditorCore treats emoji modifier grapheme clusters as one editing uni
 
   editor.setCursorPosition({0, 4});
   EditorActionResult backspace_result = editor.backspace();
-  REQUIRE(backspace_result.content_changed);
+  REQUIRE_FALSE(backspace_result.text_changes.empty());
   CHECK(document->getU8Text() == "");
   CHECK(editor.getCursorPosition() == (TextPosition{0, 0}));
 
@@ -506,7 +533,7 @@ TEST_CASE("EditorCore treats emoji modifier grapheme clusters as one editing uni
   editor.setViewport({800, 600});
   editor.setCursorPosition({0, 0});
   EditorActionResult delete_result = editor.deleteForward();
-  REQUIRE(delete_result.content_changed);
+  REQUIRE_FALSE(delete_result.text_changes.empty());
   CHECK(document->getU8Text() == "");
   CHECK(editor.getCursorPosition() == (TextPosition{0, 0}));
 }
@@ -527,7 +554,7 @@ TEST_CASE("EditorCore clamps direct cursor and range APIs to grapheme boundaries
   CHECK_FALSE(editor.hasSelection());
 
   EditorActionResult replace_result = editor.replaceText({{0, 2}, {0, 2}}, "X");
-  REQUIRE(replace_result.content_changed);
+  REQUIRE_FALSE(replace_result.text_changes.empty());
   CHECK(replace_result.text_change_kind == TextChangeKind::INSERTION);
   CHECK(document->getU8Text() == "X\xF0\x9F\x91\x8D\xF0\x9F\x8F\xBB");
   CHECK(editor.getCursorPosition() == (TextPosition{0, 1}));
@@ -536,7 +563,7 @@ TEST_CASE("EditorCore clamps direct cursor and range APIs to grapheme boundaries
   editor.loadDocument(document);
   editor.setViewport({800, 600});
   EditorActionResult delete_result = editor.deleteText({{0, 2}, {0, 4}});
-  REQUIRE(delete_result.content_changed);
+  REQUIRE_FALSE(delete_result.text_changes.empty());
   CHECK(delete_result.text_change_kind == TextChangeKind::DELETION);
   CHECK(document->getU8Text() == "");
   CHECK(editor.getCursorPosition() == (TextPosition{0, 0}));
@@ -556,7 +583,7 @@ TEST_CASE("EditorCore treats ZWJ emoji families as one editing unit") {
   CHECK(editor.getCursorPosition() == (TextPosition{0, 11}));
 
   EditorActionResult backspace_result = editor.backspace();
-  REQUIRE(backspace_result.content_changed);
+  REQUIRE_FALSE(backspace_result.text_changes.empty());
   CHECK(document->getU8Text() == "");
   CHECK(editor.getCursorPosition() == (TextPosition{0, 0}));
 }
@@ -575,7 +602,7 @@ TEST_CASE("EditorCore expands ZWJ family ranges to full grapheme boundaries") {
   CHECK_FALSE(editor.hasSelection());
 
   EditorActionResult delete_result = editor.deleteText({{0, 2}, {0, 4}});
-  REQUIRE(delete_result.content_changed);
+  REQUIRE_FALSE(delete_result.text_changes.empty());
   CHECK(document->getU8Text() == "");
   CHECK(editor.getCursorPosition() == (TextPosition{0, 0}));
 }
@@ -608,7 +635,7 @@ TEST_CASE("EditorCore replaceText normalizes insert positions away from surrogat
 
   EditorActionResult result = editor.replaceText({{0, 2}, {0, 2}}, "X");
 
-  REQUIRE(result.content_changed);
+  REQUIRE_FALSE(result.text_changes.empty());
   CHECK(document->getU8Text()
         == "AX\xF0\x9F\x98\x80"
            "B");
@@ -626,7 +653,7 @@ TEST_CASE("EditorCore deleteText expands surrogate-spanning ranges to full code-
 
   EditorActionResult result = editor.deleteText({{0, 2}, {0, 3}});
 
-  REQUIRE(result.content_changed);
+  REQUIRE_FALSE(result.text_changes.empty());
   CHECK(document->getU8Text() == "AB");
   CHECK(editor.getCursorPosition() == (TextPosition{0, 1}));
 }

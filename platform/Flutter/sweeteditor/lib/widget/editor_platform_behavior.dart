@@ -10,8 +10,6 @@ class EditorPlatformBehavior {
     required this.revealSelectionEndOnSelectAll,
     required this.usesDeltaTextInputModel,
     required this.usesTextInputNewlineAction,
-    required this.imeTextUpdateScope,
-    required this.textInputComposingRole,
     required this.supportsTouchScale,
     required this.supportsCtrlWheelScale,
     required this.supportsTrackpadPanZoom,
@@ -27,25 +25,20 @@ class EditorPlatformBehavior {
         !kIsWeb && defaultTargetPlatform == TargetPlatform.android;
     final isWindows =
         !kIsWeb && defaultTargetPlatform == TargetPlatform.windows;
-    final isMobileStyle =
-        !kIsWeb && (isAndroid || defaultTargetPlatform == TargetPlatform.iOS);
+    final isIOS = !kIsWeb && defaultTargetPlatform == TargetPlatform.iOS;
+    final isMacOS = !kIsWeb && defaultTargetPlatform == TargetPlatform.macOS;
+    final supportsFlutterIme = isAndroid || isIOS || isMacOS || isWindows;
+    final isMobileStyle = !kIsWeb && (isAndroid || isIOS);
     final monospaceFontFamily = _resolveMonospaceFontFamily();
-    final usesPlatformTextInput = !kIsWeb;
     return EditorPlatformBehavior._(
-      usesPlatformTextInput: usesPlatformTextInput,
+      usesPlatformTextInput: supportsFlutterIme,
       showsSoftKeyboard: isMobileStyle,
       usesMouseCursor: !isMobileStyle,
       showsSelectionHandles: isMobileStyle,
       showsFloatingSelectionMenu: isMobileStyle,
       revealSelectionEndOnSelectAll: isMobileStyle,
-      usesDeltaTextInputModel: isAndroid,
+      usesDeltaTextInputModel: supportsFlutterIme && !isAndroid,
       usesTextInputNewlineAction: !isWindows,
-      imeTextUpdateScope: isWindows
-          ? core.ImeTextUpdateScope.transientInput
-          : core.ImeTextUpdateScope.documentWindow,
-      textInputComposingRole: isAndroid
-          ? core.ImeMarkedRangeRole.systemMark
-          : core.ImeMarkedRangeRole.preedit,
       supportsTouchScale: isMobileStyle,
       supportsCtrlWheelScale: !isMobileStyle,
       supportsTrackpadPanZoom: !isMobileStyle,
@@ -67,8 +60,6 @@ class EditorPlatformBehavior {
   final bool revealSelectionEndOnSelectAll;
   final bool usesDeltaTextInputModel;
   final bool usesTextInputNewlineAction;
-  final core.ImeTextUpdateScope imeTextUpdateScope;
-  final core.ImeMarkedRangeRole textInputComposingRole;
   final bool supportsTouchScale;
   final bool supportsCtrlWheelScale;
   final bool supportsTrackpadPanZoom;

@@ -269,7 +269,7 @@ When text changes, all decoration line/column offsets must be updated. `adjustFo
 
 EditorCore is the top-level class. It composes all submodules and exposes full editor APIs.
 
-`EditorCore` directly owns IME composition state and short-lived edit transactions. The implementation lives in `src/editor_core_ime.cpp`, while reusable committed-to-editing coordinate projection remains source-private in `src/ime_projection.cpp`. Public APIs remain semantic entrypoints such as `applyImeCommands(...)` and `applyImeTextUpdates(...)`.
+`EditorCore` directly owns IME composition state and short-lived edit transactions. The implementation lives in `src/editor_core_ime.cpp`. Generic stateless text-position transforms live in `src/text_edit_utils.cpp`, while IME transactions construct composition-baseline mappings only when needed; there is no separate projection layer. Public APIs remain semantic entrypoints such as `applyImeCommands(...)` and `applyImeTextUpdates(...)`.
 
 #### Internal Components
 
@@ -318,7 +318,7 @@ This method returns the internal edit primitive result `TextEditResult`, which `
 4. auto-unfolds edited folded area (`autoUnfoldForEdit`)
 5. marks affected lines as dirty
 6. pushes undo action
-7. returns precise change info for `EditorActionResult.changes` / `contentChanged`
+7. returns precise change info for `EditorActionResult.text_changes`
 
 ---
 
@@ -586,8 +586,8 @@ Extra:
         │
         ▼
   Integration layer dispatches EditorActionResult through one path
-        │  · emit text events from changes/contentChanged
-        │  · synchronize IME state from needsImeSync
+        │  · emit text events from text_changes
+        │  · execute imeHostAction and consume authoritative imeState
         │  · schedule animation ticks from animationFlags / nextAnimationDelayMs
         │  · refresh render model from needsRedraw
         │
@@ -632,7 +632,7 @@ Extra:
         │
         ▼
   Fold into EditorActionResult
-        │  {contentChanged, changes, cursorChanged, selectionChanged, needsRedraw, ...}
+        │  {textChanges, cursorChanged, selectionChanged, needsRedraw, ...}
         ▼
   Integration layer dispatches EditorActionResult
         │

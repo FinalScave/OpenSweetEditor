@@ -342,10 +342,6 @@ class EditorInteractionController {
       return KeyEventResult.ignored;
     }
 
-    if (_tryHandleComposingKey(keyCode)) {
-      return KeyEventResult.handled;
-    }
-
     if (_session.inlineSuggestionController.isShowing) {
       final androidCode = keyCode;
       if (androidCode != 0 &&
@@ -576,52 +572,6 @@ class EditorInteractionController {
       return true;
     }
     return false;
-  }
-
-  bool _tryHandleComposingKey(int keyCode) {
-    if (keyCode == core.KeyCode.none) return false;
-    final editorCore = _session.editorCore;
-    if (editorCore == null) return false;
-    final snapshot = editorCore.getImeSyncSnapshot();
-    if (!snapshot.hasPreeditRange && !snapshot.hasSystemMarkRange) {
-      return false;
-    }
-    switch (keyCode) {
-      case core.KeyCode.backspace:
-        _resetCursorBlink();
-        _dispatchEditorActionResult(
-          editorCore.handleImeCommandMessage(
-            const core.ImeCommandMessage(
-              kind: core.ImeCommandKind.deleteSurroundingText,
-              deleteBefore: 1,
-            ),
-          ),
-        );
-        return true;
-      case core.KeyCode.deleteKey:
-        _resetCursorBlink();
-        _dispatchEditorActionResult(
-          editorCore.handleImeCommandMessage(
-            const core.ImeCommandMessage(
-              kind: core.ImeCommandKind.deleteSurroundingText,
-              deleteAfter: 1,
-            ),
-          ),
-        );
-        return true;
-      case core.KeyCode.escape:
-        _resetCursorBlink();
-        _dispatchEditorActionResult(
-          editorCore.handleImeCommandMessage(
-            const core.ImeCommandMessage(
-              kind: core.ImeCommandKind.cancelPreedit,
-            ),
-          ),
-        );
-        return true;
-      default:
-        return false;
-    }
   }
 
   void insertText(String text) {
