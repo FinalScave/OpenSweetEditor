@@ -55,7 +55,6 @@ namespace NS_SWEETEDITOR {
 
   void TextEditResult::markHandled(TextChangeKind kind) {
     handled = true;
-    editing_content_changed = editing_content_changed || kind != TextChangeKind::NONE;
     mergeChangeKind(kind);
   }
 

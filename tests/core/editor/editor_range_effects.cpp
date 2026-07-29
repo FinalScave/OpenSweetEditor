@@ -22,7 +22,7 @@ namespace {
     editor.setWrapMode(WrapMode::CHAR_BREAK);
   }
 
-  EditorActionResult updatePreedit(EditorCore& editor, const U8String& text) {
+  EditorActionResult updateComposition(EditorCore& editor, const U8String& text) {
     static std::unordered_map<EditorCore*, uint64_t> sessions;
     uint64_t session_id = sessions[&editor];
     if (editor.getImeState(session_id).result_code != ImeResultCode::OK) {
@@ -295,7 +295,7 @@ TEST_CASE("EditorCore buildRenderModel exposes active IME composition range effe
   styles.ime_composition.underline_style = RangeEffectUnderlineStyle::SOLID;
   editor.setEditorRangeEffectStyles(styles);
   editor.setCursorPosition({0, 1});
-  updatePreedit(editor, "xy");
+  updateComposition(editor, "xy");
 
   EditorRenderModel model;
   editor.buildRenderModel(model);
@@ -318,7 +318,7 @@ TEST_CASE("EditorCore buildRenderModel splits wrapped IME composition range effe
   editor.setEditorRangeEffectStyles(styles);
 
   editor.setCursorPosition({0, 0});
-  updatePreedit(editor, "abcdefghijkl");
+  updateComposition(editor, "abcdefghijkl");
 
   EditorRenderModel model;
   editor.buildRenderModel(model);
@@ -336,7 +336,7 @@ TEST_CASE("EditorCore buildRenderModel emits linked editing rectangles for snipp
   styles.linked_editing_active.border_color = static_cast<int32_t>(0xFF6699CCu);
   styles.linked_editing_inactive.border_color = static_cast<int32_t>(0x806699CCu);
   editor.setEditorRangeEffectStyles(styles);
-  REQUIRE(editor.insertSnippet("${1:foo}-${2:bar}-$0").content_changed);
+  REQUIRE_FALSE(editor.insertSnippet("${1:foo}-${2:bar}-$0").text_changes.empty());
 
   EditorRenderModel model;
   editor.buildRenderModel(model);

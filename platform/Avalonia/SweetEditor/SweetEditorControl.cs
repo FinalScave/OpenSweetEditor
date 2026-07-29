@@ -255,6 +255,10 @@ namespace SweetEditor {
 			NotifyTextInputStateChanged(force: true);
 		}
 
+		internal void ResumeImeSessionIfPossible() {
+			inputConnection.ResumeSessionIfPossible();
+		}
+
 		public override void Render(DrawingContext context) {
 			base.Render(context);
 			long renderStartTick = renderer.IsPerfOverlayEnabled() ? Stopwatch.GetTimestamp() : 0;
@@ -1631,10 +1635,10 @@ namespace SweetEditor {
 
 		private void DispatchStateEvents(EditorActionResult result) {
 			bool keyInput = result.Source == EditorActionSource.KEYBOARD;
-			if (keyInput && (result.ContentChanged || result.CursorChanged)) {
+			if (keyInput && (result.TextChanges.Count > 0 || result.CursorChanged)) {
 				DismissInlineSuggestionInternal(emitDismissedCallback: true);
 			}
-			if (result.ContentChanged) {
+			if (result.TextChanges.Count > 0) {
 				FireTextChanged(result);
 			}
 
@@ -1668,7 +1672,7 @@ namespace SweetEditor {
 		}
 
 		private static bool ShouldScheduleTextInputStateAfterResult(EditorActionResult result) {
-			return result.ContentChanged || result.CursorChanged || result.SelectionChanged ||
+			return result.TextChanges.Count > 0 || result.CursorChanged || result.SelectionChanged ||
 			       result.CompositionChanged || result.ScrollChanged || result.ScaleChanged;
 		}
 
@@ -2558,9 +2562,9 @@ namespace SweetEditor {
 		private void FireTextChanged(EditorActionResult? editResult = null) {
 			DismissInlineSuggestionInternal(emitDismissedCallback: true);
 			ClearAuthorizedDestructiveSelection();
-			if (editResult?.Changes != null && editResult.Changes.Count > 0) {
-				TextChanged?.Invoke(this, new TextChangedEventArgs(editResult.TextChangeKind, editResult.Source, editResult.Changes));
-				decorationProviderManager.OnTextChanged(editResult.Changes);
+			if (editResult?.TextChanges != null && editResult.TextChanges.Count > 0) {
+				TextChanged?.Invoke(this, new TextChangedEventArgs(editResult.TextChangeKind, editResult.Source, editResult.TextChanges));
+				decorationProviderManager.OnTextChanged(editResult.TextChanges);
 			}
 		}
 
@@ -2573,12 +2577,24 @@ namespace SweetEditor {
 				return;
 			}
 
-			bool contextChanged = result.ContentChanged || result.CompositionChanged ||
+			bool contextChanged = result.TextChanges.Count > 0 || result.CompositionChanged ||
 			                      result.CursorChanged || result.SelectionChanged;
 			if (!contextChanged) {
 				return;
 			}
 			if (editorCore.IsInLinkedEditing()) {
+				completionProviderManager.Dismiss();
+				return;
+			}
+
+			bool completionShowing = completionItems.Count > 0;
+			if (result.TextChanges.Count == 0) {
+				if (completionShowing) {
+					completionProviderManager.Dismiss();
+				}
+				return;
+			}
+			if (result.TextChanges.Count != 1) {
 				completionProviderManager.Dismiss();
 				return;
 			}
@@ -2592,15 +2608,7 @@ namespace SweetEditor {
 				return;
 			}
 
-			bool completionShowing = completionItems.Count > 0;
-			if (!result.ContentChanged || result.Changes.Count == 0) {
-				if (completionShowing) {
-					completionProviderManager.Dismiss();
-				}
-				return;
-			}
-
-			string newText = result.Changes[0].NewText;
+			string newText = result.TextChanges[0].NewText;
 			if (newText.Length == 1 && completionProviderManager.IsTriggerCharacter(newText)) {
 				completionProviderManager.TriggerCompletion(CompletionTriggerKind.Character, newText);
 			} else if (completionShowing) {

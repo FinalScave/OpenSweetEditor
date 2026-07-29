@@ -81,7 +81,7 @@ TEST_CASE("EditorCore search supports regex captures in replace all") {
 
   EditorActionResult replace = editor.replaceAllSearchMatches("bar$1");
   CHECK(replace.handled);
-  CHECK(replace.content_changed);
+  CHECK_FALSE(replace.text_changes.empty());
   CHECK(replace.source == EditorActionSource::SEARCH);
   CHECK(replace.text_change_kind == TextChangeKind::REPLACEMENT);
   CHECK(document->getU8Text() == "bar1 bar2");
@@ -99,14 +99,14 @@ TEST_CASE("EditorCore search replacement does not act as linked input") {
   editor.loadDocument(document);
   editor.setViewport({500, 240});
 
-  REQUIRE(editor.insertSnippet("${1:foo}-${1:foo}").content_changed);
+  REQUIRE_FALSE(editor.insertSnippet("${1:foo}-${1:foo}").text_changes.empty());
   REQUIRE(editor.isInLinkedEditing());
 
   SearchRequest request;
   request.pattern = "foo";
   editor.search(request);
 
-  REQUIRE(editor.replaceCurrentSearchMatch("bar").content_changed);
+  REQUIRE_FALSE(editor.replaceCurrentSearchMatch("bar").text_changes.empty());
   CHECK(document->getU8Text() == "foo-bar");
   CHECK_FALSE(editor.isInLinkedEditing());
 }
@@ -117,14 +117,14 @@ TEST_CASE("EditorCore replace all exits linked editing") {
   editor.loadDocument(document);
   editor.setViewport({500, 240});
 
-  REQUIRE(editor.insertSnippet("${1:foo}-${1:foo}").content_changed);
+  REQUIRE_FALSE(editor.insertSnippet("${1:foo}-${1:foo}").text_changes.empty());
   REQUIRE(editor.isInLinkedEditing());
 
   SearchRequest request;
   request.pattern = "foo";
   editor.search(request);
 
-  REQUIRE(editor.replaceAllSearchMatches("bar").content_changed);
+  REQUIRE_FALSE(editor.replaceAllSearchMatches("bar").text_changes.empty());
   CHECK(document->getU8Text() == "bar-bar");
   CHECK_FALSE(editor.isInLinkedEditing());
 }

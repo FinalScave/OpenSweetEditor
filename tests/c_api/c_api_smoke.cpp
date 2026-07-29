@@ -217,7 +217,7 @@ namespace {
     if (!readI32(ignore_i32)) return payload;
     if (!readI32(payload.source)) return payload;
     if (!readI32(payload.text_change_kind)) return payload;
-    for (int i = 0; i < 8; ++i) {
+    for (int i = 0; i < 7; ++i) {
       if (!readI32(ignore_i32)) return payload;
     }
     if (!readU32(payload.animation_flags)) return payload;
@@ -316,10 +316,10 @@ TEST_CASE("C API null handles return safe defaults") {
   editor_set_selection(0, 0, 0, 0, 0, &no_change_size);
   CHECK(no_change_size == 0);
   size_t null_ime_size = 0;
-  ImeCommand null_preedit;
-  null_preedit.kind = ImeCommandKind::UPDATE_COMPOSITION;
-  null_preedit.text = "a";
-  const uint8_t* null_ime = sendImeCommand(0, 1, null_preedit, &null_ime_size);
+  ImeCommand null_composition;
+  null_composition.kind = ImeCommandKind::UPDATE_COMPOSITION;
+  null_composition.text = "a";
+  const uint8_t* null_ime = sendImeCommand(0, 1, null_composition, &null_ime_size);
   CHECK(null_ime == nullptr);
   CHECK(null_ime_size == 0);
   ImeCommand null_cancel;
@@ -424,10 +424,10 @@ TEST_CASE("C API basic edit, composition and linked editing flow") {
   ImeState ime_state = beginCommandSession(editor);
   REQUIRE(ime_state.result_code == ImeResultCode::OK);
   size_t ime_size = 0;
-  ImeCommand preedit_message;
-  preedit_message.kind = ImeCommandKind::UPDATE_COMPOSITION;
-  preedit_message.text = "q";
-  const uint8_t* ime_result = sendImeCommand(editor, ime_state.session_id, preedit_message, &ime_size);
+  ImeCommand composition_message;
+  composition_message.kind = ImeCommandKind::UPDATE_COMPOSITION;
+  composition_message.text = "q";
+  const uint8_t* ime_result = sendImeCommand(editor, ime_state.session_id, composition_message, &ime_size);
   REQUIRE(ime_result != nullptr);
   CHECK(ime_size > 0);
   free_binary_data(reinterpret_cast<intptr_t>(ime_result));

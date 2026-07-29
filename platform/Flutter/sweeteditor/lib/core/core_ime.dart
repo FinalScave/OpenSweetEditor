@@ -16,14 +16,26 @@ enum ImeCommandKind {
 
   static ImeCommandKind fromValue(int value) {
     switch (value) {
-      case 0: return setSelection;
-      case 1: return beginComposition;
-      case 2: return updateComposition;
-      case 3: return commitText;
-      case 4: return finishComposition;
-      case 5: return cancelComposition;
-      case 6: return deleteSurrounding;
-      default: throw ArgumentError.value(value, 'value', 'Unknown ImeCommandKind value');
+      case 0:
+        return setSelection;
+      case 1:
+        return beginComposition;
+      case 2:
+        return updateComposition;
+      case 3:
+        return commitText;
+      case 4:
+        return finishComposition;
+      case 5:
+        return cancelComposition;
+      case 6:
+        return deleteSurrounding;
+      default:
+        throw ArgumentError.value(
+          value,
+          'value',
+          'Unknown ImeCommandKind value',
+        );
     }
   }
 }
@@ -39,11 +51,20 @@ enum ImeCoordinateSpace {
 
   static ImeCoordinateSpace fromValue(int value) {
     switch (value) {
-      case 0: return document;
-      case 1: return editingBuffer;
-      case 2: return contextSlice;
-      case 3: return composition;
-      default: throw ArgumentError.value(value, 'value', 'Unknown ImeCoordinateSpace value');
+      case 0:
+        return document;
+      case 1:
+        return editingBuffer;
+      case 2:
+        return contextSlice;
+      case 3:
+        return composition;
+      default:
+        throw ArgumentError.value(
+          value,
+          'value',
+          'Unknown ImeCoordinateSpace value',
+        );
     }
   }
 }
@@ -51,17 +72,28 @@ enum ImeCoordinateSpace {
 enum ImeHostAction {
   none(0),
   closeSession(1),
-  restartSession(2);
+  restartSession(2),
+  syncEditingState(3);
 
   const ImeHostAction(this.value);
   final int value;
 
   static ImeHostAction fromValue(int value) {
     switch (value) {
-      case 0: return none;
-      case 1: return closeSession;
-      case 2: return restartSession;
-      default: throw ArgumentError.value(value, 'value', 'Unknown ImeHostAction value');
+      case 0:
+        return none;
+      case 1:
+        return closeSession;
+      case 2:
+        return restartSession;
+      case 3:
+        return syncEditingState;
+      default:
+        throw ArgumentError.value(
+          value,
+          'value',
+          'Unknown ImeHostAction value',
+        );
     }
   }
 }
@@ -75,9 +107,16 @@ enum ImeMutationModel {
 
   static ImeMutationModel fromValue(int value) {
     switch (value) {
-      case 0: return command;
-      case 1: return textUpdate;
-      default: throw ArgumentError.value(value, 'value', 'Unknown ImeMutationModel value');
+      case 0:
+        return command;
+      case 1:
+        return textUpdate;
+      default:
+        throw ArgumentError.value(
+          value,
+          'value',
+          'Unknown ImeMutationModel value',
+        );
     }
   }
 }
@@ -93,11 +132,20 @@ enum ImeResultCode {
 
   static ImeResultCode fromValue(int value) {
     switch (value) {
-      case 0: return ok;
-      case 1: return sessionMismatch;
-      case 2: return rejected;
-      case 3: return readOnly;
-      default: throw ArgumentError.value(value, 'value', 'Unknown ImeResultCode value');
+      case 0:
+        return ok;
+      case 1:
+        return sessionMismatch;
+      case 2:
+        return rejected;
+      case 3:
+        return readOnly;
+      default:
+        throw ArgumentError.value(
+          value,
+          'value',
+          'Unknown ImeResultCode value',
+        );
     }
   }
 }
@@ -112,10 +160,18 @@ enum ImeTextSource {
 
   static ImeTextSource fromValue(int value) {
     switch (value) {
-      case 0: return editing;
-      case 1: return committed;
-      case 2: return editingBuffer;
-      default: throw ArgumentError.value(value, 'value', 'Unknown ImeTextSource value');
+      case 0:
+        return editing;
+      case 1:
+        return committed;
+      case 2:
+        return editingBuffer;
+      default:
+        throw ArgumentError.value(
+          value,
+          'value',
+          'Unknown ImeTextSource value',
+        );
     }
   }
 }
@@ -129,9 +185,12 @@ enum ImeTextUnit {
 
   static ImeTextUnit fromValue(int value) {
     switch (value) {
-      case 0: return utf16CodeUnit;
-      case 1: return unicodeCodePoint;
-      default: throw ArgumentError.value(value, 'value', 'Unknown ImeTextUnit value');
+      case 0:
+        return utf16CodeUnit;
+      case 1:
+        return unicodeCodePoint;
+      default:
+        throw ArgumentError.value(value, 'value', 'Unknown ImeTextUnit value');
     }
   }
 }
@@ -157,10 +216,7 @@ class ImeCommand {
 }
 
 class ImeCommandBatch {
-  const ImeCommandBatch({
-    this.sessionId = 0,
-    this.commands = const [],
-  });
+  const ImeCommandBatch({this.sessionId = 0, this.commands = const []});
 
   final int sessionId;
   final List<ImeCommand> commands;

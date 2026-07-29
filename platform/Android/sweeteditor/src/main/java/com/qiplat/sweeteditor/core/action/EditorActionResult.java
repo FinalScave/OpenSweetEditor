@@ -18,7 +18,6 @@ public final class EditorActionResult {
     public boolean needsRedraw = false;
     public EditorActionSource source = EditorActionSource.NONE;
     public TextChangeKind textChangeKind = TextChangeKind.NONE;
-    public boolean contentChanged = false;
     public boolean cursorChanged = false;
     public boolean selectionChanged = false;
     public boolean scrollChanged = false;
@@ -29,7 +28,7 @@ public final class EditorActionResult {
     public int animationFlags = 0;
     public int nextAnimationDelayMs = 0;
     public int interactionFlags = 0;
-    public java.util.List<TextChange> changes = new java.util.ArrayList<>();
+    public java.util.List<TextChange> textChanges = new java.util.ArrayList<>();
     public TextPosition cursorBefore = new TextPosition();
     public TextPosition cursorAfter = new TextPosition();
     public boolean hasSelectionBefore = false;
@@ -56,12 +55,11 @@ public final class EditorActionResult {
     public EditorActionResult() {
     }
 
-    public EditorActionResult(boolean handled, boolean needsRedraw, EditorActionSource source, TextChangeKind textChangeKind, boolean contentChanged, boolean cursorChanged, boolean selectionChanged, boolean scrollChanged, boolean scaleChanged, boolean pointerCursorChanged, boolean compositionChanged, boolean decorationChanged, int animationFlags, int nextAnimationDelayMs, int interactionFlags, java.util.List<TextChange> changes, TextPosition cursorBefore, TextPosition cursorAfter, boolean hasSelectionBefore, boolean hasSelectionAfter, TextRange selectionBefore, TextRange selectionAfter, float scrollXBefore, float scrollYBefore, float scrollXAfter, float scrollYAfter, float scaleBefore, float scaleAfter, PointerCursorType pointerCursorBefore, PointerCursorType pointerCursorAfter, ImeHostAction imeHostAction, ImeState imeState, GestureType gestureType, EventType gestureEventType, PointF tapPoint, HitTarget hitTarget, int modifiers, int command) {
+    public EditorActionResult(boolean handled, boolean needsRedraw, EditorActionSource source, TextChangeKind textChangeKind, boolean cursorChanged, boolean selectionChanged, boolean scrollChanged, boolean scaleChanged, boolean pointerCursorChanged, boolean compositionChanged, boolean decorationChanged, int animationFlags, int nextAnimationDelayMs, int interactionFlags, java.util.List<TextChange> textChanges, TextPosition cursorBefore, TextPosition cursorAfter, boolean hasSelectionBefore, boolean hasSelectionAfter, TextRange selectionBefore, TextRange selectionAfter, float scrollXBefore, float scrollYBefore, float scrollXAfter, float scrollYAfter, float scaleBefore, float scaleAfter, PointerCursorType pointerCursorBefore, PointerCursorType pointerCursorAfter, ImeHostAction imeHostAction, ImeState imeState, GestureType gestureType, EventType gestureEventType, PointF tapPoint, HitTarget hitTarget, int modifiers, int command) {
         this.handled = handled;
         this.needsRedraw = needsRedraw;
         this.source = source;
         this.textChangeKind = textChangeKind;
-        this.contentChanged = contentChanged;
         this.cursorChanged = cursorChanged;
         this.selectionChanged = selectionChanged;
         this.scrollChanged = scrollChanged;
@@ -72,7 +70,7 @@ public final class EditorActionResult {
         this.animationFlags = animationFlags;
         this.nextAnimationDelayMs = nextAnimationDelayMs;
         this.interactionFlags = interactionFlags;
-        this.changes = changes;
+        this.textChanges = textChanges;
         this.cursorBefore = cursorBefore;
         this.cursorAfter = cursorAfter;
         this.hasSelectionBefore = hasSelectionBefore;

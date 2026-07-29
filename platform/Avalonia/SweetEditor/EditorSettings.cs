@@ -167,8 +167,12 @@ namespace SweetEditor {
 		public bool IsBackspaceUnindent() => backspaceUnindent;
 
 		public void SetReadOnly(bool readOnly) {
+			bool wasReadOnly = this.readOnly;
 			this.readOnly = readOnly;
 			editor.DispatchEditorActionResult(editor.EditorCoreInternal.SetReadOnly(readOnly));
+			if (wasReadOnly && !readOnly) {
+				editor.ResumeImeSessionIfPossible();
+			}
 		}
 
 		public bool IsReadOnly() => readOnly;

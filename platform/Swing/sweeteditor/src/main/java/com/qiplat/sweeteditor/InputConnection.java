@@ -19,6 +19,7 @@ import com.qiplat.sweeteditor.core.ime.ImeTextContext;
 import com.qiplat.sweeteditor.core.ime.ImeTextSource;
 import com.qiplat.sweeteditor.core.visual.CursorRect;
 
+import java.awt.EventQueue;
 import java.awt.IllegalComponentStateException;
 import java.awt.Point;
 import java.awt.Rectangle;
@@ -38,6 +39,7 @@ final class InputConnection implements InputMethodListener, InputMethodRequests,
     private final SweetEditor owner;
     private ImeState state = new ImeState();
     private boolean endingInputContext;
+    private long lifecycleVersion;
 
     InputConnection(SweetEditor owner) {
         this.owner = owner;
@@ -57,6 +59,7 @@ final class InputConnection implements InputMethodListener, InputMethodRequests,
     }
 
     void endSession(boolean endInputContext) {
+        lifecycleVersion++;
         if (isActive()) {
             long sessionId = state.sessionId;
             state = new ImeState();
@@ -70,8 +73,17 @@ final class InputConnection implements InputMethodListener, InputMethodRequests,
     void synchronize(EditorActionResult result) {
         if (result == null) return;
         if (result.imeHostAction != ImeHostAction.NONE) {
+            long version = ++lifecycleVersion;
             state = new ImeState();
             endInputContextComposition();
+            if (result.imeHostAction == ImeHostAction.RESTART_SESSION) {
+                EventQueue.invokeLater(() -> {
+                    if (version == lifecycleVersion && owner.isFocusOwner()
+                            && owner.getDocument() != null && !core().isReadOnly() && !isActive()) {
+                        beginSession();
+                    }
+                });
+            }
             return;
         }
         ImeState next = result.imeState;
@@ -83,12 +95,19 @@ final class InputConnection implements InputMethodListener, InputMethodRequests,
 
     @Override
     public void focusGained(FocusEvent event) {
+        lifecycleVersion++;
         beginSession();
     }
 
     @Override
     public void focusLost(FocusEvent event) {
         endSession(false);
+    }
+
+    void resumeSessionIfFocused() {
+        if (owner.isFocusOwner() && owner.getDocument() != null && !core().isReadOnly()) {
+            beginSession();
+        }
     }
 
     @Override

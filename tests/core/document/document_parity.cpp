@@ -103,6 +103,41 @@ TEST_CASE("Document batch replacement allows an insertion at replacement end") {
   checkEquivalent(line_document, piece_document);
 }
 
+TEST_CASE("Document batch replacement allows an insertion at replacement start") {
+  const Vector<TextEdit> replacements{
+      {{{0, 0}, {0, 4}}, "run"},
+      {{{0, 0}, {0, 0}}, "Async"},
+  };
+
+  LineArrayDocument line_document("call()");
+  PieceTableDocument piece_document("call()");
+  line_document.replaceU8TextBatch(replacements);
+  piece_document.replaceU8TextBatch(replacements);
+
+  CHECK(line_document.getU8Text() == "Asyncrun()");
+  checkEquivalent(line_document, piece_document);
+}
+
+TEST_CASE("Document batch replacement rejects insertions inside a replacement and duplicate insertions") {
+  const Vector<TextEdit> inside{
+      {{{0, 0}, {0, 4}}, "run"},
+      {{{0, 2}, {0, 2}}, "Async"},
+  };
+  const Vector<TextEdit> duplicate{
+      {{{0, 2}, {0, 2}}, "A"},
+      {{{0, 2}, {0, 2}}, "B"},
+  };
+
+  LineArrayDocument line_document("call()");
+  PieceTableDocument piece_document("call()");
+  CHECK_THROWS_AS(line_document.replaceU8TextBatch(inside), std::invalid_argument);
+  CHECK_THROWS_AS(piece_document.replaceU8TextBatch(inside), std::invalid_argument);
+  CHECK_THROWS_AS(line_document.replaceU8TextBatch(duplicate), std::invalid_argument);
+  CHECK_THROWS_AS(piece_document.replaceU8TextBatch(duplicate), std::invalid_argument);
+  CHECK(line_document.getU8Text() == "call()");
+  CHECK(piece_document.getU8Text() == "call()");
+}
+
 TEST_CASE("LineArrayDocument and PieceTableDocument stay equivalent after mixed edits") {
   LineArrayDocument line_doc("ab\ncd\nef");
   PieceTableDocument piece_doc("ab\ncd\nef");

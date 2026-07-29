@@ -28,7 +28,6 @@ namespace NS_SWEETEDITOR {
     SE_PROTOCOL_WIRE(enum_i32)
     TextChangeKind text_change_kind{TextChangeKind::NONE};
 
-    bool content_changed{false};
     bool cursor_changed{false};
     bool selection_changed{false};
     bool scroll_changed{false};
@@ -44,7 +43,7 @@ namespace NS_SWEETEDITOR {
     /// InteractionFlag bit set describing active input interactions.
     uint32_t interaction_flags{0};
 
-    Vector<TextChange> changes;
+    Vector<TextChange> text_changes;
 
     TextPosition cursor_before;
     TextPosition cursor_after;
@@ -297,11 +296,11 @@ namespace NS_SWEETEDITOR {
     /// @return Exact change info
     EditorActionResult insertLineBelow();
     /// Undo last edit operation
-    /// @return Exact change info (content_changed=false means nothing to undo)
+    /// @return Exact change info (text_changes.empty() means no document text changed)
     EditorActionResult undo();
 
     /// Redo last undone operation
-    /// @return Exact change info (content_changed=false means nothing to redo)
+    /// @return Exact change info (text_changes.empty() means no document text changed)
     EditorActionResult redo();
 
     /// Whether undo is available
@@ -451,24 +450,40 @@ namespace NS_SWEETEDITOR {
 
 #pragma region[IME]
 
+    /// Begin an IME session with a fixed mutation model.
+    /// @param mutation_model Input mutation model used for the entire session.
+    /// @return Initial authoritative IME state, or an error state when no session was created.
     ImeState beginImeSession(ImeMutationModel mutation_model);
 
+    /// Finish the active composition and end a matching IME session.
+    /// @param session_id Session generation returned by beginImeSession().
     EditorActionResult endImeSession(uint64_t session_id);
 
+    /// Apply one atomic batch of intent-based IME commands.
+    /// @param batch Commands and the session generation that owns them.
     EditorActionResult applyImeCommands(const ImeCommandBatch& batch);
 
+    /// Apply one atomic batch of editing-buffer text updates.
+    /// @param batch Text updates, session generation, and expected state revision.
     EditorActionResult applyImeTextUpdates(const ImeTextUpdateBatch& batch);
 
+    /// Read the authoritative state of a matching IME session without copying text.
+    /// @param session_id Session generation returned by beginImeSession().
     ImeState getImeState(uint64_t session_id) const;
 
+    /// Read a finite UTF-16 text context from the requested IME text source.
+    /// @param session_id Session generation returned by beginImeSession().
+    /// @param source Text source and coordinate space to query.
+    /// @param start_utf16 UTF-16 source offset.
+    /// @param length_utf16 Requested UTF-16 length, or -1 for the remaining source.
     ImeTextContext getImeContext(uint64_t session_id, ImeTextSource source, int64_t start_utf16,
                                  int64_t length_utf16) const;
 
     /// Get current composition state
     const std::optional<CompositionState>& getCompositionState() const;
 
-    /// Whether a preedit is active
-    bool hasPreedit() const;
+    /// Whether a composition is active
+    bool hasComposition() const;
 
 #pragma endregion
 
@@ -686,8 +701,10 @@ namespace NS_SWEETEDITOR {
       float scale{1};
       PointerCursorType pointer_cursor_type{PointerCursorType::TEXT};
       HitTarget active_hit_target;
-      std::optional<CompositionState> composition;
+      std::optional<TextRange> composition_range;
       bool ime_session_active{false};
+      ImeSelection ime_buffer_selection;
+      ImeOffsetRange ime_buffer_composition;
     };
 
     struct EditTransaction;
@@ -801,13 +818,15 @@ namespace NS_SWEETEDITOR {
     TextEditResult finishCompositionForAction();
     static void appendTextEditResult(TextEditResult& target, TextEditResult&& source);
     TextEditResult insertSnippetInternal(const U8String& snippet_template);
-    void startLinkedEditingInternal(Vector<TabStopGroup>&& groups);
+    bool startLinkedEditingInternal(Vector<TabStopGroup>&& groups);
     bool linkedEditingNextTabStopInternal();
     bool linkedEditingPrevTabStopInternal();
     void cancelLinkedEditingInternal();
     void finishLinkedEditingInternal();
+    bool areValidLinkedEditingGroups(const Vector<TabStopGroup>& groups) const;
     bool hasValidLinkedEditingGroup() const;
-    std::optional<Vector<TextEdit>> planLinkedEdit(const TextRange& range, const U8String& text) const;
+    bool planLinkedEdit(const TextRange& range, const U8String& text, Vector<TextEdit>& edits,
+                        Vector<std::optional<size_t>>& owners) const;
     /// Linked editing: apply a local replacement and return one edit result
     TextEditResult applyLinkedEditWithResult(const TextRange& range, const U8String& text);
     /// Linked editing: jump to target tab stop and select default text
@@ -883,20 +902,23 @@ namespace NS_SWEETEDITOR {
     void beginComposition(const TextRange& range, EditTransaction& transaction);
     void replaceCompositionText(const U8String& text, EditTransaction& transaction);
     bool stageLinkedEdit(const TextRange& range, const U8String& text, EditTransaction& transaction);
-    void appendLinkedCompositionEdits(const CompositionState& state, const TextRange& baseline_range,
-                                      const U8String& final_text_raw, EditTransaction& transaction);
     bool linkedRangesAffectedByChanges(const Vector<TextChange>& changes) const;
+    bool remapLinkedCompositionBaseline(CompositionState& state, const Vector<TextChange>& current_changes,
+                                        Vector<TextChange>& baseline_changes) const;
+    bool settleLinkedCompositionConflict(const CompositionState& state, EditTransaction& transaction);
     void settleComposition(const U8String& final_text_raw, EditTransaction& transaction, bool replace_current_text);
     void cancelComposition(EditTransaction& transaction);
     TextEditResult commitTransaction(EditTransaction& transaction);
     ImeActionResult applyTextUpdatePlan(const Vector<TextEdit>& edits,
                                         const std::optional<TextRange>& composition_after,
                                         const std::optional<TextRange>& rollover_baseline,
-                                        const U8String& composition_text, const CaretState& caret_after,
-                                        bool finish_after);
+                                        const U8String& composition_text, bool composition_is_document_backed,
+                                        const CaretState& caret_after, bool finish_after);
     ImeActionResult applyCommandBatch(const Vector<ImeCommand>& commands);
-    TextEditResult finishPreedit();
-    TextEditResult cancelPreedit();
+    TextEditResult finishActiveComposition();
+    TextEditResult cancelActiveComposition();
+    std::optional<EditingBufferState> buildImeEditingBuffer() const;
+    bool refreshImeTextUpdateSession();
     Vector<TextRange> deletionRangesForCaret(const CaretState& caret, size_t before_length, size_t after_length,
                                              ImeTextUnit text_unit) const;
     ImeActionResult rejectImeMutation();
@@ -908,6 +930,8 @@ namespace NS_SWEETEDITOR {
     void closeImeSession();
     bool validateImeCommand(const ImeCommand& command) const;
     bool validateImeTextUpdateStep(const ImeTextUpdateStep& step) const;
+    void finalizeImeStateAfterAction(const ActionSnapshot& before, EditorActionSource source, bool state_changed,
+                                     EditorActionResult& result);
     EditorActionResult finishImeAction(const ActionSnapshot& before, const ImeActionResult& ime_result);
 
 #pragma endregion

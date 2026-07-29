@@ -1,58 +1,63 @@
 # IME Regression Matrix
 
-This matrix is the shared acceptance checklist for SweetEditor IME behavior. It complements the [integration implementation standard](platform-implementation-standard.md): core tests verify protocol semantics, while integration adapters must still verify the native event sequences they receive from each OS IME.
+This matrix is the shared acceptance checklist for SweetEditor IME behavior. It complements the [integration implementation standard](platform-implementation-standard.md): Core tests verify protocol semantics, while integration adapters must still verify the native event sequences produced by each OS IME.
 
 ## Protocol Invariants
 
-- Native IME events enter core through exactly one semantic path per update: `ImeCommandMessage` for command-style operations, or `ImeTextUpdateMessage` for native text-window snapshots and patches.
-- `ImeMarkedRangeRole::PREEDIT` only represents real editable native composition / marked / preedit text.
-- `ImeMarkedRangeRole::SYSTEM_MARK` only represents native candidate, correction, highlight, or current-word target ranges.
-- Surrounding text requests, candidate context requests, cursor-rectangle requests, keyboard language, and cursor movement into a word do not create editor preedit.
-- Document ranges use document coordinates. Input-context and text-update offsets are relative to the related `documentStartOffset`.
-- Every non-null `EditorActionResult` returned by an IME handler is dispatched once through the integration's unified result dispatcher.
-- Read-only mode blocks text mutation and finishes or cancels any active native composition; it is not implemented by disabling system IME support.
+- A Core session has one fixed `ImeMutationModel`: command adapters submit `ImeCommandBatch`, while Flutter delta input submits `ImeTextUpdateBatch`. A native input connection may sequentially host multiple Core session generations.
+- Core is authoritative for document text, selection, composition, history, session lifecycle, and recovery. An adapter keeps only native connection identity and, for `TEXT_UPDATE`, one finite editing-buffer shadow.
+- One native callback or Flutter delta list becomes one ordered atomic batch and is dispatched exactly once.
+- All IME text offsets use UTF-16 code units and an explicit `ImeCoordinateSpace`. `DOCUMENT`, `EDITING_BUFFER`, `CONTEXT_SLICE`, and `COMPOSITION` offsets are never mixed implicitly.
+- Stale session identifiers and stale text-update revisions apply zero mutations. Adapters follow `ImeHostAction` and do not replay, infer, or rewrite rejected input.
+- `ImeState` is the authoritative post-operation state. `ImeTextContext` is a read-only finite query and never creates composition.
+- Full editing-value snapshots initialize a Flutter connection, rebind a Core session, or perform an explicit synchronization. They are never diffed into mutations; enabled Flutter targets use native deltas and preserve patch identity.
+- Missing ranges and selections use the canonical `(-1, -1)` representation. A valid collapsed composition range remains distinct from a missing range.
+- Ordinary editor Backspace/Delete uses grapheme semantics. Only the native surrounding-delete command uses its explicit `ImeTextUnit`.
+- Read-only transitions close the editable session. External Core actions that change TextUpdate editing state prefer `SYNC_EDITING_STATE` on the existing connection and close or restart only when the current generation cannot continue.
 
 ## Coverage Labels
 
 | Label | Meaning |
 |---|---|
-| Core automated | Covered by core regression tests under `tests/core/editor` or C API smoke tests |
+| Core automated | Covered by Core regression tests under `tests/core/editor` or C API smoke tests |
 | Integration acceptance | Must be verified through the integration adapter's native IME path, manually or through target automation |
-| Trace evidence | Native before/after event evidence is useful when the target has known event-order differences |
+| Trace evidence | Native before/after event evidence is required when event ordering, rebinding, or candidate behavior differs by target |
 
 ## Semantic Matrix
 
-| ID | Scenario | Native signal | Core path | Expected behavior | Required coverage |
-|---|---|---|---|---|---|
-| IME-01 | Plain text commit | Direct text input or `commitText` equivalent | `COMMIT_TEXT` command or text-update insert | Text is inserted once at the reported selection; no preedit or system mark remains unless reported by the native input system | Core automated, integration acceptance |
-| IME-02 | Visible preedit lifecycle | Native input API declares composing / marked / preedit text | `SET_PREEDIT_TEXT`, marked range command, or text-update preedit | Visible IME composition range follows native text and selection; updates replace the previous preedit range | Core automated, integration acceptance |
-| IME-03 | Commit active preedit | Native input API commits while preedit is active | `COMMIT_TEXT` or text-update commit/clear | Commit replaces the active preedit exactly once, clears visible preedit, and leaves the cursor at the native-reported position | Core automated, integration acceptance |
-| IME-04 | Finish or cancel composition | Native finish/cancel event | finish/cancel command or text-update clear | Native composition is ended without stale preedit rendering or stale system mark state | Core automated, integration acceptance |
-| IME-05 | Text-window snapshot replacement | Native full editing value or surrounding text window changes | `ImeTextUpdateMessage` snapshot or patch | Replacement is resolved relative to `documentStartOffset`; stale context requests resynchronization instead of corrupting document text | Core automated, integration acceptance |
-| IME-06 | Candidate commit then delete to empty | Type `hello`, accept the candidate, then repeatedly delete | Command or text-update, depending on the integration | Text transitions `hello` -> `hell` -> `hel` -> `he` -> `h` -> empty; delete never only moves the cursor, never reinserts prefix text, and never leaves an undeletable character | Core automated, integration acceptance, trace evidence on regressions |
-| IME-07 | Candidate replaces system-marked word | Click `enabled`, accept `enables` | `SYSTEM_MARK` plus later commit or text-update replacement | Only the target word changes, for example `boolean enabled()` -> `boolean enables()`; it must never become `booleaenables()`, duplicate prefixes/suffixes/parentheses, or leave stale highlights | Core automated, integration acceptance, trace evidence on regressions |
-| IME-08 | Single-character candidate replacement | Candidate replaces a system-marked range with one character | Commit or text-update replacement over `SYSTEM_MARK` | Replacement consumes the intended range once and clears the mark when the native input system reports it finished | Core automated |
-| IME-09 | Word-middle input and candidate update | Cursor is inside a word when composition or candidate replacement starts | Command or text-update with explicit range/context | Core resolves the target range without assuming the cursor is at the word end; prefix and suffix text remain correct | Core automated, integration acceptance |
-| IME-10 | Deletion over preedit or system mark | Backspace/delete while a marked range exists | delete command or text-update deletion | Preedit shrinks or is replaced according to the native input event; system mark guides the target but does not behave as hidden committed text | Core automated, integration acceptance |
-| IME-11 | Selection and cursor synchronization | Native IME moves selection or cursor | selection command or text-update selection | Core selection matches the reported coordinate space, and later commits/deletes use that selection instead of stale local state | Core automated, integration acceptance |
-| IME-12 | Stale input context | Integration sends an old context id/revision | Command or text-update with stale context | Core requests resynchronization and avoids applying the stale edit as if it targeted current document text | Core automated |
-| IME-13 | Candidate context without composition | IME asks for surrounding text, candidate context, or cursor rectangle | Query APIs plus optional `SYSTEM_MARK` only if the native input system declares a target | No editor preedit is created only because context was requested | Core automated, integration acceptance |
-| IME-14 | Read-only transition with active IME | Editor becomes read-only while native composition is active | Integration finish/cancel plus blocked edit command | Active native composition is ended; later IME edit requests do not mutate the document | Integration acceptance |
-| IME-15 | Composition rendering | Active preedit appears in render model | Render model range effects | `PREEDIT` renders as `IME_COMPOSITION`; `SYSTEM_MARK` is not rendered as visible composition underline | Core automated, integration acceptance |
-| IME-16 | Undo boundary for composition | Multiple preedit updates followed by commit | Preedit update sequence plus commit | Intermediate preedit updates collapse into the expected undoable edit rather than many committed edits | Core automated |
+| ID | Scenario | Protocol path | Expected behavior | Required coverage |
+|---|---|---|---|---|
+| IME-01 | Session lifecycle | Begin, query, mutate, and end one fixed-model session | Session identifiers are nonzero and unique; an ended or replaced session cannot mutate the editor | Core automated, integration acceptance |
+| IME-02 | Plain text commit | `COMMIT_TEXT` command or insertion text-update step | Text is inserted once at the authoritative selection and no composition remains unless explicitly reported | Core automated, integration acceptance |
+| IME-03 | Begin and update composition | `BEGIN_COMPOSITION` / `UPDATE_COMPOSITION` or delta steps with valid `composition_after` | Provisional text lives in the document, the authoritative composition range follows it, and updates replace it once | Core automated, integration acceptance |
+| IME-04 | Commit active composition | Commit command or text-update step clearing composition | The active composition is replaced exactly once, composition becomes absent, and selection matches `ImeState` | Core automated, integration acceptance |
+| IME-05 | Finish and cancel | `FINISH_COMPOSITION` or `CANCEL_COMPOSITION` | Finish keeps current text as committed; cancel restores the captured baseline; neither leaves stale composition effects | Core automated, integration acceptance |
+| IME-06 | Atomic multi-operation callback | Ordered `ImeCommandBatch` or `ImeTextUpdateBatch` | All steps apply as one transaction and one undo boundary; a rejected step does not leave a partial batch | Core automated |
+| IME-07 | Candidate commit then delete | Commit `hello`, then repeatedly delete | Text reaches empty without cursor-only deletion, prefix reinsertion, duplicate text, or an undeletable final character | Core automated, integration acceptance, trace evidence on regressions |
+| IME-08 | Candidate replaces text around a word-middle caret | Native API supplies an explicit replacement patch/range | Only the reported target changes; Core and adapter do not infer a word range from text content | Core automated, integration acceptance, trace evidence on regressions |
+| IME-09 | Selection direction and affinity | Selection command or non-text delta | Anchor/active direction and collapsed caret affinity round-trip; later mutation uses the returned authoritative selection | Core automated, integration acceptance |
+| IME-10 | Collapsed active composition | Valid `(n, n)` composition range | Composition remains active and distinct from canonical missing range until an explicit later transition | Core automated, conditional integration acceptance |
+| IME-11 | Stale session or revision | Old session id, or old `expected_state_revision` in a text-update batch | Core returns mismatch/rejection, applies zero mutations, and supplies recovery/host action without adapter replay | Core automated |
+| IME-12 | Text-update patch chain | Multiple Flutter deltas in one callback | Each step's `old_text` equals the previous accepted step output; insert/delete/replace identity and list order are preserved | Core automated, Flutter acceptance |
+| IME-13 | Snapshot received during an active Flutter session | Text-changing `updateEditingValue` instead of deltas | Adapter treats it as a protocol error, never computes a common-prefix/suffix diff, and safely closes or restarts | Flutter acceptance |
+| IME-14 | Finite editing-buffer boundary | Query and delta near either safe boundary | Context remains bounded; unsafe edits request recovery rather than truncating, shifting, or duplicating document text | Core automated, Flutter acceptance |
+| IME-15 | Surrounding deletion units | Native `DELETE_SURROUNDING` in UTF-16 or Unicode-code-point units | The exact requested unit is honored; ordinary hardware Backspace/Delete still removes a grapheme | Core automated, integration acceptance |
+| IME-16 | Context slices | `getImeContext` for `EDITING`, `COMMITTED`, or `EDITING_BUFFER` | Slice start and total UTF-16 length are correct; selection/composition are returned only when representable in the slice; queries do not mutate state | Core automated, integration acceptance |
+| IME-17 | Core-driven synchronization or session end | External edit, selection move, or undo/redo returns Sync for TextUpdate; read-only, document rebind, or protocol recovery returns Close/Restart | Sync preserves the session and writes back the authoritative finite buffer; Close/Restart cleanup is not ended twice and delayed callbacks from the old generation are ignored | Core automated, integration acceptance, trace evidence |
+| IME-18 | Rendering and undo | Multi-line composition updates followed by commit/cancel | Composition effect tracks the authoritative range across lines and the full composition lifecycle has the intended single undo boundary | Core automated, integration acceptance |
 
 ## Integration Acceptance Matrix
 
 | Implementation | Native API surface | Minimum acceptance evidence |
 |---|---|---|
-| Android | `InputConnection`, extracted text, surrounding text | Verify `setComposingText`, `setComposingRegion`, `commitText`, `deleteSurroundingText`, and `setSelection` across IME-02, IME-06, IME-07, IME-10, and IME-11 |
-| Avalonia | `TextInputMethodClient`, `TextInput`, selection and surrounding-text notifications | Verify preedit updates, committed text, selection synchronization, cursor rectangles, and mobile input-pane behavior across IME-02, IME-03, IME-10, IME-11, and IME-14 |
-| Flutter | `TextInputClient`, `TextEditingValue`, text deltas when enabled | Verify snapshot/patch ownership, composing role selection, unified result dispatch, and no stale session/widget state across IME-02, IME-06, IME-07, and IME-11 |
-| OHOS | IME Kit | Verify composing/preedit callback ranges and candidate replacement coordinate mapping across IME-02, IME-07, IME-09, and IME-11; capture native evidence for system keyboards with known candidate quirks |
-| Swing | `InputMethodEvent`, `InputMethodRequests` | Verify composed-text segments, committed-character count, candidate context, and cursor rectangles across IME-02, IME-03, IME-10, and IME-13 |
-| WinForms | TSF / IMM | Verify composition ranges, committed strings, deletion, and finish/cancel behavior across IME-02, IME-03, IME-04, and IME-10 |
-| Apple | `UITextInput` / `NSTextInputClient` | Verify marked text ranges, selected ranges, replacement ranges, and coordinate-space conversion across IME-02, IME-03, IME-09, and IME-11 |
+| Android | `InputConnection`, extracted text, surrounding text | Verify composing text/region, commit, selection, both surrounding-delete unit APIs, connection rebinding, candidate replacement, and background/foreground recovery |
+| Apple | `UITextInput` / `NSTextInputClient` | Verify marked text, marked-relative and document-relative replacement, selection direction, finish/cancel, geometry, and focus rebinding |
+| Swing | `InputMethodEvent`, `InputMethodRequests` | Verify mixed committed/composed segments in one event, committed-text context, selected text, cursor rectangle, cancel, and focus rebinding |
+| WinForms | TSF / IMM | Verify composition/result strings, replacement ranges, selection, delete, finish/cancel, focus rebinding, and stale native callbacks |
+| Avalonia | `TextInputMethodClient`, immutable input contexts | Verify preedit callbacks, commit, nullable preedit cursor, selection/surrounding cache consistency, context replacement, and Android input-pane lifecycle |
+| OHOS | IME Kit | Verify attach/detach ordering, composition, commit, selection, surrounding text/delete, candidate replacement, and background/foreground generation handling |
+| Flutter | `DeltaTextInputClient`, `TextEditingDelta` | Verify finite-buffer initialization, insertion/deletion/replacement/non-text deltas, multi-delta atomicity, affinity, candidate commit/delete, snapshot rejection, same-connection synchronization without keyboard relaunch on ordinary taps, and generation isolation for true Close/Restart |
 
-The Web package exposes the core IME protocol but does not include a browser input adapter. Browser IME acceptance belongs to the host adapter that maps composition, `beforeinput`, keyboard, and selection events into the shared protocol.
+The Web package exports the six Core IME C APIs but does not include a browser input adapter. Browser acceptance belongs to the host adapter that maps composition, `beforeinput`, selection, and lifecycle events into one of the shared session models.
 
-When an IME change is implementation-specific, the change record should state which matrix cases were exercised, the OS and keyboard used for manual checks, and whether the adapter entered core through `ImeCommandMessage` or `ImeTextUpdateMessage`.
+When an IME change is implementation-specific, the change record should state the exercised matrix cases, OS and keyboard, mutation model, native callback sequence, session/revision transitions, and any `ImeHostAction`.

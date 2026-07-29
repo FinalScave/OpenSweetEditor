@@ -4,7 +4,6 @@
 #include <algorithm>
 #include <cstring>
 #include <sweeteditor/decoration.h>
-#include "ime_projection.hpp"
 
 namespace NS_SWEETEDITOR {
   const Vector<StyleSpan> DecorationManager::kEmptySpans;
@@ -15,12 +14,6 @@ namespace NS_SWEETEDITOR {
   const Vector<DocumentHighlight> DecorationManager::kEmptyDocumentHighlights;
   const Vector<CodeLensItem> DecorationManager::kEmptyCodeLensItems;
   const Vector<LinkSpan> DecorationManager::kEmptyLinks;
-
-  namespace {
-    bool isVisibleOnLine(const std::optional<TextRange>& range, size_t line) {
-      return range.has_value() && range->start.line == line && range->end.line == line && !range->isCollapsed();
-    }
-  }
 
 #pragma region[Class: TextStyleRegistry]
   void TextStyleRegistry::registerTextStyle(uint32_t style_id, TextStyle&& style) {
@@ -47,163 +40,13 @@ namespace NS_SWEETEDITOR {
     return m_text_style_reg_;
   }
 
-  void DecorationManager::setEditingProjection(const TextRange& committed_range, const TextRange& editing_range) {
-    m_editing_projection_ = EditingProjectionState{committed_range.normalized(), editing_range.normalized()};
-  }
-
-  void DecorationManager::clearEditingProjection() {
-    m_editing_projection_.reset();
-  }
-
-  Vector<size_t> DecorationManager::committedSourceLinesForEditingLine_(size_t editing_line) const {
-    if (!m_editing_projection_.has_value()) {
-      return {editing_line};
-    }
-    return EditingProjection::sourceLinesForEditingLine(m_editing_projection_->committed_range,
-                                                        m_editing_projection_->editing_range, editing_line);
-  }
-
-  std::optional<TextRange> DecorationManager::projectCommittedRange_(const TextRange& range) const {
-    if (!m_editing_projection_.has_value()) {
-      return range;
-    }
-    return EditingProjection::projectRange(m_editing_projection_->committed_range, m_editing_projection_->editing_range,
-                                           range);
-  }
-
-  std::optional<TextPosition> DecorationManager::projectCommittedAnchor_(const TextPosition& position) const {
-    if (!m_editing_projection_.has_value()) {
-      return position;
-    }
-    return EditingProjection::projectAnchor(m_editing_projection_->committed_range,
-                                            m_editing_projection_->editing_range, position,
-                                            EditingProjection::EndpointBias::AFTER);
-  }
-
-  LineLayoutDecorations DecorationManager::getEditingLineLayoutDecorations(size_t editing_line) const {
+  LineLayoutDecorations DecorationManager::getLineLayoutDecorations(size_t line) const {
     LineLayoutDecorations decorations;
-    for (size_t source_line : committedSourceLinesForEditingLine_(editing_line)) {
-      for (const StyleSpan& span : getMergedLineSpans(source_line)) {
-        const std::optional<TextRange> projected = projectCommittedRange_(
-            {{source_line, span.column}, {source_line, static_cast<size_t>(span.column) + span.length}});
-        if (!isVisibleOnLine(projected, editing_line)) {
-          continue;
-        }
-        StyleSpan value = span;
-        value.column = static_cast<uint32_t>(projected->start.column);
-        value.length = static_cast<uint32_t>(projected->end.column - projected->start.column);
-        decorations.spans.push_back(std::move(value));
-      }
-
-      for (const InlayHint& hint : getLineInlayHints(source_line)) {
-        const std::optional<TextPosition> projected = projectCommittedAnchor_({source_line, hint.column});
-        if (!projected.has_value() || projected->line != editing_line) continue;
-        InlayHint value = hint;
-        value.column = static_cast<uint32_t>(projected->column);
-        decorations.inlay_hints.push_back(std::move(value));
-      }
-
-      for (const PhantomText& phantom : getLinePhantomTexts(source_line)) {
-        const std::optional<TextPosition> projected = projectCommittedAnchor_({source_line, phantom.column});
-        if (!projected.has_value() || projected->line != editing_line) continue;
-        PhantomText value = phantom;
-        value.column = static_cast<uint32_t>(projected->column);
-        decorations.phantom_texts.push_back(std::move(value));
-      }
-
-      for (const LinkSpan& link : getLineLinks(source_line)) {
-        const std::optional<TextRange> projected = projectCommittedRange_(
-            {{source_line, link.column}, {source_line, static_cast<size_t>(link.column) + link.length}});
-        if (!isVisibleOnLine(projected, editing_line)) {
-          continue;
-        }
-        LinkSpan value = link;
-        value.column = static_cast<uint32_t>(projected->start.column);
-        value.length = static_cast<uint32_t>(projected->end.column - projected->start.column);
-        decorations.links.push_back(std::move(value));
-      }
-    }
-
-    const auto by_column = [](const auto& lhs, const auto& rhs) {
-      return lhs.column < rhs.column;
-    };
-    std::stable_sort(decorations.spans.begin(), decorations.spans.end(), by_column);
-    std::stable_sort(decorations.inlay_hints.begin(), decorations.inlay_hints.end(), by_column);
-    std::stable_sort(decorations.phantom_texts.begin(), decorations.phantom_texts.end(), by_column);
-    std::stable_sort(decorations.links.begin(), decorations.links.end(), by_column);
+    decorations.spans = getMergedLineSpans(line);
+    decorations.inlay_hints = getLineInlayHints(line);
+    decorations.phantom_texts = getLinePhantomTexts(line);
+    decorations.links = getLineLinks(line);
     return decorations;
-  }
-
-  Vector<CodeLensItem> DecorationManager::getEditingLineCodeLens(size_t editing_line) const {
-    Vector<CodeLensItem> result;
-    for (size_t source_line : committedSourceLinesForEditingLine_(editing_line)) {
-      for (const CodeLensItem& item : getLineCodeLens(source_line)) {
-        const std::optional<TextPosition> projected =
-            projectCommittedAnchor_({source_line, static_cast<size_t>(std::max(0, item.column))});
-        if (!projected.has_value() || projected->line != editing_line) continue;
-        CodeLensItem value = item;
-        value.column = static_cast<int32_t>(projected->column);
-        result.push_back(std::move(value));
-      }
-    }
-    std::stable_sort(result.begin(), result.end(), [](const CodeLensItem& lhs, const CodeLensItem& rhs) {
-      return lhs.column < rhs.column;
-    });
-    return result;
-  }
-
-  Vector<GutterIcon> DecorationManager::getEditingLineGutterIcons(size_t editing_line) const {
-    Vector<GutterIcon> result;
-    for (size_t source_line : committedSourceLinesForEditingLine_(editing_line)) {
-      const std::optional<TextPosition> projected = projectCommittedAnchor_({source_line, 0});
-      if (!projected.has_value() || projected->line != editing_line) continue;
-      const Vector<GutterIcon>& icons = getLineGutterIcons(source_line);
-      result.insert(result.end(), icons.begin(), icons.end());
-    }
-    return result;
-  }
-
-  Vector<Diagnostic> DecorationManager::getEditingLineDiagnostics(size_t editing_line) const {
-    Vector<Diagnostic> result;
-    for (size_t source_line : committedSourceLinesForEditingLine_(editing_line)) {
-      for (const Diagnostic& diagnostic : getLineDiagnostics(source_line)) {
-        const std::optional<TextRange> projected =
-            projectCommittedRange_({{source_line, diagnostic.column},
-                                    {source_line, static_cast<size_t>(diagnostic.column) + diagnostic.length}});
-        if (!isVisibleOnLine(projected, editing_line)) {
-          continue;
-        }
-        Diagnostic value = diagnostic;
-        value.column = static_cast<uint32_t>(projected->start.column);
-        value.length = static_cast<uint32_t>(projected->end.column - projected->start.column);
-        result.push_back(std::move(value));
-      }
-    }
-    std::stable_sort(result.begin(), result.end(), [](const Diagnostic& lhs, const Diagnostic& rhs) {
-      return lhs.column < rhs.column;
-    });
-    return result;
-  }
-
-  Vector<DocumentHighlight> DecorationManager::getEditingLineDocumentHighlights(size_t editing_line) const {
-    Vector<DocumentHighlight> result;
-    for (size_t source_line : committedSourceLinesForEditingLine_(editing_line)) {
-      for (const DocumentHighlight& highlight : getLineDocumentHighlights(source_line)) {
-        const std::optional<TextRange> projected = projectCommittedRange_(
-            {{source_line, highlight.column}, {source_line, static_cast<size_t>(highlight.column) + highlight.length}});
-        if (!isVisibleOnLine(projected, editing_line)) {
-          continue;
-        }
-        DocumentHighlight value = highlight;
-        value.column = static_cast<uint32_t>(projected->start.column);
-        value.length = static_cast<uint32_t>(projected->end.column - projected->start.column);
-        result.push_back(std::move(value));
-      }
-    }
-    std::stable_sort(result.begin(), result.end(), [](const DocumentHighlight& lhs, const DocumentHighlight& rhs) {
-      return lhs.column < rhs.column;
-    });
-    return result;
   }
 
   void DecorationManager::setLineSpans(size_t line, SpanLayer layer, Vector<StyleSpan>&& spans) {

@@ -1050,7 +1050,7 @@ namespace SweetEditor {
 			if (IsReleased) return false;
 			var result = editorCore.Undo();
 			DispatchEditorActionResult(result);
-			return result.Handled || result.ContentChanged;
+			return result.Handled || result.TextChanges.Count > 0;
 		}
 
 		/// <summary>Performs a redo operation.</summary>
@@ -1059,7 +1059,7 @@ namespace SweetEditor {
 			if (IsReleased) return false;
 			var result = editorCore.Redo();
 			DispatchEditorActionResult(result);
-			return result.Handled || result.ContentChanged;
+			return result.Handled || result.TextChanges.Count > 0;
 		}
 
 		/// <summary>Returns whether undo.</summary>
@@ -1937,7 +1937,7 @@ namespace SweetEditor {
 		}
 
 		private void DispatchStateEvents(EditorActionResult result) {
-			if (result.ContentChanged) {
+			if (result.TextChanges.Count > 0) {
 				FireTextChanged(result);
 			}
 			TextPosition cursor = result.CursorAfter;
@@ -2038,9 +2038,9 @@ namespace SweetEditor {
 		/// <summary>Fire text changed.</summary>
 		private void FireTextChanged(EditorActionResult? editResult = null) {
 			if (IsReleased) return;
-			if (editResult?.Changes != null && editResult.Changes.Count > 0) {
-				TextChanged?.Invoke(this, new TextChangedEventArgs(editResult.TextChangeKind, editResult.Source, editResult.Changes));
-				decorationProviderManager?.OnTextChanged(editResult.Changes);
+			if (editResult?.TextChanges != null && editResult.TextChanges.Count > 0) {
+				TextChanged?.Invoke(this, new TextChangedEventArgs(editResult.TextChangeKind, editResult.Source, editResult.TextChanges));
+				decorationProviderManager?.OnTextChanged(editResult.TextChanges);
 			}
 		}
 

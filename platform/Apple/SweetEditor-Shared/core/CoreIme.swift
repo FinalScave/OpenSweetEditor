@@ -44,12 +44,14 @@ public enum ImeHostAction: Int32 {
     case NONE = 0
     case CLOSE_SESSION = 1
     case RESTART_SESSION = 2
+    case SYNC_EDITING_STATE = 3
 
     public static func fromValue(_ value: Int32) -> ImeHostAction? {
         switch value {
         case 0: return .NONE
         case 1: return .CLOSE_SESSION
         case 2: return .RESTART_SESSION
+        case 3: return .SYNC_EDITING_STATE
         default: return nil
         }
     }

@@ -82,8 +82,8 @@ export class SelectionMenuController {
     this.hasSelection = result.hasSelectionAfter;
     this.coreBlocked = hasActiveInteraction(result) || needsViewportMotion(result);
 
-    if (result.contentChanged || !this.hasSelection) {
-      if (result.contentChanged) {
+    if (result.textChanges.length > 0 || !this.hasSelection) {
+      if (result.textChanges.length > 0) {
         this.clearSelectionHandles();
       }
       this.dismiss();

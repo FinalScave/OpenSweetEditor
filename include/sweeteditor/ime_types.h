@@ -51,6 +51,7 @@ namespace NS_SWEETEDITOR {
     NONE = 0,
     CLOSE_SESSION = 1,
     RESTART_SESSION = 2,
+    SYNC_EDITING_STATE = 3,
   };
 
   struct SE_PROTOCOL_VALUE(ime) ImeOffsetRange {
@@ -127,11 +128,9 @@ namespace NS_SWEETEDITOR {
 
   struct CompositionState {
     TextRange current_range;
-    std::optional<U8String> baseline_text_raw;
+    std::optional<TextChange> text_change;
+    Vector<TextChange> linked_secondary_changes;
     CaretState baseline_caret;
-
-    bool operator==(const CompositionState& other) const;
-    bool operator!=(const CompositionState& other) const;
   };
 
   struct EditingBufferState {

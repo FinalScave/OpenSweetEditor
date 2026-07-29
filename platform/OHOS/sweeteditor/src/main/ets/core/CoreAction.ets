@@ -94,7 +94,6 @@ export interface EditorActionResult {
   needsRedraw: boolean;
   source: EditorActionSource;
   textChangeKind: TextChangeKind;
-  contentChanged: boolean;
   cursorChanged: boolean;
   selectionChanged: boolean;
   scrollChanged: boolean;
@@ -105,7 +104,7 @@ export interface EditorActionResult {
   animationFlags: number;
   nextAnimationDelayMs: number;
   interactionFlags: number;
-  changes: TextChange[];
+  textChanges: TextChange[];
   cursorBefore: TextPosition;
   cursorAfter: TextPosition;
   hasSelectionBefore: boolean;

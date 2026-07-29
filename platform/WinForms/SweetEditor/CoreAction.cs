@@ -56,7 +56,6 @@ namespace SweetEditor {
         public bool NeedsRedraw { get; set; } = false;
         public EditorActionSource Source { get; set; } = EditorActionSource.NONE;
         public TextChangeKind TextChangeKind { get; set; } = TextChangeKind.NONE;
-        public bool ContentChanged { get; set; } = false;
         public bool CursorChanged { get; set; } = false;
         public bool SelectionChanged { get; set; } = false;
         public bool ScrollChanged { get; set; } = false;
@@ -67,7 +66,7 @@ namespace SweetEditor {
         public int AnimationFlags { get; set; } = 0;
         public int NextAnimationDelayMs { get; set; } = 0;
         public int InteractionFlags { get; set; } = 0;
-        public List<TextChange> Changes { get; set; } = new();
+        public List<TextChange> TextChanges { get; set; } = new();
         public TextPosition CursorBefore { get; set; } = new TextPosition();
         public TextPosition CursorAfter { get; set; } = new TextPosition();
         public bool HasSelectionBefore { get; set; } = false;

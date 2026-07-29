@@ -788,7 +788,6 @@ public final class CoreProtocol {
         value.needsRedraw = reader.readInt32() != 0;
         value.source = EditorActionSource.fromValue(reader.readInt32());
         value.textChangeKind = TextChangeKind.fromValue(reader.readInt32());
-        value.contentChanged = reader.readInt32() != 0;
         value.cursorChanged = reader.readInt32() != 0;
         value.selectionChanged = reader.readInt32() != 0;
         value.scrollChanged = reader.readInt32() != 0;
@@ -799,7 +798,7 @@ public final class CoreProtocol {
         value.animationFlags = reader.readInt32();
         value.nextAnimationDelayMs = reader.readInt32();
         value.interactionFlags = reader.readInt32();
-        value.changes = readTextChangeList(reader);
+        value.textChanges = readTextChangeList(reader);
         value.cursorBefore = readTextPosition(reader);
         value.cursorAfter = readTextPosition(reader);
         value.hasSelectionBefore = reader.readInt32() != 0;

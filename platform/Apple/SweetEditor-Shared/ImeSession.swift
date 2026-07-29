@@ -60,7 +60,8 @@ package final class ImeSession {
     }
 
     package func synchronize(_ result: EditorActionResult) {
-        if result.ime_host_action != .NONE {
+        if result.ime_host_action == .CLOSE_SESSION
+            || result.ime_host_action == .RESTART_SESSION {
             clear()
             return
         }

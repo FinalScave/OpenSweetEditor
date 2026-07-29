@@ -184,6 +184,10 @@ public class SweetEditor extends JPanel {
         return editorCore.getDocument();
     }
 
+    void resumeImeSessionIfFocused() {
+        inputConnection.resumeSessionIfFocused();
+    }
+
     // ==================== Settings / Theme / Core Access ====================
 
     public EditorSettings getSettings() {
@@ -1266,16 +1270,23 @@ public class SweetEditor extends JPanel {
     }
 
     private void dispatchStateEvents(EditorActionResult result) {
-        if (result.contentChanged) {
+        boolean textChanged = result.textChanges != null && !result.textChanges.isEmpty();
+        if (textChanged) {
             dispatchTextChanged(result);
         }
         if (result.imeHostAction != null && result.imeHostAction != ImeHostAction.NONE
                 && completionProviderManager != null) {
             completionProviderManager.dismiss();
-        } else if (result.compositionChanged && completionProviderManager != null) {
-            if (inputConnection.hasComposition() && !editorCore.isInLinkedEditing()) {
+        } else if (completionProviderManager != null) {
+            if (textChanged && result.textChanges.size() != 1) {
+                completionProviderManager.dismiss();
+            } else if (textChanged
+                    && inputConnection.hasComposition()
+                    && !editorCore.isInLinkedEditing()) {
                 completionProviderManager.triggerCompletion(CompletionContext.TriggerKind.RETRIGGER, null);
-            } else if (!result.contentChanged && completionPopupController != null
+            } else if (!textChanged
+                    && (result.compositionChanged || result.cursorChanged || result.selectionChanged)
+                    && completionPopupController != null
                     && completionPopupController.isShowing()) {
                 completionProviderManager.dismiss();
             }
@@ -1344,20 +1355,26 @@ public class SweetEditor extends JPanel {
     }
 
     private void dispatchTextChanged(EditorActionResult result) {
-        if (result != null && result.changes != null && !result.changes.isEmpty()) {
-            eventBus.publish(new TextChangedEvent(result.changes, result.textChangeKind, result.source));
-            decorationProviderManager.onTextChanged(result.changes);
+        if (result != null && result.textChanges != null && !result.textChanges.isEmpty()) {
+            eventBus.publish(new TextChangedEvent(result.textChanges, result.textChangeKind, result.source));
+            decorationProviderManager.onTextChanged(result.textChanges);
             if (result.source == EditorActionSource.KEYBOARD && !editorCore.isInLinkedEditing()) {
-                TextChange primaryChange = result.changes.get(0);
-                if (completionProviderManager != null && primaryChange.newText.length() == 1) {
-                    String text = primaryChange.newText;
+                if (completionProviderManager == null) {
+                    return;
+                }
+                if (result.textChanges.size() != 1) {
+                    completionProviderManager.dismiss();
+                    return;
+                }
+                TextChange change = result.textChanges.get(0);
+                if (change.newText.length() == 1) {
+                    String text = change.newText;
                     if (completionProviderManager.isTriggerCharacter(text)) {
                         completionProviderManager.triggerCompletion(CompletionContext.TriggerKind.CHARACTER, text);
                     } else if (completionPopupController != null && completionPopupController.isShowing()) {
                         completionProviderManager.triggerCompletion(CompletionContext.TriggerKind.RETRIGGER, null);
                     }
-                } else if (completionProviderManager != null
-                        && completionPopupController != null
+                } else if (completionPopupController != null
                         && completionPopupController.isShowing()) {
                     completionProviderManager.triggerCompletion(CompletionContext.TriggerKind.RETRIGGER, null);
                 }

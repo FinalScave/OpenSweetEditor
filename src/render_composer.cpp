@@ -1,6 +1,5 @@
 #include <algorithm>
 #include <sweeteditor/interaction.h>
-#include "ime_projection.hpp"
 #include "render_composer.hpp"
 #include "render_style_util.hpp"
 
@@ -96,7 +95,7 @@ namespace NS_SWEETEDITOR {
         }
       }
 
-      for (const DocumentHighlight& highlight : m_decorations_.getEditingLineDocumentHighlights(line)) {
+      for (const DocumentHighlight& highlight : m_decorations_.getLineDocumentHighlights(line)) {
         if (highlight.length == 0) continue;
         const RangeEffectStyle& style =
             RenderStyleUtil::documentHighlightRangeEffectStyle(m_settings_.range_effect_styles, highlight.kind);
@@ -110,26 +109,7 @@ namespace NS_SWEETEDITOR {
         run_input.style_overrides_by_line[line].push_back(std::move(override));
       }
 
-      if (input.composition.has_value()) {
-        HashSet<uint32_t> projected_match_indices;
-        const Vector<size_t> committed_lines =
-            ImeProjection::committedSourceLinesForEditingLine(input.document, input.composition, line);
-        for (size_t committed_line : committed_lines) {
-          if (committed_line >= input.search_match_indices_by_line.size()) continue;
-          for (uint32_t match_index : input.search_match_indices_by_line[committed_line]) {
-            projected_match_indices.insert(match_index);
-          }
-        }
-        for (uint32_t match_index : projected_match_indices) {
-          if (match_index >= matches.size()) continue;
-          const std::optional<TextRange> range =
-              ImeProjection::projectCommittedRange(input.document, input.composition, matches[match_index].range);
-          if (!range.has_value() || line < range->start.line || line > range->end.line) {
-            continue;
-          }
-          append_search_override(line, match_index, *range);
-        }
-      } else if (line < input.search_match_indices_by_line.size()) {
+      if (line < input.search_match_indices_by_line.size()) {
         for (uint32_t match_index : input.search_match_indices_by_line[line]) {
           if (match_index >= matches.size()) continue;
           append_search_override(line, match_index, matches[match_index].range);
@@ -295,36 +275,28 @@ namespace NS_SWEETEDITOR {
     collectVisibleRangeEffectSourceLines(model, m_text_layout_, source_lines);
 
     HashSet<uint32_t> emitted_matches;
-    for (size_t editing_line : source_lines) {
-      const Vector<size_t> committed_lines =
-          ImeProjection::committedSourceLinesForEditingLine(input.document, input.composition, editing_line);
-      for (size_t source_line : committed_lines) {
-        if (source_line >= input.search_match_indices_by_line.size()) continue;
+    for (size_t source_line : source_lines) {
+      if (source_line >= input.search_match_indices_by_line.size()) continue;
 
-        for (uint32_t match_index : input.search_match_indices_by_line[source_line]) {
-          if (match_index >= input.search_matches.size() || !emitted_matches.insert(match_index).second) {
-            continue;
-          }
+      for (uint32_t match_index : input.search_match_indices_by_line[source_line]) {
+        if (match_index >= input.search_matches.size() || !emitted_matches.insert(match_index).second) {
+          continue;
+        }
 
-          const std::optional<TextRange> projected = ImeProjection::projectCommittedRange(
-              input.document, input.composition, input.search_matches[match_index].range);
-          if (!projected.has_value()) continue;
-          const bool is_current =
-              input.current_search_match >= 0 && match_index == static_cast<uint32_t>(input.current_search_match);
-          const RangeEffectKind kind = is_current ? RangeEffectKind::SEARCH_CURRENT : RangeEffectKind::SEARCH_MATCH;
-          const RangeEffectStyle& style = is_current ? m_settings_.range_effect_styles.search_current
-                                                     : m_settings_.range_effect_styles.search_match;
+        const TextRange& range = input.search_matches[match_index].range;
+        const bool is_current =
+            input.current_search_match >= 0 && match_index == static_cast<uint32_t>(input.current_search_match);
+        const RangeEffectKind kind = is_current ? RangeEffectKind::SEARCH_CURRENT : RangeEffectKind::SEARCH_MATCH;
+        const RangeEffectStyle& style =
+            is_current ? m_settings_.range_effect_styles.search_current : m_settings_.range_effect_styles.search_match;
 
-          for (size_t line = projected->start.line; line <= projected->end.line && line < input.document.getLineCount();
-               ++line) {
-            if (source_lines.find(line) == source_lines.end()) continue;
-            const size_t col_begin = line == projected->start.line ? projected->start.column : 0;
-            const size_t col_end =
-                line == projected->end.line ? projected->end.column : input.document.getLineColumns(line);
-            if (col_begin >= col_end) continue;
+        for (size_t line = range.start.line; line <= range.end.line && line < input.document.getLineCount(); ++line) {
+          if (source_lines.find(line) == source_lines.end()) continue;
+          const size_t col_begin = line == range.start.line ? range.start.column : 0;
+          const size_t col_end = line == range.end.line ? range.end.column : input.document.getLineColumns(line);
+          if (col_begin >= col_end) continue;
 
-            appendRangeEffectsForRange(model, line, col_begin, col_end, line_height, 0.0f, kind, style);
-          }
+          appendRangeEffectsForRange(model, line, col_begin, col_end, line_height, 0.0f, kind, style);
         }
       }
     }
@@ -334,7 +306,7 @@ namespace NS_SWEETEDITOR {
     HashSet<size_t> source_lines;
     collectVisibleRangeEffectSourceLines(model, m_text_layout_, source_lines);
     for (size_t editing_line : source_lines) {
-      for (const DocumentHighlight& highlight : m_decorations_.getEditingLineDocumentHighlights(editing_line)) {
+      for (const DocumentHighlight& highlight : m_decorations_.getLineDocumentHighlights(editing_line)) {
         if (highlight.length == 0) continue;
         appendRangeEffectsForRange(
             model, editing_line, highlight.column, static_cast<size_t>(highlight.column) + highlight.length,
@@ -347,14 +319,13 @@ namespace NS_SWEETEDITOR {
   void RenderModelComposer::composeLinkedEditingEffects(EditorRenderModel& model, const RenderModelInput& input,
                                                         float line_height) const {
     for (const LinkedEditingHighlight& highlight : input.linked_editing_highlights) {
-      const std::optional<TextRange> projected =
-          ImeProjection::projectCommittedRange(input.document, input.composition, highlight.range);
-      if (!projected.has_value() || projected->isCollapsed()) continue;
-      for (size_t line = projected->start.line; line <= projected->end.line && line < input.document.getLineCount();
+      if (highlight.range.isCollapsed()) continue;
+      for (size_t line = highlight.range.start.line;
+           line <= highlight.range.end.line && line < input.document.getLineCount();
            ++line) {
-        size_t col_begin = line == projected->start.line ? projected->start.column : 0;
+        size_t col_begin = line == highlight.range.start.line ? highlight.range.start.column : 0;
         uint32_t line_cols = input.document.getLineColumns(line);
-        size_t col_end = line == projected->end.line ? projected->end.column : line_cols;
+        size_t col_end = line == highlight.range.end.line ? highlight.range.end.column : line_cols;
         if (col_begin >= col_end) continue;
         const RangeEffectStyle& style = highlight.is_active ? m_settings_.range_effect_styles.linked_editing_active
                                                             : m_settings_.range_effect_styles.linked_editing_inactive;
@@ -387,14 +358,12 @@ namespace NS_SWEETEDITOR {
     };
 
     for (const IndentGuide& guide : m_decorations_.getIndentGuides()) {
-      const std::optional<TextRange> projected =
-          ImeProjection::projectCommittedRange(input.document, input.composition, {guide.start, guide.end});
-      if (!projected.has_value() || is_hidden(projected->start.line) || is_hidden(projected->end.line)) {
+      if (is_hidden(guide.start.line) || is_hidden(guide.end.line)) {
         continue;
       }
-      float x = screenX(projected->start.line, projected->start.column);
-      float y_top = screenY(projected->start.line) + line_height;
-      float y_bot = screenY(projected->end.line);
+      float x = screenX(guide.start.line, guide.start.column);
+      float y_top = screenY(guide.start.line) + line_height;
+      float y_bot = screenY(guide.end.line);
       if (y_top >= y_bot) continue;
       GuideSegment seg;
       seg.direction = GuideDirection::VERTICAL;
@@ -406,14 +375,12 @@ namespace NS_SWEETEDITOR {
     }
 
     for (const BracketGuide& guide : m_decorations_.getBracketGuides()) {
-      const std::optional<TextRange> projected =
-          ImeProjection::projectCommittedRange(input.document, input.composition, {guide.parent, guide.end});
-      if (!projected.has_value() || is_hidden(projected->start.line) || is_hidden(projected->end.line)) {
+      if (is_hidden(guide.parent.line) || is_hidden(guide.end.line)) {
         continue;
       }
-      float x = screenX(projected->start.line, projected->start.column);
-      float y_top = screenY(projected->start.line) + line_height;
-      float y_bot = screenY(projected->end.line);
+      float x = screenX(guide.parent.line, guide.parent.column);
+      float y_top = screenY(guide.parent.line) + line_height;
+      float y_bot = screenY(guide.end.line);
       if (y_top < y_bot) {
         GuideSegment vline;
         vline.direction = GuideDirection::VERTICAL;
@@ -424,11 +391,9 @@ namespace NS_SWEETEDITOR {
         model.guide_segments.push_back(vline);
       }
       for (const TextPosition& child : guide.children) {
-        const std::optional<TextPosition> projected_child = ImeProjection::projectCommittedAnchor(
-            input.document, input.composition, child, ImeProjection::EndpointBias::AFTER);
-        if (!projected_child.has_value() || is_hidden(projected_child->line)) continue;
-        float child_y = screenY(projected_child->line) + half_line;
-        float child_x = screenX(projected_child->line, projected_child->column);
+        if (is_hidden(child.line)) continue;
+        float child_y = screenY(child.line) + half_line;
+        float child_x = screenX(child.line, child.column);
         GuideSegment hline;
         hline.direction = GuideDirection::HORIZONTAL;
         hline.type = GuideType::BRACKET;
@@ -440,15 +405,13 @@ namespace NS_SWEETEDITOR {
     }
 
     for (const FlowGuide& guide : m_decorations_.getFlowGuides()) {
-      const std::optional<TextRange> projected =
-          ImeProjection::projectCommittedRange(input.document, input.composition, {guide.start, guide.end});
-      if (!projected.has_value() || is_hidden(projected->start.line) || is_hidden(projected->end.line)) {
+      if (is_hidden(guide.start.line) || is_hidden(guide.end.line)) {
         continue;
       }
-      float indent_x = screenX(projected->end.line, projected->end.column);
+      float indent_x = screenX(guide.end.line, guide.end.column);
       float left_x = indent_x - char_width * 2;
-      float y_bot = screenY(projected->end.line) + half_line;
-      float y_top = screenY(projected->start.line) + half_line;
+      float y_bot = screenY(guide.end.line) + half_line;
+      float y_top = screenY(guide.start.line) + half_line;
 
       GuideSegment h_bot;
       h_bot.direction = GuideDirection::HORIZONTAL;
@@ -478,13 +441,11 @@ namespace NS_SWEETEDITOR {
 
     for (const SeparatorGuide& guide : m_decorations_.getSeparatorGuides()) {
       if (guide.line < 0) continue;
-      const std::optional<TextPosition> projected = ImeProjection::projectCommittedAnchor(
-          input.document, input.composition, {static_cast<size_t>(guide.line), guide.text_end_column},
-          ImeProjection::EndpointBias::AFTER);
-      if (!projected.has_value() || is_hidden(projected->line)) continue;
-      float x_start = screenX(projected->line, projected->column);
+      const size_t line = static_cast<size_t>(guide.line);
+      if (is_hidden(line)) continue;
+      float x_start = screenX(line, guide.text_end_column);
       float sep_width = static_cast<float>(guide.count) * 16.0f * char_width;
-      float y_center = screenY(projected->line) + half_line;
+      float y_center = screenY(line) + half_line;
       GuideSegment seg;
       seg.direction = GuideDirection::HORIZONTAL;
       seg.type = GuideType::SEPARATOR;
@@ -497,7 +458,7 @@ namespace NS_SWEETEDITOR {
         seg.end = {x_start + sep_width, y_center + equal_gap};
         model.guide_segments.push_back(seg);
       } else {
-        float line_top = screenY(projected->line);
+        float line_top = screenY(line);
         float y_dash = line_top + dash_y_offset;
         seg.start = {x_start, y_dash};
         seg.end = {x_start + sep_width, y_dash};
@@ -515,7 +476,7 @@ namespace NS_SWEETEDITOR {
       if (getVisualLineSemantics(vl.kind).text_semantics != TextSemanticsPolicy::PARTICIPATES) continue;
       const size_t editing_line = vl.logical_line;
       if (!emitted_lines.insert(editing_line).second) continue;
-      for (const Diagnostic& diagnostic : m_decorations_.getEditingLineDiagnostics(editing_line)) {
+      for (const Diagnostic& diagnostic : m_decorations_.getLineDiagnostics(editing_line)) {
         if (diagnostic.length == 0) continue;
         appendRangeEffectsForRange(
             model, editing_line, diagnostic.column, static_cast<size_t>(diagnostic.column) + diagnostic.length,

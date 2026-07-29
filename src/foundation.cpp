@@ -71,6 +71,22 @@ namespace NS_SWEETEDITOR {
     return lhs.start < rhs.end && rhs.start < lhs.end;
   }
 
+  bool TextRange::conflictsForBatchEdit(const TextRange& other) const {
+    const TextRange lhs = normalized();
+    const TextRange rhs = other.normalized();
+
+    if (lhs.isCollapsed() && rhs.isCollapsed()) {
+      return lhs.start == rhs.start;
+    }
+    if (lhs.isCollapsed()) {
+      return rhs.start < lhs.start && lhs.start < rhs.end;
+    }
+    if (rhs.isCollapsed()) {
+      return lhs.start < rhs.start && rhs.start < lhs.end;
+    }
+    return lhs.start < rhs.end && rhs.start < lhs.end;
+  }
+
   TextRange TextRange::normalized() const {
     TextRange range = *this;
     if (range.end < range.start) {

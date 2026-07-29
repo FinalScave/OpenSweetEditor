@@ -29,6 +29,7 @@ class EditorSession {
     LanguageConfiguration? initialLanguageConfiguration,
     EditorMetadata? initialMetadata,
   }) : _theme = theme {
+    _declarativeSettings = initialSettings;
     _settings = (initialSettings ?? EditorSettings()).copy()
       ..seedDefaults(
         textSize: fontSize,
@@ -89,6 +90,7 @@ class EditorSession {
   late final EditorTextMeasurer _measurer;
   late final EditorCanvasPainter _painter;
   late final EditorSettings _settings;
+  EditorSettings? _declarativeSettings;
   core.EditorCore? _editorCore;
   core.Document? _document;
   bool _ownsDocument = false;
@@ -287,7 +289,10 @@ class EditorSession {
     required String fontFamily,
     required bool gutterSticky,
   }) {
-    final nextSettings = (snapshot ?? EditorSettings()).copy()
+    _declarativeSettings = snapshot;
+    final sourceSettings =
+        snapshot ?? (EditorSettings().._setScaleFromPlatform(_platformScale));
+    final nextSettings = sourceSettings.copy()
       ..seedDefaults(
         textSize: fontSize,
         fontFamily: fontFamily,
@@ -367,24 +372,65 @@ class EditorSession {
   }
 
   void _dispatchTextChanged(core.EditorActionResult result) {
-    if (!result.contentChanged || result.changes.isEmpty) return;
+    if (result.textChanges.isEmpty) return;
     eventBus.publish(
       TextChangedEvent(
-        changes: result.changes,
+        changes: result.textChanges,
         kind: result.textChangeKind,
         source: result.source,
       ),
     );
-    decorationProviderManager.onTextChanged(result.changes);
+    decorationProviderManager.onTextChanged(result.textChanges);
+  }
 
+  void _updateCompletion(core.EditorActionResult result) {
     final ec = _editorCore;
-    if (ec == null || ec.isInLinkedEditing) {
+    if (ec == null) {
+      return;
+    }
+    if (result.imeHostAction != core.ImeHostAction.none ||
+        ec.isInLinkedEditing) {
+      completionProviderManager.dismiss();
       return;
     }
 
-    final primaryChange = result.changes.first;
-    if (primaryChange.newText.length == 1) {
-      final ch = primaryChange.newText;
+    final textChanged = result.textChanges.isNotEmpty;
+    final contextChanged =
+        textChanged ||
+        result.compositionChanged ||
+        result.cursorChanged ||
+        result.selectionChanged;
+    if (!contextChanged) {
+      return;
+    }
+
+    if (!textChanged) {
+      if (completionPopupController.isShowing) {
+        completionProviderManager.dismiss();
+      }
+      return;
+    }
+    if (result.textChanges.length != 1) {
+      completionProviderManager.dismiss();
+      return;
+    }
+
+    final composition = result.imeState.compositionRange;
+    final compositionActive =
+        result.imeState.sessionId != 0 &&
+        composition.startUtf16 >= 0 &&
+        composition.endUtf16 >= composition.startUtf16;
+    if (compositionActive) {
+      completionProviderManager.triggerCompletion(
+        CompletionTriggerKind.retrigger,
+        null,
+      );
+      return;
+    }
+
+    final change = result.textChanges.first;
+    if (change.newText.length == 1) {
+      final ch = change.newText;
       if (completionProviderManager.isTriggerCharacter(ch)) {
         completionProviderManager.triggerCompletion(
           CompletionTriggerKind.character,
@@ -405,39 +451,19 @@ class EditorSession {
   }
 
   void _dispatchStateEvents(core.EditorActionResult result) {
-    if (result.contentChanged) {
-      final changes = result.changes;
-      if (changes.isNotEmpty) {
-        _dispatchTextChanged(result);
-      } else if (completionPopupController.isShowing) {
-        completionProviderManager.triggerCompletion(
-          CompletionTriggerKind.retrigger,
-          null,
-        );
-      }
+    if (result.textChanges.isNotEmpty) {
+      _dispatchTextChanged(result);
     }
-    final useImeSync = result.needsImeSync;
+    _updateCompletion(result);
     if (result.cursorChanged) {
-      eventBus.publish(
-        CursorChangedEvent(
-          cursorPosition: useImeSync
-              ? result.imeSync.cursor
-              : result.cursorAfter,
-        ),
-      );
+      eventBus.publish(CursorChangedEvent(cursorPosition: result.cursorAfter));
     }
     if (result.selectionChanged) {
       eventBus.publish(
         SelectionChangedEvent(
-          hasSelection: useImeSync
-              ? result.imeSync.hasSelection
-              : result.hasSelectionAfter,
-          selection: useImeSync
-              ? (result.imeSync.hasSelection ? result.imeSync.selection : null)
-              : (result.hasSelectionAfter ? result.selectionAfter : null),
-          cursorPosition: useImeSync
-              ? result.imeSync.cursor
-              : result.cursorAfter,
+          hasSelection: result.hasSelectionAfter,
+          selection: result.hasSelectionAfter ? result.selectionAfter : null,
+          cursorPosition: result.cursorAfter,
         ),
       );
     }
@@ -777,6 +803,8 @@ class EditorSession {
       return;
     }
     _platformScale = scale;
+    _settings._setScaleFromPlatform(scale);
+    _declarativeSettings?._setScaleFromPlatform(scale);
     _measurer.updateFont(
       platformBehavior.resolveFontFamily(fontFamily),
       textSize * scale,
@@ -791,6 +819,8 @@ class EditorSession {
     final ec = _editorCore;
     if (ec == null) return;
     _platformScale = scale;
+    _settings._setScaleFromPlatform(scale);
+    _declarativeSettings?._setScaleFromPlatform(scale);
     _measurer.updateFont(
       platformBehavior.resolveFontFamily(_settings.getFontFamily()),
       _settings.getEditorTextSize() * scale,

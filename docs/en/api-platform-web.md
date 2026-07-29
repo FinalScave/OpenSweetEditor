@@ -290,15 +290,14 @@ The host must translate browser events into the shared protocol and drive `_edit
 
 ### IME Protocol
 
-    _editor_ime_has_preedit
-    _editor_ime_handle_command_message
-    _editor_ime_handle_text_update_message
-    _editor_ime_get_keyboard_script_class
-    _editor_ime_get_sync_snapshot
-    _editor_ime_get_command_input_context
-    _editor_ime_get_text_update_input_context
+    _editor_ime_begin_session
+    _editor_ime_end_session
+    _editor_ime_apply_commands
+    _editor_ime_apply_text_updates
+    _editor_ime_get_state
+    _editor_ime_get_context
 
-SweetEditor exposes the shared IME protocol only. The host remains responsible for connecting browser composition, beforeinput, keyboard, selection, and candidate UI behavior to these messages.
+SweetEditor exposes the shared session-based IME protocol only. The host remains responsible for mapping browser composition, beforeinput, keyboard, selection, lifecycle, and candidate UI behavior to command or text-update batches.
 
 ## Exported Emscripten Runtime Methods
 
@@ -327,7 +326,7 @@ Complex parameters and return values use the same binary protocol as the native 
 - `ScrollMetrics`
 - search-independent decoration and folding models
 - linked-editing models
-- IME messages, snapshots, and input contexts
+- IME command/text-update batches, authoritative state, and finite text contexts
 
 Returned binary data must be released with `_free_binary_data`. Returned UTF-8 and UTF-16 strings must be released with their matching free functions.
 

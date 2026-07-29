@@ -691,7 +691,6 @@ public final class CoreProtocol {
         value.needsRedraw = data.getInt() != 0;
         value.source = EditorActionSource.fromValue(data.getInt());
         value.textChangeKind = TextChangeKind.fromValue(data.getInt());
-        value.contentChanged = data.getInt() != 0;
         value.cursorChanged = data.getInt() != 0;
         value.selectionChanged = data.getInt() != 0;
         value.scrollChanged = data.getInt() != 0;
@@ -702,7 +701,7 @@ public final class CoreProtocol {
         value.animationFlags = data.getInt();
         value.nextAnimationDelayMs = data.getInt();
         value.interactionFlags = data.getInt();
-        value.changes = readTextChangeList(data);
+        value.textChanges = readTextChangeList(data);
         value.cursorBefore = readTextPosition(data);
         value.cursorAfter = readTextPosition(data);
         value.hasSelectionBefore = data.getInt() != 0;

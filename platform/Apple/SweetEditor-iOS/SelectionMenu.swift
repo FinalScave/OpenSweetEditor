@@ -65,7 +65,7 @@ final class SelectionMenuController {
         latestHasSelection = result.has_selection_after
         coreBlocked = result.hasActiveInteraction || result.needsViewportMotion
 
-        if result.content_changed || !latestHasSelection {
+        if !result.text_changes.isEmpty || !latestHasSelection {
             dismiss()
             return
         }

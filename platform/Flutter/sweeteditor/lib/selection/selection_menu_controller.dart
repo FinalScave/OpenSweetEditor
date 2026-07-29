@@ -43,7 +43,7 @@ class SelectionMenuController {
     _hasSelection = result.hasSelectionAfter;
     _coreBlocked = result.hasActiveInteraction || result.needsViewportMotion;
 
-    if (result.contentChanged || !_hasSelection) {
+    if (result.textChanges.isNotEmpty || !_hasSelection) {
       hide();
       return;
     }

@@ -45,6 +45,53 @@ final class CompletionProviderManagerTests: XCTestCase {
         XCTAssertFalse(manager.isActive)
     }
 
+    func testMarkOnlyCompositionDoesNotRequestCompletion() {
+        let requested = expectation(description: "completion requested")
+        requested.isInverted = true
+        let provider = DeferredCompletionProvider(expectations: [requested])
+        let manager = makeManager()
+        manager.addProvider(provider)
+
+        manager.update(
+            for: EditorActionResult(
+                composition_changed: true,
+                ime_state: ImeState(
+                    session_id: 1,
+                    composition_range: ImeOffsetRange(start_utf16: 0, end_utf16: 5)
+                )
+            ),
+            isLinkedEditing: false
+        )
+
+        wait(for: [requested], timeout: 0.1)
+        XCTAssertTrue(provider.receivers.isEmpty)
+        XCTAssertFalse(manager.isActive)
+    }
+
+    func testMultipleTextChangesDismissWithoutRequestingCompletion() {
+        let requested = expectation(description: "completion requested")
+        requested.isInverted = true
+        let dismissed = expectation(description: "dismissed")
+        let provider = DeferredCompletionProvider(expectations: [requested])
+        let manager = makeManager(onDismissed: { dismissed.fulfill() })
+        manager.addProvider(provider)
+        manager.showItems([CompletionItem(label: "value")])
+
+        manager.update(
+            for: EditorActionResult(
+                text_changes: [
+                    TextChange(new_text: "."),
+                    TextChange(new_text: "import")
+                ]
+            ),
+            isLinkedEditing: false
+        )
+
+        wait(for: [dismissed, requested], timeout: 0.1)
+        XCTAssertTrue(provider.receivers.isEmpty)
+        XCTAssertFalse(manager.isActive)
+    }
+
     private func makeManager(
         onItemsUpdated: @escaping ([CompletionItem]) -> Void = { _ in },
         onDismissed: @escaping () -> Void = {}

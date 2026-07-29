@@ -47,5 +47,5 @@
 
 ### IME Protocol and Outputs
 
-- Query preedit state and keyboard script classification, process command and text-update IME messages, and retrieve synchronization snapshots and input contexts.
+- Export the six session-based IME C APIs for beginning and ending sessions, applying command or text-update batches, and querying authoritative state or finite text context.
 - Produce `sweeteditor_c_abi.js` and `sweeteditor_c_abi.wasm` with explicit native-memory release helpers, plus a separately selectable Embind target reserved for bindings.

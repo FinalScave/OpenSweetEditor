@@ -20,13 +20,4 @@ namespace NS_SWEETEDITOR {
     return !(*this == other);
   }
 
-  bool CompositionState::operator==(const CompositionState& other) const {
-    return current_range == other.current_range && baseline_text_raw == other.baseline_text_raw
-           && baseline_caret == other.baseline_caret;
-  }
-
-  bool CompositionState::operator!=(const CompositionState& other) const {
-    return !(*this == other);
-  }
-
 }

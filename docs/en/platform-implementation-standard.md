@@ -27,7 +27,7 @@ The Core layer does not involve UI rendering. It contains only bridging, data mo
 | **Config** | `EditorOptions`, `HandleConfig`, `HandleHitArea`, `ScrollbarConfig`, `WrapMode`, `FoldArrowMode`, `AutoIndentMode`, `CurrentLineRenderMode`, `ScrollbarMode`, `ScrollbarTrackTapMode`, `EditorRenderColors`, `EditorRangeEffectStyles`, `RangeEffectStyle`, `RangeEffectUnderlineStyle` | Runtime, construction, and editor render styling protocol types |
 | **Foundation** | `TextPosition`, `TextRange`, `TextEdit`, `IntRange`, `TextChange`, `PointF`, `Size`, `Rect`, `CaretAffinity`, `TabStopGroup` | Fundamental value types and shared editor data carriers |
 | **Interaction** | `GestureEvent`, `GestureType`, `EventType`, `HitTarget`, `HitTargetType` | Input and hit-test protocol types |
-| **IME** | `ImeSyncSnapshot`, `ImeInputContext`, `ImeOffsetRange`, `ImeMarkedRange`, `ImeMarkedRangeRole`, `ImeCommandKind`, `ImeCommandMessage`, `ImeTextPatch`, `ImeTextUpdateKind`, `ImeTextUpdateScope`, `ImeTextUpdateMessage`, `ImeScriptClass`, `ImeContextPolicy`, `ImeInputContextKind`, `ImeTextUnit` | IME synchronization snapshots, text-context protocol types, and replacement payload models; integration synchronization decisions are carried by `EditorActionResult` |
+| **IME** | `ImeMutationModel`, `ImeTextSource`, `ImeCoordinateSpace`, `ImeTextUnit`, `ImeCommandKind`, `ImeResultCode`, `ImeHostAction`, `ImeOffsetRange`, `ImeSelection`, `ImeCommand`, `ImeCommandBatch`, `ImeTextUpdateStep`, `ImeTextUpdateBatch`, `ImeState`, `ImeTextContext` | Session-scoped command and text-update models, authoritative state, and finite text-context queries |
 | **Adornment** | `StyleSpan`, `SpanLayer`, `InlayHint`, `InlayType`, `PhantomText`, `CodeLensItem`, `LinkSpan`, `FoldRegion`, `GutterIcon`, `Diagnostic`, `DiagnosticSeverity`, `DocumentHighlight`, `DocumentHighlightKind`, `IndentGuide`, `BracketGuide`, `FlowGuide`, `SeparatorGuide`, `SeparatorStyle`, `TextStyle` | Decoration data types |
 | **Visual** | `EditorRenderModel`, `LayoutMetrics`, `VisualLine`, `VisualLineKind`, `VisualRun`, `VisualRunType`, `PointerCursorType`, `Cursor`, `CursorRect`, `SelectionHandle`, `ScrollMetrics`, `ScrollbarModel`, `GuideSegment`, `GuideType`, `GuideDirection`, `GuideStyle`, `RangeEffectKind`, `RangeEffectRenderItem`, `FoldMarkerRenderItem`, `FoldState`, `GutterIconRenderItem` | Render model types (geometry semantics follow Sections 2.5 and 2.6) |
 | **Keymap** | `KeyBinding`, `KeyChord`, `KeyCode`, `KeyModifier`, `EditorBuiltinCommand` | Shortcut binding data types and built-in command identifiers |
@@ -219,7 +219,7 @@ During construction or first-frame bootstrap before the editor runtime / dispatc
 | Text editing | `insertText(text)`, `replaceText(range, text)`, `deleteText(range)`, `applyTextEdits(edits)`, `backspace()`, `deleteForward()`, `moveLineUp()`, `moveLineDown()`, `copyLineUp()`, `copyLineDown()`, `deleteLine()`, `insertLineAbove()`, `insertLineBelow()` |
 | Undo / redo | `undo()`, `redo()`, `canUndo()`, `canRedo()` |
 | Cursor / selection | `setCursorPosition(line, col)`, `getCursorPosition()`, `selectAll()`, `setSelection(sL, sC, eL, eC)`, `getSelection()`, `getSelectedText()`, `getWordRangeAtCursor()`, `getWordAtCursor()`, `moveCursorLeft(extend)`, `moveCursorRight(extend)`, `moveCursorUp(extend)`, `moveCursorDown(extend)`, `moveCursorToLineStart(extend)`, `moveCursorToLineEnd(extend)` |
-| IME | `getImeSyncSnapshot()`, `getImeCommandInputContext(...)`, `getImeTextUpdateInputContext(...)`, `handleImeCommandMessage(message)`, `handleImeTextUpdateMessage(message)`, `getImeKeyboardScriptClass()`, `hasPreedit()` |
+| IME | `beginImeSession(model)`, `endImeSession(sessionId)`, `applyImeCommands(batch)`, `applyImeTextUpdates(batch)`, `getImeState(sessionId)`, `getImeContext(sessionId, source, start, length)` |
 | Read-only / indent | `setReadOnly(readOnly)`, `isReadOnly()`, `setAutoIndentMode(mode)`, `getAutoIndentMode()`, `setBackspaceUnindent(enabled)` |
 | Navigation / scroll | `scrollToLine(line, behavior)`, `gotoPosition(line, col)`, `ensureCursorVisible()`, `setScroll(x, y)`, `getScrollMetrics()`, `getPositionRect(line, col)`, `getCursorRect()` |
 | Style / highlight | `registerTextStyle(id, color, bg, fontStyle)`, `registerBatchTextStyles(data)`, `setLineSpans(line, layer, spans)`, `setBatchLineSpans(layer, entries)`, `clearLineSpans(line, layer)`, `clearHighlights(layer)`, `clearHighlights()`, `setEditorRenderColors(colors)`, `setEditorRangeEffectStyles(styles)` |
@@ -237,13 +237,11 @@ During construction or first-frame bootstrap before the editor runtime / dispatc
 | Clear | `clearAllDecorations()` |
 | Linked Editing | `insertSnippet(template)`, `startLinkedEditing(groups)`, `isInLinkedEditing()`, `linkedEditingNext()`, `linkedEditingPrev()`, `cancelLinkedEditing()` |
 
-IME APIs are the request entrypoints through which host input events enter core. This standard constrains semantic capability families, not the complete bridge function list that each implementation must call. Integration layers MUST NOT create editor preedit just because the system IME requests surrounding text, candidate context, or cursor rectangles. Preedit is created only when the system IME explicitly declares editable composing / marked / preedit text or range; commits, replacements, deletion, and selection synchronization are adjudicated by core from the current selection, preedit, system mark, and input context.
+IME APIs are the request entrypoints through which host input events enter core. Each Core session has one fixed `ImeMutationModel`, while one native input connection may sequentially host multiple Core session generations. Android, Apple, Swing, WinForms, Avalonia, and OHOS adapters use callback-scoped `ImeCommandBatch` values; Flutter delta adapters use callback-scoped `ImeTextUpdateBatch` values. A session MUST NOT switch mutation models.
 
-When an implementation marks a range in core, it MUST specify `ImeMarkedRangeRole`: `PREEDIT` only means real editable preedit; `SYSTEM_MARK` only means a native candidate, correction, highlight, or current-word target range. Android `InputConnection.setComposingRegion`, Apple marked ranges, and Windows TSF composition ranges MUST NOT be treated as whole-word replacement commands by the integration layer. Neither integration code nor core may automatically start whole-word preedit when the cursor enters a Latin word.
+Core owns document text, selection, composition, history, and recovery. Integration layers decode native events, convert native offsets into explicit UTF-16 coordinate spaces, preserve callback ordering, and execute `ImeHostAction`; they MUST NOT infer candidate stages, keyboard scripts, word targets, or replacement intent from text content. Surrounding-text and geometry queries alone MUST NOT create composition.
 
-Integration layers MUST synchronize cursor changes, selection changes, preedit / system-mark updates, candidate commits, deletion, finish/cancel, and equivalent text-update changes into core. When a Chinese keyboard does not declare preedit, that only means SweetEditor has no visible preedit; it MUST NOT be implemented by disabling the system IME, blocking Chinese candidate commits, or blocking Chinese predictive candidates.
-
-IME offsets MUST state their coordinate space explicitly: document line/column APIs use `TextRange`; document-offset APIs use full document offsets; input-context / text-update APIs use context offsets relative to `documentStartOffset`. Integration implementations MUST NOT implicitly mix these coordinate spaces.
+All IME text offsets use UTF-16 code units and MUST carry an explicit `ImeCoordinateSpace`. `DOCUMENT`, `EDITING_BUFFER`, `CONTEXT_SLICE`, and `COMPOSITION` offsets MUST NOT be mixed implicitly. Missing ranges and selections use the generated canonical `(-1, -1)` representation rather than presence flags.
 
 > Payload-level APIs (e.g. `setLineSpans`, `setBatchLineSpans`) — all implementations MUST provide high-level typed wrappers (e.g. `setLineSpans(line, layer, spans: List<StyleSpan>)`). Implementations SHOULD additionally expose raw/binary payload APIs when the host language has a natural public binary carrier (e.g. `ByteBuffer`, `MemorySegment`, `NSData`, `byte[]`, `Uint8List`, `ArrayBuffer`). Typed wrappers and raw/binary payload APIs MUST use the generated `CoreProtocol` encoding and produce identical Core behavior.
 
@@ -253,20 +251,19 @@ IME offsets MUST state their coordinate space explicitly: document line/column A
 
 | API / Type | Requirement | Notes |
 |---|---|---|
-| IME protocol types | MUST | Include the generated CoreProtocol IME model set: `ImeSyncSnapshot`, `ImeInputContext`, `ImeOffsetRange`, `ImeMarkedRange`, `ImeMarkedRangeRole`, `ImeCommandKind`, `ImeCommandMessage`, `ImeTextPatch`, `ImeTextUpdateKind`, `ImeTextUpdateScope`, `ImeTextUpdateMessage`, `ImeScriptClass`, `ImeContextPolicy`, `ImeInputContextKind`, and `ImeTextUnit` |
-| `ImeTextUnit` | MUST | Stable values are `GRAPHEME = 0` and `CODE_POINT = 1`; integration APIs MAY expose unit-aware deletion overloads according to native adapter needs |
-| Synchronization snapshot capability | MUST | Integration input adapters MUST process `EditorActionResult.needsImeSync` and `EditorActionResult.imeSync`; use `getImeSyncSnapshot()` or an equivalent bridge entrypoint when an explicit query is needed |
-| Keyboard script hint capability | SHOULD / conditional MUST | SHOULD track keyboard script hints; MUST map host-provided script hints when they are available |
-| Preedit / composing capability | SHOULD / conditional MUST | Native preedit, composing text, or marked text MUST map to core's preedit / composing semantic family |
-| Commit / replacement capability | MUST / conditional MUST | Native commits MUST map to core; explicit replacement ranges MUST map to the corresponding document, input-context, or text-update replacement semantic family |
-| Document range / offset capability | conditional MUST | Native document ranges or document offsets MUST use document coordinate semantics and MUST NOT be mixed with input-context offsets |
-| Input-context capability | conditional MUST | Implementations that operate on surrounding text / extracted text windows MUST use context offsets relative to `documentStartOffset` |
-| Text-update snapshot / patch capability | conditional MUST | Implementations whose native API exposes a complete text update snapshot or delta SHOULD use the text-update semantic family rather than forcing the flow into legacy preedit / commit actions |
+| IME protocol types | MUST | Include the generated CoreProtocol IME model set listed in Section 2.1; implementations MUST NOT maintain an independent wire schema |
+| Session lifecycle | MUST | Bind an editable native connection to one current Core session and retain its `session_id`; after a Core-triggered Restart, the same native connection may bind a new Core session generation when its protocol permits; end host-originated connections with Finish semantics |
+| Host action handling | MUST | Process `EditorActionResult.imeHostAction`; Core-triggered Close/Restart has already ended the Core session and MUST NOT call `endImeSession` again |
+| State synchronization | MUST | Treat `ImeState` as authoritative; `TEXT_UPDATE` adapters also advance their local shadow only from the returned `state_revision` |
+| `ImeTextUnit` | MUST | Stable values are `UTF16_CODE_UNIT = 0` and `UNICODE_CODE_POINT = 1`; ordinary editor Backspace/Delete remain grapheme operations outside the IME surrounding-delete command |
+| Composition capability | SHOULD / conditional MUST | Native composing, marked, or preedit state MUST map to Core composition semantics without introducing a second adapter-owned composition state |
+| Commit / replacement capability | MUST / conditional MUST | Native commits and explicit replacement ranges MUST map to the corresponding command or text-update step with an explicit coordinate space |
+| Text-context capability | conditional MUST | Surrounding, committed, or editing-buffer text MUST be read through `getImeContext`; query slices are read-only and never mutate composition |
+| Text-update delta capability | conditional MUST | Delta-based adapters MUST preserve patch identity and submit one `ImeTextUpdateBatch` per native callback; full snapshots are only for initialization, Core-session rebind, or explicit Core synchronization and MUST NOT be diffed into mutations |
 | Deletion capability | SHOULD / conditional MUST | Native backward, forward, or surrounding deletion requests MUST map to core deletion semantics |
 | Selection / cursor synchronization capability | SHOULD / conditional MUST | IME-driven selection, cursor, or text-update selection synchronization MUST map to core |
-| `hasPreedit()` | MUST | Reports whether editor-visible preedit is active |
 
-`ImeSyncSnapshot` semantics MUST cover: document cursor, document selection, visible preedit range, system mark range, `ImeContextPolicy`, and whether the integration should clear the system mark. `ImeInputContext` semantics MUST cover: `id`, `revision`, `documentStartOffset`, `text`, `selection`, `hasPreeditRange`, `preeditRange`, `hasSystemMarkRange`, `systemMarkRange`, and `kind`; `text`, `documentStartOffset`, `selection`, `preeditRange`, and `systemMarkRange` carry the native text window and its selection / marked offset semantics. `ImeActionResult` is not an integration protocol type; if the core implementation keeps this structure internally, its contents MUST be folded into `EditorActionResult` when crossing the bridge and exposed through `needsImeSync` / `imeSync`.
+`ImeState` carries `resultCode`, `sessionId`, `stateRevision`, authoritative selection, and composition range. `ImeTextContext` carries a read-only text slice, total UTF-16 length, and any selection/composition fully representable inside that slice. `sessionId == 0` only means that a response carries no live session state; adapters change lifecycle only according to the API contract and `ImeHostAction`.
 
 The complete core bridge function list is defined by `include/sweeteditor/editor_core.h` and `include/sweeteditor/c_api.h`. This standard constrains IME semantics and protocol fields, not whether every core bridge function is exposed as a host-facing API.
 
@@ -546,7 +543,7 @@ All implementations MUST expose the following settings through getter/setter pai
 
 > All setter calls MUST take effect immediately and pass the core-returned `EditorActionResult` to the unified result dispatcher.
 >
-> Typical impact describes host-visible semantics only. It is not the basis for integration-layer flush, repaint, or relayout decisions. Whether to rebuild the render model, synchronize IME state, continue animation, or repaint MUST be driven by `EditorActionResult` fields such as `needsRedraw`, `needsImeSync`, `animationFlags`, and `nextAnimationDelayMs`.
+> Typical impact describes host-visible semantics only. It is not the basis for integration-layer flush, repaint, or relayout decisions. Whether to rebuild the render model, execute an IME host action, continue animation, or repaint MUST be driven by `EditorActionResult` fields such as `needsRedraw`, `imeHostAction`, `imeState`, `animationFlags`, and `nextAnimationDelayMs`.
 >
 > Typical impact categories:
 > - `repaint`: usually affects visual refresh without requiring text relayout.
@@ -795,23 +792,20 @@ Each implementation uses its own native bridge technology. This is expected and 
 
 ### 13.2 Input Method Handling (MAY differ)
 
-IME integration depends on the host environment, but SweetEditor IME semantics MUST remain consistent across implementations. Implementations MAY use different system APIs, but MUST normalize native IME events to core's two entrypoint families: `ImeCommandMessage` for command-style input, selection, preedit, commit, replacement, deletion, and marked-range operations; `ImeTextUpdateMessage` for native text-window snapshots or patches. Only explicit native composing / marked / preedit declarations create editor preedit. Candidate context, surrounding text, cursor rectangles, keyboard language, or moving the cursor into a Latin word MUST NOT create preedit.
-
-`ImeMarkedRangeRole::PREEDIT` means real editable preedit; it participates in visible IME composition rendering and later commit replacement. `ImeMarkedRangeRole::SYSTEM_MARK` means a native candidate, correction, highlight, or current-word target range; it can help core determine the target of later candidate commits, but it is not editable preedit. Integration layers MUST NOT render candidate context as composition underline and MUST NOT create preedit merely to mimic a native text field when the native input system has not declared composing / marked / preedit.
+IME integration depends on the host environment, but SweetEditor IME semantics MUST remain consistent. Command-style native APIs normalize one callback into `ImeCommandBatch`; Flutter delta input normalizes one delta list into `ImeTextUpdateBatch`. Both paths share Core composition, transaction, history, and recovery semantics. Only explicit native composing / marked / preedit state creates composition.
 
 | Platform | IME API | Recommended mapping |
 |---|---|---|
-| Android | `InputConnection` | Choose command, input-context, or text-update semantics based on `setComposingText` / `setComposingRegion` / `commitText` / delete / extracted-text capabilities; real preedit and system mark MUST remain distinct |
-| iOS | `UITextInput` | Map marked text / `markedTextRange` to marked/preedit semantics; choose document or input-context semantics based on the coordinate capability exposed by the native text range |
-| macOS | `NSTextInputClient` | Map `setMarkedText` / marked ranges to marked/preedit semantics; selected ranges and replacement ranges must preserve coordinate-space consistency |
-| Swing | `InputMethodEvent` / `InputMethodRequests` | Map composed text segments from `InputMethodEvent` to preedit/commit; use `InputMethodRequests` for candidate context and cursor rectangles |
-| WinForms | TSF / IMM | Map TSF composition ranges or IMM composition strings to preedit, document-range, or input-context semantics according to the available native data |
-| OHOS | IME Kit | Map platform composing / preedit callbacks or ranges to preedit, document-range, input-context, or text-update semantics according to their coordinate space |
-| Flutter | `TextInputClient` | Prefer text-update snapshot / patch semantics from `TextEditingValue`; a valid `composing` range means the input system declared preedit or system mark and the integration must choose the role explicitly |
+| Android | `InputConnection` | Use one `COMMAND` session per connection; map supported mutations to command batches and read surrounding text through context queries |
+| iOS | `UITextInput` | Use a `COMMAND` session; map marked text, selection, replacement ranges, finish, and cancel to explicit command coordinates |
+| macOS | `NSTextInputClient` | Use a `COMMAND` session; preserve AppKit marked-relative and document-relative replacement semantics |
+| Swing | `InputMethodEvent` / `InputMethodRequests` | Use a `COMMAND` session; submit each input-method event atomically and answer committed-text queries through `COMMITTED` context |
+| WinForms | TSF / IMM | Use a `COMMAND` session; normalize one native composition message into one ordered command batch |
+| Avalonia | `TextInputMethodClient` | Use a `COMMAND` session; bind each immutable context/cache generation to one Core session |
+| OHOS | IME Kit | Use a `COMMAND` session; capture generation in callbacks and keep asynchronous attach/detach ordering explicit |
+| Flutter | `DeltaTextInputClient` | Use a `TEXT_UPDATE` session and one finite editing-buffer shadow; submit each delta list once and never derive mutations from a full snapshot diff |
 
-Every implementation MUST map native composition sources to core's preedit / marked-range semantic family, native commits to the commit semantic family, explicit replacements to the replacement semantic family, and native finish/cancel events to the finish/cancel semantic family. An implementation MAY choose document line/column, document offset, input-context offset, or text-update snapshot/patch paths based on its native API, but the coordinate space MUST be explicit and consistent.
-
-Document ranges passed to core MUST use document coordinates. Input-context / text-update offsets MUST be relative to the corresponding `documentStartOffset`. Temporary offsets from a target-specific surrounding-text window MUST NOT be treated as document offsets. Editable editors always support native IME composition; read-only mode blocks text changes and MUST NOT be implemented as a composition enable / disable switch.
+Every implementation MUST keep native connection generation, Core `session_id`, and callback ordering aligned. Document, composition, editing-buffer, and context-slice coordinates MUST remain explicit. Read-only mode blocks mutation and closes the active session; it MUST NOT be implemented by disabling system IME support globally.
 
 IME behavior changes MUST be validated against the [IME Regression Matrix](ime-regression-matrix.md). Core automated tests cover shared protocol semantics, but integration adapters still need native acceptance coverage for their actual event order, coordinate-space mapping, and target-specific candidate behavior.
 

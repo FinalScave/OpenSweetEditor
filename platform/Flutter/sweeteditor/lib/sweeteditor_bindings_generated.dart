@@ -447,7 +447,6 @@ external ffi.Pointer<ffi.Uint8> editor_get_layout_metrics(
 /// bool_i32 needs_redraw
 /// enum_i32 source
 /// enum_i32 text_change_kind
-/// bool_i32 content_changed
 /// bool_i32 cursor_changed
 /// bool_i32 selection_changed
 /// bool_i32 scroll_changed
@@ -455,11 +454,10 @@ external ffi.Pointer<ffi.Uint8> editor_get_layout_metrics(
 /// bool_i32 pointer_cursor_changed
 /// bool_i32 composition_changed
 /// bool_i32 decoration_changed
-/// bool_i32 needs_ime_sync
 /// u32 animation_flags
 /// u32 next_animation_delay_ms
 /// u32 interaction_flags
-/// List<TextChange> changes
+/// List<TextChange> text_changes
 /// TextPosition cursor_before
 /// TextPosition cursor_after
 /// bool_i32 has_selection_before
@@ -474,7 +472,8 @@ external ffi.Pointer<ffi.Uint8> editor_get_layout_metrics(
 /// f32 scale_after
 /// enum_i32 pointer_cursor_before
 /// enum_i32 pointer_cursor_after
-/// ImeSyncSnapshot ime_sync
+/// enum_i32 ime_host_action
+/// ImeState ime_state
 /// enum_i32 gesture_type
 /// enum_i32 gesture_event_type
 /// PointF tap_point
@@ -486,7 +485,7 @@ external ffi.Pointer<ffi.Uint8> editor_get_layout_metrics(
 /// when animation_flags is nonzero, next_animation_delay_ms=0 requests the next display frame
 /// and a positive value requests editor_tick_animations after that delay
 /// TextChange is TextRange range followed by U8String new_text
-/// ImeSyncSnapshot is TextPosition cursor, TextRange selection, bool_i32 has_selection, bool_i32 has_preedit_range, TextRange preedit_range, bool_i32 has_system_mark_range, TextRange system_mark_range, enum_i32 context_policy, bool_i32 clear_system_mark
+/// ImeState is enum_i32 result_code, u64 session_id, u64 state_revision, ImeSelection selection, ImeOffsetRange composition_range
 /// HitTarget is enum_i32 type, i32 line, i32 column, i32 icon_id, i32 color_value
 /// This is the only result payload for core state-changing APIs. Platforms should use needs_redraw from this payload
 /// to decide whether to flush editor state and schedule repaint.
@@ -2106,12 +2105,29 @@ external ffi.Pointer<ffi.Uint8> editor_cancel_linked_editing(
   ffi.Pointer<ffi.Size> out_size,
 );
 
-/// Get whether preedit is currently active
-/// @return 1=preedit active, 0=no preedit
-@ffi.Native<ffi.Int Function(ffi.IntPtr)>(assetId: _sweeteditorAssetId)
-external int editor_ime_has_preedit(int editor_handle);
+/// Begin an IME session.
+/// @param mutation_model ImeMutationModel enum value.
+/// @return ImeState binary payload, returns NULL when editor handle is invalid.
+@ffi.Native<
+  ffi.Pointer<ffi.Uint8> Function(ffi.IntPtr, ffi.Int, ffi.Pointer<ffi.Size>)
+>(assetId: _sweeteditorAssetId)
+external ffi.Pointer<ffi.Uint8> editor_ime_begin_session(
+  int editor_handle,
+  int mutation_model,
+  ffi.Pointer<ffi.Size> out_size,
+);
 
-/// Handle a platform IME command message.
+/// End an IME session using Finish semantics.
+@ffi.Native<
+  ffi.Pointer<ffi.Uint8> Function(ffi.IntPtr, ffi.Uint64, ffi.Pointer<ffi.Size>)
+>(assetId: _sweeteditorAssetId)
+external ffi.Pointer<ffi.Uint8> editor_ime_end_session(
+  int editor_handle,
+  int session_id,
+  ffi.Pointer<ffi.Size> out_size,
+);
+
+/// Apply one callback-scoped command batch.
 /// @param data Binary payload encoded by CoreProtocol.
 /// @param size Binary payload size in bytes.
 /// @return EditorActionResult binary payload, returns NULL when editor handle is invalid or payload is invalid.
@@ -2123,14 +2139,14 @@ external int editor_ime_has_preedit(int editor_handle);
     ffi.Pointer<ffi.Size>,
   )
 >(assetId: _sweeteditorAssetId)
-external ffi.Pointer<ffi.Uint8> editor_ime_handle_command_message(
+external ffi.Pointer<ffi.Uint8> editor_ime_apply_commands(
   int editor_handle,
   ffi.Pointer<ffi.Uint8> data,
   int size,
   ffi.Pointer<ffi.Size> out_size,
 );
 
-/// Handle a platform IME text update message.
+/// Apply one callback-scoped text update batch.
 /// @param data Binary payload encoded by CoreProtocol.
 /// @param size Binary payload size in bytes.
 /// @return EditorActionResult binary payload, returns NULL when editor handle is invalid or payload is invalid.
@@ -2142,65 +2158,40 @@ external ffi.Pointer<ffi.Uint8> editor_ime_handle_command_message(
     ffi.Pointer<ffi.Size>,
   )
 >(assetId: _sweeteditorAssetId)
-external ffi.Pointer<ffi.Uint8> editor_ime_handle_text_update_message(
+external ffi.Pointer<ffi.Uint8> editor_ime_apply_text_updates(
   int editor_handle,
   ffi.Pointer<ffi.Uint8> data,
   int size,
   ffi.Pointer<ffi.Size> out_size,
 );
 
-/// Get the current IME keyboard script class.
-@ffi.Native<ffi.Int Function(ffi.IntPtr)>(assetId: _sweeteditorAssetId)
-external int editor_ime_get_keyboard_script_class(int editor_handle);
-
-/// Get the current IME synchronization snapshot.
-/// @return ImeSyncSnapshot binary payload, returns NULL when editor handle is invalid
-@ffi.Native<ffi.Pointer<ffi.Uint8> Function(ffi.IntPtr, ffi.Pointer<ffi.Size>)>(
-  assetId: _sweeteditorAssetId,
-)
-external ffi.Pointer<ffi.Uint8> editor_ime_get_sync_snapshot(
-  int editor_handle,
-  ffi.Pointer<ffi.Size> out_size,
-);
-
-/// Get an input context for command-style IME APIs.
-/// @param before_length UTF-16 code unit count requested before the cursor or selection.
-/// @param after_length UTF-16 code unit count requested after the cursor or selection.
-/// @return ImeInputContext binary payload, returns NULL when editor handle is invalid.
+/// Get the current state for an IME session.
 @ffi.Native<
-  ffi.Pointer<ffi.Uint8> Function(
-    ffi.IntPtr,
-    ffi.Size,
-    ffi.Size,
-    ffi.Pointer<ffi.Size>,
-  )
+  ffi.Pointer<ffi.Uint8> Function(ffi.IntPtr, ffi.Uint64, ffi.Pointer<ffi.Size>)
 >(assetId: _sweeteditorAssetId)
-external ffi.Pointer<ffi.Uint8> editor_ime_get_command_input_context(
+external ffi.Pointer<ffi.Uint8> editor_ime_get_state(
   int editor_handle,
-  int before_length,
-  int after_length,
+  int session_id,
   ffi.Pointer<ffi.Size> out_size,
 );
 
-/// Get an input context for text-update IME APIs.
-/// @param scope ImeTextUpdateScope enum value.
-/// @param before_length UTF-16 code unit count requested before the cursor or selection.
-/// @param after_length UTF-16 code unit count requested after the cursor or selection.
-/// @return ImeInputContext binary payload, returns NULL when editor handle is invalid.
+/// Read a slice from an IME text source.
 @ffi.Native<
   ffi.Pointer<ffi.Uint8> Function(
     ffi.IntPtr,
+    ffi.Uint64,
     ffi.Int,
-    ffi.Size,
-    ffi.Size,
+    ffi.Int64,
+    ffi.Int64,
     ffi.Pointer<ffi.Size>,
   )
 >(assetId: _sweeteditorAssetId)
-external ffi.Pointer<ffi.Uint8> editor_ime_get_text_update_input_context(
+external ffi.Pointer<ffi.Uint8> editor_ime_get_context(
   int editor_handle,
-  int scope,
-  int before_length,
-  int after_length,
+  int session_id,
+  int source,
+  int start_utf16,
+  int length_utf16,
   ffi.Pointer<ffi.Size> out_size,
 );
 

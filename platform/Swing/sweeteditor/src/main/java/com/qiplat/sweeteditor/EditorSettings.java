@@ -186,8 +186,12 @@ public class EditorSettings {
     }
 
     public void setReadOnly(boolean readOnly) {
+        boolean wasReadOnly = mReadOnly;
         mReadOnly = readOnly;
         mEditor.dispatchEditorActionResult(mEditor.getEditorCore().setReadOnly(readOnly));
+        if (wasReadOnly && !readOnly) {
+            mEditor.resumeImeSessionIfFocused();
+        }
     }
 
     public boolean isReadOnly() {

@@ -4,6 +4,7 @@
 #include <sweeteditor/linked_editing.h>
 #include <utf8/utf8.h>
 #include <algorithm>
+#include "text_edit_utils.hpp"
 
 namespace NS_SWEETEDITOR {
 #pragma region[Class: SnippetParser]
@@ -273,75 +274,83 @@ namespace NS_SWEETEDITOR {
     return m_current_idx_;
   }
 
-  Vector<std::pair<TextRange, U8String>> LinkedEditingSession::computeLinkedEdits(const U8String& new_text) const {
-    Vector<std::pair<TextRange, U8String>> edits;
-    const TabStopGroup* group = currentGroup();
-    if (group == nullptr) return edits;
-
-    // Collect all ranges
-    for (const auto& range : group->ranges) {
-      edits.push_back({range, new_text});
+  bool LinkedEditingSession::adjustRangesForEditBatch(
+      const Vector<TextEdit>& edits, const Vector<std::optional<size_t>>& active_group_owners) {
+    if (!m_active_ || edits.size() != active_group_owners.size()) return false;
+    const TabStopGroup* current_group = currentGroup();
+    if (current_group == nullptr) return false;
+    for (const std::optional<size_t>& owner : active_group_owners) {
+      if (owner.has_value() && *owner >= current_group->ranges.size()) return false;
     }
 
-    // Sort by document position in descending order (replace back to front)
-    std::sort(edits.begin(), edits.end(), [](const auto& a, const auto& b) {
-      if (a.first.start.line != b.first.start.line) return a.first.start.line > b.first.start.line;
-      return a.first.start.column > b.first.start.column;
+    Vector<size_t> order;
+    order.reserve(edits.size());
+    for (size_t index = 0; index < edits.size(); ++index) {
+      if (edits[index].range.isCollapsed() && edits[index].new_text.empty()) continue;
+      order.push_back(index);
+    }
+    std::sort(order.begin(), order.end(), [&edits](size_t lhs_index, size_t rhs_index) {
+      const TextRange& lhs = edits[lhs_index].range;
+      const TextRange& rhs = edits[rhs_index].range;
+      if (lhs.start != rhs.start) return rhs.start < lhs.start;
+      return rhs.end < lhs.end;
     });
 
-    return edits;
-  }
-
-  void LinkedEditingSession::adjustRangesForEdit(const TextRange& old_range, const TextPosition& new_end) {
-    if (!m_active_) return;
-
-    // Compute line delta and column delta on the last line
-    int64_t old_end_line = static_cast<int64_t>(old_range.end.line);
-    int64_t old_end_col = static_cast<int64_t>(old_range.end.column);
-    int64_t new_end_line = static_cast<int64_t>(new_end.line);
-    int64_t new_end_col = static_cast<int64_t>(new_end.column);
-    int64_t line_delta = new_end_line - old_end_line;
-    int64_t col_delta = new_end_col - old_end_col;
-
-    for (size_t group_index = 0; group_index < m_groups_.size(); ++group_index) {
-      auto& group = m_groups_[group_index];
-      for (auto& range : group.ranges) {
-        if (group_index == m_current_idx_ && range == old_range) {
-          range = {old_range.start, new_end};
-          continue;
-        }
-
-        // Only adjust ranges after the edit point
-        // Start position adjustment
-        if (range.start.line == old_range.end.line && range.start.column >= old_range.end.column) {
-          // Same line, after edit point
-          range.start.line = static_cast<size_t>(static_cast<int64_t>(range.start.line) + line_delta);
-          if (line_delta == 0) {
-            range.start.column = static_cast<size_t>(static_cast<int64_t>(range.start.column) + col_delta);
-          } else {
-            // Crossed lines, column is based on new_end_col on the new line
-            range.start.column =
-                static_cast<size_t>(new_end_col + (static_cast<int64_t>(range.start.column) - old_end_col));
+    Vector<TabStopGroup> transformed = m_groups_;
+    for (size_t group_index = 0; group_index < transformed.size(); ++group_index) {
+      TabStopGroup& group = transformed[group_index];
+      for (size_t range_index = 0; range_index < group.ranges.size(); ++range_index) {
+        TextRange range = group.ranges[range_index];
+        const bool active_group = group_index == m_current_idx_;
+        bool owner_applied = false;
+        bool has_owner = false;
+        for (size_t edit_index : order) {
+          if (active_group_owners[edit_index].has_value()
+              && *active_group_owners[edit_index] == range_index && active_group) {
+            if (has_owner) return false;
+            has_owner = true;
           }
-        } else if (range.start.line > old_range.end.line) {
-          // Lines after the edit point
-          range.start.line = static_cast<size_t>(static_cast<int64_t>(range.start.line) + line_delta);
         }
 
-        // End position adjustment (same logic)
-        if (range.end.line == old_range.end.line && range.end.column >= old_range.end.column) {
-          range.end.line = static_cast<size_t>(static_cast<int64_t>(range.end.line) + line_delta);
-          if (line_delta == 0) {
-            range.end.column = static_cast<size_t>(static_cast<int64_t>(range.end.column) + col_delta);
-          } else {
-            range.end.column =
-                static_cast<size_t>(new_end_col + (static_cast<int64_t>(range.end.column) - old_end_col));
+        for (size_t edit_index : order) {
+          const TextEdit& edit = edits[edit_index];
+          const std::optional<size_t>& owner = active_group_owners[edit_index];
+          if (active_group && owner.has_value() && *owner == range_index) {
+            const TextPosition inserted_end = TextEditUtils::positionAfterText(edit.range.start, edit.new_text);
+            range = {edit.range.start, inserted_end};
+            owner_applied = true;
+            continue;
           }
-        } else if (range.end.line > old_range.end.line) {
-          range.end.line = static_cast<size_t>(static_cast<int64_t>(range.end.line) + line_delta);
+          if (has_owner && !owner_applied) {
+            continue;
+          }
+          if (!range.isCollapsed() && range.conflictsForBatchEdit(edit.range)) {
+            return false;
+          }
+
+          const TextPosition inserted_end = TextEditUtils::positionAfterText(edit.range.start, edit.new_text);
+
+          if (range.isCollapsed()) {
+            const TextPosition point = TextEditUtils::transformPosition(
+                edit.range, inserted_end, range.start, TextEditUtils::PositionBias::AFTER);
+            range = {point, point};
+          } else {
+            range = {
+                TextEditUtils::transformPosition(
+                    edit.range, inserted_end, range.start, TextEditUtils::PositionBias::AFTER),
+                TextEditUtils::transformPosition(
+                    edit.range, inserted_end, range.end, TextEditUtils::PositionBias::BEFORE),
+            };
+          }
+          if (range.end < range.start) return false;
         }
+        if (has_owner && !owner_applied) return false;
+        group.ranges[range_index] = range;
       }
     }
+
+    m_groups_ = std::move(transformed);
+    return true;
   }
 
   Vector<LinkedEditingHighlight> LinkedEditingSession::getAllHighlights() const {

@@ -246,19 +246,7 @@ namespace NS_SWEETEDITOR {
 
     SharedPtr<TextStyleRegistry> getTextStyleRegistry();
 
-    void setEditingProjection(const TextRange& committed_range, const TextRange& editing_range);
-
-    void clearEditingProjection();
-
-    LineLayoutDecorations getEditingLineLayoutDecorations(size_t editing_line) const;
-
-    Vector<CodeLensItem> getEditingLineCodeLens(size_t editing_line) const;
-
-    Vector<GutterIcon> getEditingLineGutterIcons(size_t editing_line) const;
-
-    Vector<Diagnostic> getEditingLineDiagnostics(size_t editing_line) const;
-
-    Vector<DocumentHighlight> getEditingLineDocumentHighlights(size_t editing_line) const;
+    LineLayoutDecorations getLineLayoutDecorations(size_t line) const;
 
     /// Set highlight spans for a given line and layer (externally provided, sorted by column ascending)
     void setLineSpans(size_t line, SpanLayer layer, Vector<StyleSpan>&& spans);
@@ -414,18 +402,9 @@ namespace NS_SWEETEDITOR {
     void adjustForEdit(const TextRange& old_range, const TextPosition& new_end);
 
   private:
-    struct EditingProjectionState {
-      TextRange committed_range;
-      TextRange editing_range;
-    };
-
     void ensureLineCapacity_(size_t line_count);
-    Vector<size_t> committedSourceLinesForEditingLine_(size_t editing_line) const;
-    std::optional<TextRange> projectCommittedRange_(const TextRange& range) const;
-    std::optional<TextPosition> projectCommittedAnchor_(const TextPosition& position) const;
 
     SharedPtr<TextStyleRegistry> m_text_style_reg_;
-    std::optional<EditingProjectionState> m_editing_projection_;
     std::array<Vector<Vector<StyleSpan>>, kSpanLayerCount> m_layer_spans_;
     Vector<Vector<InlayHint>> m_inlay_hints_;
     Vector<Vector<PhantomText>> m_phantom_texts_;

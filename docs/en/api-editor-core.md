@@ -74,7 +74,6 @@ bool_i32 handled
 bool_i32 needs_redraw
 enum_i32 source
 enum_i32 text_change_kind
-bool_i32 content_changed
 bool_i32 cursor_changed
 bool_i32 selection_changed
 bool_i32 scroll_changed
@@ -82,11 +81,10 @@ bool_i32 scale_changed
 bool_i32 pointer_cursor_changed
 bool_i32 composition_changed
 bool_i32 decoration_changed
-bool_i32 needs_ime_sync
 u32 animation_flags
 u32 next_animation_delay_ms
 u32 interaction_flags
-List<TextChange> changes
+List<TextChange> text_changes
 TextPosition cursor_before
 TextPosition cursor_after
 bool_i32 has_selection_before
@@ -101,7 +99,8 @@ f32 scale_before
 f32 scale_after
 enum_i32 pointer_cursor_before
 enum_i32 pointer_cursor_after
-ImeSyncSnapshot ime_sync
+enum_i32 ime_host_action
+ImeState ime_state
 enum_i32 gesture_type
 enum_i32 gesture_event_type
 PointF tap_point
@@ -109,6 +108,8 @@ HitTarget hit_target
 enum_i32 modifiers
 enum_i32 command
 ```
+
+`text_changes` contains the exact edits applied to `Document` by this call; a non-empty list means that text changed. IME composition start, update, and cancellation are reported immediately whenever they modify the current text.
 
 `TextChange` is `TextRange range, U8String new_text`. `HitTarget` is `enum_i32 type, i32 line, i32 column, i32 icon_id, i32 color_value`.
 
@@ -426,16 +427,15 @@ EDITOR_API const uint8_t* editor_cancel_linked_editing(intptr_t editor_handle, s
 ### IME Protocol
 
 ```c
-EDITOR_API int editor_ime_has_preedit(intptr_t editor_handle);
-EDITOR_API const uint8_t* editor_ime_handle_command_message(intptr_t editor_handle, const uint8_t* data, size_t size, size_t* out_size);
-EDITOR_API const uint8_t* editor_ime_handle_text_update_message(intptr_t editor_handle, const uint8_t* data, size_t size, size_t* out_size);
-EDITOR_API int editor_ime_get_keyboard_script_class(intptr_t editor_handle);
-EDITOR_API const uint8_t* editor_ime_get_sync_snapshot(intptr_t editor_handle, size_t* out_size);
-EDITOR_API const uint8_t* editor_ime_get_command_input_context(intptr_t editor_handle, size_t before_length, size_t after_length, size_t* out_size);
-EDITOR_API const uint8_t* editor_ime_get_text_update_input_context(intptr_t editor_handle, int scope, size_t before_length, size_t after_length, size_t* out_size);
+EDITOR_API const uint8_t* editor_ime_begin_session(intptr_t editor_handle, int mutation_model, size_t* out_size);
+EDITOR_API const uint8_t* editor_ime_end_session(intptr_t editor_handle, uint64_t session_id, size_t* out_size);
+EDITOR_API const uint8_t* editor_ime_apply_commands(intptr_t editor_handle, const uint8_t* data, size_t size, size_t* out_size);
+EDITOR_API const uint8_t* editor_ime_apply_text_updates(intptr_t editor_handle, const uint8_t* data, size_t size, size_t* out_size);
+EDITOR_API const uint8_t* editor_ime_get_state(intptr_t editor_handle, uint64_t session_id, size_t* out_size);
+EDITOR_API const uint8_t* editor_ime_get_context(intptr_t editor_handle, uint64_t session_id, int source, int64_t start_utf16, int64_t length_utf16, size_t* out_size);
 ```
 
-The two message handlers return `EditorActionResult`. Snapshot and input-context queries return `ImeSyncSnapshot` or `ImeInputContext` payloads and use the same owned-buffer rule.
+`begin_session` and `get_state` return `ImeState`; `get_context` returns `ImeTextContext`; session end and both batch mutation APIs return `EditorActionResult`. `ImeMutationModel` is fixed for the lifetime of a session: command-style adapters send `ImeCommandBatch`, while Flutter delta adapters send `ImeTextUpdateBatch`.
 
 ### Memory Utilities and Windows-only Setup
 

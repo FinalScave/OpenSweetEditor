@@ -27,7 +27,7 @@ Core 层不涉及 UI 渲染，仅包含桥接、数据模型和协议编解码�
 | **Config** | `EditorOptions`, `HandleConfig`, `HandleHitArea`, `ScrollbarConfig`, `WrapMode`, `FoldArrowMode`, `AutoIndentMode`, `CurrentLineRenderMode`, `ScrollbarMode`, `ScrollbarTrackTapMode`, `EditorRenderColors`, `EditorRangeEffectStyles`, `RangeEffectStyle`, `RangeEffectUnderlineStyle` | 运行时、构造与编辑器渲染样式协议类型 |
 | **Foundation** | `TextPosition`, `TextRange`, `TextEdit`, `IntRange`, `TextChange`, `PointF`, `Size`, `Rect`, `CaretAffinity`, `TabStopGroup` | 基础值类型与共享编辑器数据载体 |
 | **Interaction** | `GestureEvent`, `GestureType`, `EventType`, `HitTarget`, `HitTargetType` | 输入与命中测试协议类型 |
-| **IME** | `ImeSyncSnapshot`, `ImeInputContext`, `ImeOffsetRange`, `ImeMarkedRange`, `ImeMarkedRangeRole`, `ImeCommandKind`, `ImeCommandMessage`, `ImeTextPatch`, `ImeTextUpdateKind`, `ImeTextUpdateScope`, `ImeTextUpdateMessage`, `ImeScriptClass`, `ImeContextPolicy`, `ImeInputContextKind`, `ImeTextUnit` | IME 同步快照、文本上下文协议类型与替换 payload model；接入侧同步决策由 `EditorActionResult` 承载 |
+| **IME** | `ImeMutationModel`, `ImeTextSource`, `ImeCoordinateSpace`, `ImeTextUnit`, `ImeCommandKind`, `ImeResultCode`, `ImeHostAction`, `ImeOffsetRange`, `ImeSelection`, `ImeCommand`, `ImeCommandBatch`, `ImeTextUpdateStep`, `ImeTextUpdateBatch`, `ImeState`, `ImeTextContext` | 会话级 command 与 text-update model、权威状态和有限文本上下文查询 |
 | **Adornment** | `StyleSpan`, `SpanLayer`, `InlayHint`, `InlayType`, `PhantomText`, `CodeLensItem`, `LinkSpan`, `FoldRegion`, `GutterIcon`, `Diagnostic`, `DiagnosticSeverity`, `DocumentHighlight`, `DocumentHighlightKind`, `IndentGuide`, `BracketGuide`, `FlowGuide`, `SeparatorGuide`, `SeparatorStyle`, `TextStyle` | 装饰数据类型 |
 | **Visual** | `EditorRenderModel`, `LayoutMetrics`, `VisualLine`, `VisualLineKind`, `VisualRun`, `VisualRunType`, `PointerCursorType`, `Cursor`, `CursorRect`, `SelectionHandle`, `ScrollMetrics`, `ScrollbarModel`, `GuideSegment`, `GuideType`, `GuideDirection`, `GuideStyle`, `RangeEffectKind`, `RangeEffectRenderItem`, `FoldMarkerRenderItem`, `FoldState`, `GutterIconRenderItem` | 渲染模型类型（几何语义见第 2.5 与 2.6 节） |
 | **Keymap** | `KeyBinding`, `KeyChord`, `KeyCode`, `KeyModifier`, `EditorBuiltinCommand` | 快捷键绑定数据类型与内建命令标识 |
@@ -219,7 +219,7 @@ Widget 层负责宿主原生渲染、用户交互和扩展系统。
 | 文本编辑 | `insertText(text)`, `replaceText(range, text)`, `deleteText(range)`, `applyTextEdits(edits)`, `backspace()`, `deleteForward()`, `moveLineUp()`, `moveLineDown()`, `copyLineUp()`, `copyLineDown()`, `deleteLine()`, `insertLineAbove()`, `insertLineBelow()` |
 | 撤销 / 重做 | `undo()`, `redo()`, `canUndo()`, `canRedo()` |
 | 光标 / 选区 | `setCursorPosition(line, col)`, `getCursorPosition()`, `selectAll()`, `setSelection(sL, sC, eL, eC)`, `getSelection()`, `getSelectedText()`, `getWordRangeAtCursor()`, `getWordAtCursor()`, `moveCursorLeft(extend)`, `moveCursorRight(extend)`, `moveCursorUp(extend)`, `moveCursorDown(extend)`, `moveCursorToLineStart(extend)`, `moveCursorToLineEnd(extend)` |
-| IME | `getImeSyncSnapshot()`, `getImeCommandInputContext(...)`, `getImeTextUpdateInputContext(...)`, `handleImeCommandMessage(message)`, `handleImeTextUpdateMessage(message)`, `getImeKeyboardScriptClass()`, `hasPreedit()` |
+| IME | `beginImeSession(model)`, `endImeSession(sessionId)`, `applyImeCommands(batch)`, `applyImeTextUpdates(batch)`, `getImeState(sessionId)`, `getImeContext(sessionId, source, start, length)` |
 | 只读 / 缩进 | `setReadOnly(readOnly)`, `isReadOnly()`, `setAutoIndentMode(mode)`, `getAutoIndentMode()`, `setBackspaceUnindent(enabled)` |
 | 导航 / 滚动 | `scrollToLine(line, behavior)`, `gotoPosition(line, col)`, `ensureCursorVisible()`, `setScroll(x, y)`, `getScrollMetrics()`, `getPositionRect(line, col)`, `getCursorRect()` |
 | 样式 / 高亮 | `registerTextStyle(id, color, bg, fontStyle)`, `registerBatchTextStyles(data)`, `setLineSpans(line, layer, spans)`, `setBatchLineSpans(layer, entries)`, `clearLineSpans(line, layer)`, `clearHighlights(layer)`, `clearHighlights()`, `setEditorRenderColors(colors)`, `setEditorRangeEffectStyles(styles)` |
@@ -237,13 +237,11 @@ Widget 层负责宿主原生渲染、用户交互和扩展系统。
 | 清除 | `clearAllDecorations()` |
 | Linked Editing | `insertSnippet(template)`, `startLinkedEditing(groups)`, `isInLinkedEditing()`, `linkedEditingNext()`, `linkedEditingPrev()`, `cancelLinkedEditing()` |
 
-IME API 是宿主输入事件进入 core 的请求入口。本标准约束的是语义能力族，而不是要求每个实现调用全部 bridge 函数。接入层 MUST NOT 因为系统 IME 请求 surrounding text、候选上下文或光标矩形，就创建 editor preedit。是否建立 preedit 只取决于系统 IME 是否通过 composing / marked / preedit API 明确声明可编辑组合文本或组合范围；提交、替换、删除和 selection 同步由 core 基于当前 selection、preedit、system mark 与输入上下文统一裁决。
+IME API 是宿主输入事件进入 core 的请求入口。每个 Core session 的 `ImeMutationModel` 固定不变；同一个原生输入连接可以按顺序承载多个 Core session generation。Android、Apple、Swing、WinForms、Avalonia 与 OHOS 适配层按原生 callback 组装 `ImeCommandBatch`；Flutter delta 适配层按 delta list 组装 `ImeTextUpdateBatch`。同一 session 不得切换 mutation model。
 
-接入层向 core 标记范围时 MUST 明确 `ImeMarkedRangeRole`：`PREEDIT` 只表示真实可编辑 preedit；`SYSTEM_MARK` 只表示系统候选、纠错、高亮或当前词目标范围。Android 的 `InputConnection.setComposingRegion`、Apple marked range、Windows TSF composition range 都不能由接入层直接当成整词替换命令。光标进入英文单词时接入层和 core 都不得自动开启整词 preedit。
+Core 统一持有 document text、selection、composition、history 与恢复策略。接入层只负责解码原生事件、把原生 offset 转成显式 UTF-16 坐标空间、保持 callback 顺序并执行 `ImeHostAction`；不得根据文本内容猜测候选阶段、键盘 script、目标单词或替换意图。surrounding-text 与 geometry 查询本身不得创建 composition。
 
-接入层 MUST 将光标变化、选区变化、preedit / system mark 更新、候选提交、删除、finish/cancel 等事件同步给 core。中文键盘未声明 preedit 时只表示不建立 SweetEditor 可见 preedit；这不能被实现成禁用系统 IME、阻断中文候选提交或阻断中文联想候选。
-
-IME 相关 offset MUST 明确坐标空间：文档 line/column API 使用 `TextRange`；文档 offset API 使用完整文档 offset；input-context / text-update API 使用以 `documentStartOffset` 为基准的上下文 offset。接入实现 MUST NOT 在这些坐标空间之间隐式混用。
+所有 IME 文本 offset 均使用 UTF-16 code unit，并且必须携带明确的 `ImeCoordinateSpace`。`DOCUMENT`、`EDITING_BUFFER`、`CONTEXT_SLICE` 与 `COMPOSITION` offset 不得隐式混用。缺失 range 和 selection 使用生成协议约定的 `(-1, -1)` canonical 表示，不再使用 presence flag。
 
 > payload 类 API（如 `setLineSpans`、`setBatchLineSpans`）各实现 MUST 提供高层 typed 封装（如 `setLineSpans(line, layer, spans: List<StyleSpan>)`）。当宿主语言存在自然的公开二进制载体（如 `ByteBuffer`、`MemorySegment`、`NSData`、`byte[]`、`Uint8List`、`ArrayBuffer`）时，实现 SHOULD 额外公开 raw/binary payload API。typed wrapper 与 raw/binary payload API MUST 使用生成的 `CoreProtocol` 编码，并产生完全一致的 Core 行为。
 
@@ -253,20 +251,19 @@ IME 相关 offset MUST 明确坐标空间：文档 line/column API 使用 `TextR
 
 | API / 类型 | 要求 | 说明 |
 |---|---|---|
-| IME 协议类型 | MUST | 包含生成的 `CoreProtocol` IME model 集合：`ImeSyncSnapshot`、`ImeInputContext`、`ImeOffsetRange`、`ImeMarkedRange`、`ImeMarkedRangeRole`、`ImeCommandKind`、`ImeCommandMessage`、`ImeTextPatch`、`ImeTextUpdateKind`、`ImeTextUpdateScope`、`ImeTextUpdateMessage`、`ImeScriptClass`、`ImeContextPolicy`、`ImeInputContextKind`、`ImeTextUnit` |
-| `ImeTextUnit` | MUST | 稳定值为 `GRAPHEME = 0`、`CODE_POINT = 1`；接入 API MAY 按 native adapter 需要暴露 unit-aware 删除重载 |
-| 同步快照能力 | MUST | 宿主输入适配层 MUST 能处理 `EditorActionResult.needsImeSync` 与 `EditorActionResult.imeSync`；需要主动查询时使用 `getImeSyncSnapshot()` 或等价桥接入口 |
-| 键盘脚本 hint 能力 | SHOULD / 条件性 MUST | SHOULD 记录键盘脚本 hint；接入实现提供 script hint 时 MUST 映射 |
-| preedit / composing 能力 | SHOULD / 条件性 MUST | 接入实现收到原生 preedit、composing text 或 marked text 时 MUST 映射到 core 的 preedit / composing 语义族 |
-| commit / replacement 能力 | MUST / 条件性 MUST | 原生提交 MUST 映射；接入实现报告明确 replacement 范围时 MUST 映射到 document、input-context 或 text-update 中对应的 replacement 语义族 |
-| document range / offset 能力 | 条件性 MUST | 接入实现报告文档范围或文档 offset 时 MUST 使用文档坐标语义，不能混入 input-context offset |
-| input-context 能力 | 条件性 MUST | 实现基于 surrounding text / extracted text window 操作时 MUST 使用以 `documentStartOffset` 为基准的上下文 offset 语义 |
-| text-update snapshot / patch 能力 | 条件性 MUST | 宿主原生 API 暴露完整文本模型快照或增量时 SHOULD 使用 text-update 语义族，而不是强行拆成旧 preedit / commit 流程 |
+| IME 协议类型 | MUST | 包含第 2.1 节列出的生成 `CoreProtocol` IME model；接入实现不得维护独立 wire schema |
+| Session 生命周期 | MUST | 可编辑原生 connection 只绑定一个当前 Core session并持有其 `session_id`；Core要求Restart后，若原生协议允许，同一connection可改绑新的Core session generation；宿主主动结束connection时以Finish语义结束session |
+| Host action 处理 | MUST | 处理 `EditorActionResult.imeHostAction`；Core 发起 Close/Restart 时 Core session 已结束，不得再次调用 `endImeSession` |
+| 状态同步 | MUST | 以 `ImeState` 为权威；`TEXT_UPDATE` 适配层还必须只根据返回的 `state_revision` 推进本地 shadow |
+| `ImeTextUnit` | MUST | 稳定值为 `UTF16_CODE_UNIT = 0`、`UNICODE_CODE_POINT = 1`；IME surrounding-delete 之外的普通 Backspace/Delete 仍使用 grapheme 语义 |
+| composition 能力 | SHOULD / 条件性 MUST | 原生 composing、marked 或 preedit 状态必须映射为 Core composition，不得再维护一份 adapter-owned composition 状态 |
+| commit / replacement 能力 | MUST / 条件性 MUST | 原生 commit 与显式 replacement range 必须使用对应 command 或 text-update step，并携带明确坐标空间 |
+| text-context 能力 | 条件性 MUST | surrounding、committed 或 editing-buffer 文本必须通过 `getImeContext` 读取；查询 slice 只读，不能改变 composition |
+| text-update delta 能力 | 条件性 MUST | delta接入必须保留patch identity，每个原生callback只提交一个`ImeTextUpdateBatch`；完整snapshot只用于初始化、Core session rebind或Core显式同步，不得diff成mutation |
 | 删除能力 | SHOULD / 条件性 MUST | 接入实现请求 backward、forward 或 surrounding 删除时 MUST 映射到 core 删除语义族 |
 | selection / cursor 同步能力 | SHOULD / 条件性 MUST | IME 驱动 selection、cursor 或 text-update selection 同步时 MUST 映射到 core |
-| `hasPreedit()` | MUST | 报告 editor-visible preedit 是否活跃 |
 
-`ImeSyncSnapshot` 的语义字段 MUST 覆盖：文档光标、文档选区、可见 preedit 范围、system mark 范围、`ImeContextPolicy`、以及是否要求接入层清除 system mark。`ImeInputContext` 的语义字段 MUST 覆盖：`id`、`revision`、`documentStartOffset`、`text`、`selection`、`hasPreeditRange`、`preeditRange`、`hasSystemMarkRange`、`systemMarkRange`、`kind`；其中 `text`、`documentStartOffset`、`selection`、`preeditRange` 和 `systemMarkRange` 承载 native text window 及其 selection / marked offsets 语义。`ImeActionResult` 不属于接入协议类型；若 core 内部实现保留该结构，它的内容跨 bridge 时 MUST 汇入 `EditorActionResult`，并通过 `needsImeSync` / `imeSync` 暴露给宿主输入适配层。
+`ImeState` 携带 `resultCode`、`sessionId`、`stateRevision`、权威 selection 与 composition range。`ImeTextContext` 携带只读 text slice、总 UTF-16 长度，以及能够完整落入 slice 的 selection/composition。`sessionId == 0` 只表示响应不携带活跃 session 状态；接入层只能依据 API contract 与 `ImeHostAction` 改变生命周期。
 
 完整 core bridge 函数列表以 `include/sweeteditor/editor_core.h` 与 `include/sweeteditor/c_api.h` 为准。本标准只约束实现必须保持的 IME 语义和协议字段，不要求把每个 core bridge 函数都暴露为宿主可见 API。
 
@@ -544,7 +541,7 @@ Provider 返回空列表时实现 MAY 不显示选区菜单；Provider SHOULD �
 
 > 所有 setter 调用后 MUST 立即生效，并将 core 返回的 `EditorActionResult` 交给统一结果分发入口处理。
 >
-> 典型影响仅用于说明宿主可预期的语义，不是接入层判断 flush、repaint 或 relayout 的依据。是否重建 render model、刷新 IME 状态、触发动画或重绘，MUST 由 `EditorActionResult` 的 `needsRedraw`、`needsImeSync`、`animationFlags` 和 `nextAnimationDelayMs` 等字段决定。
+> 典型影响仅用于说明宿主可预期的语义，不是接入层判断 flush、repaint 或 relayout 的依据。是否重建 render model、执行 IME host action、触发动画或重绘，MUST 由 `EditorActionResult` 的 `needsRedraw`、`imeHostAction`、`imeState`、`animationFlags` 和 `nextAnimationDelayMs` 等字段决定。
 >
 > 典型影响说明：
 > - `repaint`：通常只影响视觉刷新，不要求文本重新布局。
@@ -791,23 +788,20 @@ interface ContextMenuItemProvider {
 
 ### 13.2 输入法接入（接入 API MAY 不同，core 语义 MUST 一致）
 
-输入法集成取决于宿主环境，但 SweetEditor 的 IME 语义 MUST 在各种实现中保持一致。不同实现可以使用不同系统 API 接入 IME，但必须把原生 IME 事件归一化到 core 的两类入口：`ImeCommandMessage` 用于命令式输入、selection、preedit、commit、replace、delete 和 marked range 操作；`ImeTextUpdateMessage` 用于原生文本窗口或增量的 text-update 模型。只有系统 IME 明确声明 composing / marked / preedit 时才建立 editor preedit；candidate context、surrounding text、光标矩形、键盘语言或光标进入 Latin 单词都不能自动创建 preedit。
-
-`ImeMarkedRangeRole::PREEDIT` 表示真实可编辑 preedit，会参与可见 IME composition 渲染和后续 commit 替换。`ImeMarkedRangeRole::SYSTEM_MARK` 表示系统候选、纠错、高亮或当前词目标范围，它可以帮助 core 判断后续候选提交目标，但不是可编辑 preedit。接入层不得把 candidate context 当作 composition 下划线，也不得在原生输入系统没有声明 composing / marked / preedit 时为了模拟原生编辑框而创建 preedit。
+输入法集成取决于宿主环境，但 SweetEditor 的 IME 语义 MUST 保持一致。命令式原生 API 把一个 callback 归一化为一个 `ImeCommandBatch`；Flutter delta input 把一个 delta list 归一化为一个 `ImeTextUpdateBatch`。两条路径共用 Core composition、transaction、history 与恢复语义。只有原生明确声明 composing / marked / preedit 状态时才创建 composition。
 
 | 平台 | IME API | 推荐映射 |
 |---|---|---|
-| Android | `InputConnection` | 根据 `setComposingText` / `setComposingRegion` / `commitText` / delete / extracted-text 能力选择 command、input-context 或 text-update 语义；必须区分真实 preedit 与 system mark |
-| iOS | `UITextInput` | marked text / `markedTextRange` 映射到 marked/preedit 语义；text range 操作按接入实现提供的坐标能力选择 document 或 input-context 语义 |
-| macOS | `NSTextInputClient` | `setMarkedText` / marked range 映射到 marked/preedit 语义；selected range 和 replacement range 必须保持坐标空间一致 |
-| Swing | `InputMethodEvent` / `InputMethodRequests` | `InputMethodEvent` 中的 composed text 段映射到 preedit/commit；`InputMethodRequests` 用于同步候选上下文和光标矩形 |
-| WinForms | TSF / IMM | TSF composition range 或 IMM composition string 按可获得的信息映射到 preedit、document range 或 input-context 语义 |
-| OHOS | IME Kit | 原生 composing / preedit 回调或范围按其坐标空间映射到 preedit、document range、input-context 或 text-update 语义 |
-| Flutter | `TextInputClient` | 优先使用 `TextEditingValue` 的 text-update snapshot / patch 语义；有效 `composing` range 表示输入系统声明的 preedit 或 system mark，接入层必须明确角色 |
+| Android | `InputConnection` | 每个 connection 使用一个 `COMMAND` session；支持的 mutation 映射为 command batch，surrounding text 通过 context query 读取 |
+| iOS | `UITextInput` | 使用 `COMMAND` session；marked text、selection、replacement range、finish 与 cancel 映射到显式 command 坐标 |
+| macOS | `NSTextInputClient` | 使用 `COMMAND` session；保留 AppKit marked-relative 与 document-relative replacement 语义 |
+| Swing | `InputMethodEvent` / `InputMethodRequests` | 使用 `COMMAND` session；每个 input-method event 原子提交，committed-text query 通过 `COMMITTED` context 回答 |
+| WinForms | TSF / IMM | 使用 `COMMAND` session；每个原生 composition callback 归一化一次，保留 replacement range 与 selection |
+| Avalonia | `TextInputMethodClient` | 使用 `COMMAND` session；每个 immutable context/cache generation 绑定一个 Core session |
+| OHOS | IME Kit | 使用 `COMMAND` session；按 callback 顺序映射 composition、commit、selection 与 surrounding delete |
+| Flutter | `DeltaTextInputClient` | 使用 `TEXT_UPDATE` session 与一个有限 editing-buffer shadow；每个 delta list 只提交一次，禁止从完整 snapshot diff 推导 mutation |
 
-各实现 MUST 将原生 composition 来源映射到 core 的 preedit / marked-range 语义族，将原生提交映射到 commit 语义族，将明确替换映射到 replacement 语义族，将原生 finish/cancel 映射到 finish/cancel 语义族。实现 MAY 根据原生 API 选择 document line/column、document offset、input-context offset 或 text-update snapshot/patch 路径；但 MUST 明确坐标空间并保持一致。
-
-传入 core 的 document range MUST 使用文档坐标；传入 input-context / text-update 的 offset MUST 相对于对应 `documentStartOffset`；原生 surrounding-text window 的临时 offset 不能被当成文档 offset。可编辑状态下始终支持原生 IME composition；只读模式负责阻止文本变更，MUST NOT 实现为 composition enable / disable 开关。
+所有 mutation batch 都必须携带当前 `session_id`；`ImeTextUpdateBatch` 还必须携带 `expected_state_revision`。Core 对 stale session/revision 执行零应用并返回恢复信息；接入层不得自行重放、猜测或改写 mutation。可编辑状态支持原生 IME composition；只读模式阻止 mutation，并通过 Core `ImeHostAction` 关闭或重启原生连接。
 
 IME 行为变更 MUST 按 [IME 回归矩阵](ime-regression-matrix.md) 验收。core 自动化测试覆盖共享协议语义，但接入适配层仍需要验证自身实际收到的原生事件顺序、坐标空间映射和目标特定候选行为。
 

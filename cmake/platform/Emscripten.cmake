@@ -191,13 +191,12 @@ function(sweeteditor_platform_add_extra_targets)
             _editor_linked_editing_next
             _editor_linked_editing_prev
             _editor_cancel_linked_editing
-            _editor_ime_has_preedit
-            _editor_ime_handle_command_message
-            _editor_ime_handle_text_update_message
-            _editor_ime_get_keyboard_script_class
-            _editor_ime_get_sync_snapshot
-            _editor_ime_get_command_input_context
-            _editor_ime_get_text_update_input_context
+            _editor_ime_begin_session
+            _editor_ime_end_session
+            _editor_ime_apply_commands
+            _editor_ime_apply_text_updates
+            _editor_ime_get_state
+            _editor_ime_get_context
             _free_u16_string
             _free_u8_string
             _free_binary_data

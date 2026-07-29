@@ -24,7 +24,8 @@ namespace SweetEditor {
     public enum ImeHostAction {
         NONE = 0,
         CLOSE_SESSION = 1,
-        RESTART_SESSION = 2
+        RESTART_SESSION = 2,
+        SYNC_EDITING_STATE = 3
     }
 
     public enum ImeMutationModel {

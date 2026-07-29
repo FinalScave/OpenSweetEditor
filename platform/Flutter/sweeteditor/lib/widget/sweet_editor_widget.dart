@@ -57,11 +57,9 @@ class _SweetEditorWidgetState extends State<SweetEditorWidget>
   final GlobalKey _editorKey = GlobalKey();
   TextInputConnection? _textInputConnection;
   TextEditingValue _textEditingValue = TextEditingValue.empty;
-  int _textInputContextId = 0;
-  int _textInputContextRevision = 0;
-  int _textInputDocumentStartOffset = 0;
-  bool _textInputContextReady = false;
-  bool _handlingTextInputUpdate = false;
+  int _imeSessionId = 0;
+  int _imeStateRevision = 0;
+  bool _imeSessionRebindScheduled = false;
   bool _pendingShowTextInput = false;
   Size? _pendingViewportSize;
   bool _viewportUpdateScheduled = false;
@@ -77,7 +75,11 @@ class _SweetEditorWidgetState extends State<SweetEditorWidget>
     final configuredSize = widget.fontSize;
     if (configuredSize != null) return configuredSize;
     final pixelRatio =
-        WidgetsBinding.instance.platformDispatcher.implicitView?.devicePixelRatio ??
+        WidgetsBinding
+            .instance
+            .platformDispatcher
+            .implicitView
+            ?.devicePixelRatio ??
         1.0;
     return 28.0 / (pixelRatio.isFinite && pixelRatio > 0 ? pixelRatio : 1.0);
   }
@@ -205,10 +207,6 @@ class _SweetEditorWidgetState extends State<SweetEditorWidget>
 
   void _onDocumentLoaded() {
     _pendingDocumentLoadedNotification = true;
-    _clearTextInputStateContext();
-    if (!_handlingTextInputUpdate) {
-      _syncTextInputState(force: true);
-    }
   }
 
   void _dispatchPendingDocumentLoaded() {
@@ -220,9 +218,6 @@ class _SweetEditorWidgetState extends State<SweetEditorWidget>
 
   void _flush() {
     if (!mounted) return;
-    if (!_handlingTextInputUpdate) {
-      _syncTextInputState();
-    }
     _session.requestFlush();
   }
 
@@ -317,7 +312,96 @@ class _SweetEditorWidgetState extends State<SweetEditorWidget>
 
   @override
   void updateEditingValue(TextEditingValue value) {
-    _handleTextEditingValue(value);
+    if (_platformBehavior.usesDeltaTextInputModel) {
+      if (value != _textEditingValue) {
+        _recoverFromTextInputProtocolError();
+      }
+      return;
+    }
+    if (value == _textEditingValue ||
+        _isAffinityOnlyEditingValueUpdate(_textEditingValue, value)) {
+      return;
+    }
+
+    final previousValue = _textEditingValue;
+    final replacement = _minimalTextReplacement(previousValue.text, value.text);
+    final step = core.ImeTextUpdateStep(
+      oldText: previousValue.text,
+      patchRange: replacement == null
+          ? const core.ImeOffsetRange()
+          : core.ImeOffsetRange(
+              coordinateSpace: core.ImeCoordinateSpace.editingBuffer,
+              startUtf16: replacement.range.start,
+              endUtf16: replacement.range.end,
+            ),
+      replacementText: replacement?.text ?? '',
+      selectionAfter: _imeSelectionFromFlutter(value.selection, value.text),
+      compositionAfter: _imeCompositionFromFlutter(value.composing, value.text),
+    );
+    _applyImeTextUpdateSteps([step], value);
+  }
+
+  ({TextRange range, String text})? _minimalTextReplacement(
+    String oldText,
+    String newText,
+  ) {
+    if (oldText == newText) {
+      return null;
+    }
+
+    final sharedLength = math.min(oldText.length, newText.length);
+    var start = 0;
+    while (start < sharedLength &&
+        oldText.codeUnitAt(start) == newText.codeUnitAt(start)) {
+      start++;
+    }
+    if (_isUtf16SurrogateBoundary(oldText, start) ||
+        _isUtf16SurrogateBoundary(newText, start)) {
+      start--;
+    }
+
+    var oldEnd = oldText.length;
+    var newEnd = newText.length;
+    while (oldEnd > start &&
+        newEnd > start &&
+        oldText.codeUnitAt(oldEnd - 1) == newText.codeUnitAt(newEnd - 1)) {
+      oldEnd--;
+      newEnd--;
+    }
+    if (_isUtf16SurrogateBoundary(oldText, oldEnd)) {
+      oldEnd++;
+    }
+    if (_isUtf16SurrogateBoundary(newText, newEnd)) {
+      newEnd++;
+    }
+
+    return (
+      range: TextRange(start: start, end: oldEnd),
+      text: newText.substring(start, newEnd),
+    );
+  }
+
+  bool _isUtf16SurrogateBoundary(String text, int offset) {
+    if (offset <= 0 || offset >= text.length) {
+      return false;
+    }
+    final previous = text.codeUnitAt(offset - 1);
+    final next = text.codeUnitAt(offset);
+    return previous >= 0xD800 &&
+        previous <= 0xDBFF &&
+        next >= 0xDC00 &&
+        next <= 0xDFFF;
+  }
+
+  bool _isAffinityOnlyEditingValueUpdate(
+    TextEditingValue before,
+    TextEditingValue after,
+  ) {
+    return before.text == after.text &&
+        before.selection.baseOffset == after.selection.baseOffset &&
+        before.selection.extentOffset == after.selection.extentOffset &&
+        before.selection.affinity != after.selection.affinity &&
+        before.composing == after.composing;
   }
 
   @override
@@ -325,185 +409,142 @@ class _SweetEditorWidgetState extends State<SweetEditorWidget>
     if (textEditingDeltas.isEmpty) {
       return;
     }
-    final editorCore = _session.editorCore;
-    var nextValue = _textEditingValue;
-    if (editorCore == null) {
-      for (final delta in textEditingDeltas) {
-        if (delta.oldText != nextValue.text) {
-          _clearTextInputStateContext();
-          return;
-        }
-        nextValue = delta.apply(nextValue);
-      }
-      _textEditingValue = nextValue;
-      _clearTextInputStateContext();
-      return;
-    }
-    if (!_ensureTextInputContextReady()) {
-      return;
-    }
-    nextValue = _textEditingValue;
 
-    var hasStaleDelta = false;
-    var probedValue = nextValue;
+    var probedValue = _textEditingValue;
+    final steps = <core.ImeTextUpdateStep>[];
     for (final delta in textEditingDeltas) {
       if (delta.oldText != probedValue.text) {
-        hasStaleDelta = true;
-        break;
+        _recoverFromTextInputProtocolError();
+        return;
       }
-      probedValue = delta.apply(probedValue);
-    }
-
-    if (hasStaleDelta) {
-      _syncTextInputState(force: true);
-      return;
-    }
-
-    var forceTextInputStateSync = false;
-    _handlingTextInputUpdate = true;
-    try {
-      for (final delta in textEditingDeltas) {
-        final appliedValue = delta.apply(nextValue);
-        final result = _updateImeTextUpdatePatch(
-          editorCore,
-          delta,
-          appliedValue,
+      final appliedValue = delta.apply(probedValue);
+      if (!_isAffinityOnlyUpdate(delta, probedValue, appliedValue)) {
+        steps.add(
+          core.ImeTextUpdateStep(
+            oldText: delta.oldText,
+            patchRange: _patchRangeFromDelta(delta),
+            replacementText: _replacementTextFromDelta(delta),
+            selectionAfter: _imeSelectionFromFlutter(
+              appliedValue.selection,
+              appliedValue.text,
+            ),
+            compositionAfter: _imeCompositionFromFlutter(
+              appliedValue.composing,
+              appliedValue.text,
+            ),
+          ),
         );
-        forceTextInputStateSync =
-            _dispatchImeAction(result, clearTextInputContext: false) ||
-            forceTextInputStateSync;
-        nextValue = appliedValue;
       }
-    } finally {
-      _handlingTextInputUpdate = false;
+      probedValue = appliedValue;
     }
 
-    _textEditingValue = nextValue;
-    if (forceTextInputStateSync) {
-      _clearTextInputStateContext();
-      _syncTextInputState(force: true);
+    if (steps.isEmpty) {
+      return;
     }
+
+    _applyImeTextUpdateSteps(steps, probedValue);
   }
 
-  core.EditorActionResult _updateImeTextUpdateSnapshot(
-    core.EditorCore editorCore,
-    TextEditingValue value,
+  bool _applyImeTextUpdateSteps(
+    List<core.ImeTextUpdateStep> steps,
+    TextEditingValue platformValue,
   ) {
-    final composingActive = _isActiveTextRange(value.composing, value.text);
-    final selectionValid = _isValidSelection(value.selection, value.text);
-    return editorCore.handleImeTextUpdateMessage(
-      core.ImeTextUpdateMessage(
-        kind: core.ImeTextUpdateKind.snapshot,
-        scope: _platformBehavior.imeTextUpdateScope,
-        contextId: _textInputContextId,
-        contextRevision: _textInputContextRevision,
-        documentStartOffset: _textInputDocumentStartOffset,
-        text: value.text,
-        selection: core.ImeOffsetRange(
-          start: selectionValid ? value.selection.start : -1,
-          end: selectionValid ? value.selection.end : -1,
-        ),
-        markedRange: core.ImeMarkedRange(
-          role: composingActive
-              ? _platformBehavior.textInputComposingRole
-              : core.ImeMarkedRangeRole.none,
-          range: core.ImeOffsetRange(
-            start: composingActive ? value.composing.start : -1,
-            end: composingActive ? value.composing.end : -1,
-          ),
-        ),
-      ),
-    );
-  }
-
-  core.EditorActionResult _updateImeTextUpdatePatch(
-    core.EditorCore editorCore,
-    TextEditingDelta delta,
-    TextEditingValue appliedValue,
-  ) {
-    final composingActive = _isActiveTextRange(
-      appliedValue.composing,
-      appliedValue.text,
-    );
-    final selectionValid = _isValidSelection(
-      appliedValue.selection,
-      appliedValue.text,
-    );
-    var deltaStartOffset = -1;
-    var deltaEndOffset = -1;
-    var deltaText = '';
-    if (delta is TextEditingDeltaInsertion) {
-      deltaStartOffset = delta.insertionOffset;
-      deltaEndOffset = delta.insertionOffset;
-      deltaText = delta.textInserted;
-    } else if (delta is TextEditingDeltaDeletion) {
-      deltaStartOffset = delta.deletedRange.start;
-      deltaEndOffset = delta.deletedRange.end;
-    } else if (delta is TextEditingDeltaReplacement) {
-      deltaStartOffset = delta.replacedRange.start;
-      deltaEndOffset = delta.replacedRange.end;
-      deltaText = delta.replacementText;
-    }
-
-    return editorCore.handleImeTextUpdateMessage(
-      core.ImeTextUpdateMessage(
-        kind: core.ImeTextUpdateKind.patch,
-        scope: _platformBehavior.imeTextUpdateScope,
-        contextId: _textInputContextId,
-        contextRevision: _textInputContextRevision,
-        documentStartOffset: _textInputDocumentStartOffset,
-        text: delta.oldText,
-        patch: core.ImeTextPatch(
-          range: core.ImeOffsetRange(
-            start: deltaStartOffset,
-            end: deltaEndOffset,
-          ),
-          text: deltaText,
-        ),
-        selection: core.ImeOffsetRange(
-          start: selectionValid ? appliedValue.selection.start : -1,
-          end: selectionValid ? appliedValue.selection.end : -1,
-        ),
-        markedRange: core.ImeMarkedRange(
-          role: composingActive
-              ? _platformBehavior.textInputComposingRole
-              : core.ImeMarkedRangeRole.none,
-          range: core.ImeOffsetRange(
-            start: composingActive ? appliedValue.composing.start : -1,
-            end: composingActive ? appliedValue.composing.end : -1,
-          ),
-        ),
-      ),
-    );
-  }
-
-  void _handleTextEditingValue(TextEditingValue value) {
     final editorCore = _session.editorCore;
-    if (editorCore == null) {
-      _textEditingValue = value;
-      _clearTextInputStateContext();
-      return;
+    final sessionId = _imeSessionId;
+    if (editorCore == null || sessionId == 0 || steps.isEmpty) {
+      return false;
     }
-    if (value == _textEditingValue) {
-      return;
+    final result = editorCore.applyImeTextUpdates(
+      core.ImeTextUpdateBatch(
+        sessionId: sessionId,
+        expectedStateRevision: _imeStateRevision,
+        steps: steps,
+      ),
+    );
+    final state = result.imeState;
+    final acceptedPlatformValue =
+        (result.imeHostAction == core.ImeHostAction.none ||
+            result.imeHostAction == core.ImeHostAction.syncEditingState) &&
+        state.resultCode == core.ImeResultCode.ok &&
+        state.sessionId == sessionId &&
+        _imeSessionId == sessionId;
+    if (acceptedPlatformValue) {
+      // The platform has already applied this editing state, so Core syncs should only
+      // write back when the authoritative state actually differs.
+      _textEditingValue = platformValue;
+      _imeStateRevision = state.stateRevision;
     }
-    if (!_ensureTextInputContextReady()) {
-      return;
-    }
+    _dispatchEditorActionResult(result);
+    return acceptedPlatformValue;
+  }
 
-    var forceTextInputStateSync = false;
-    _handlingTextInputUpdate = true;
-    try {
-      final result = _updateImeTextUpdateSnapshot(editorCore, value);
-      forceTextInputStateSync = _dispatchImeAction(result);
-    } finally {
-      _handlingTextInputUpdate = false;
+  core.ImeOffsetRange _patchRangeFromDelta(TextEditingDelta delta) {
+    if (delta is TextEditingDeltaInsertion) {
+      return core.ImeOffsetRange(
+        coordinateSpace: core.ImeCoordinateSpace.editingBuffer,
+        startUtf16: delta.insertionOffset,
+        endUtf16: delta.insertionOffset,
+      );
     }
+    if (delta is TextEditingDeltaDeletion) {
+      return core.ImeOffsetRange(
+        coordinateSpace: core.ImeCoordinateSpace.editingBuffer,
+        startUtf16: delta.deletedRange.start,
+        endUtf16: delta.deletedRange.end,
+      );
+    }
+    if (delta is TextEditingDeltaReplacement) {
+      return core.ImeOffsetRange(
+        coordinateSpace: core.ImeCoordinateSpace.editingBuffer,
+        startUtf16: delta.replacedRange.start,
+        endUtf16: delta.replacedRange.end,
+      );
+    }
+    return const core.ImeOffsetRange();
+  }
 
-    _textEditingValue = value;
-    if (forceTextInputStateSync) {
-      _syncTextInputState(force: true);
+  String _replacementTextFromDelta(TextEditingDelta delta) {
+    if (delta is TextEditingDeltaInsertion) {
+      return delta.textInserted;
     }
+    if (delta is TextEditingDeltaReplacement) {
+      return delta.replacementText;
+    }
+    return '';
+  }
+
+  core.ImeSelection _imeSelectionFromFlutter(
+    TextSelection selection,
+    String text,
+  ) {
+    if (!_isValidSelection(selection, text)) {
+      return const core.ImeSelection();
+    }
+    final affinity = selection.isCollapsed
+        ? _imeAffinityFromFlutter(selection.affinity)
+        : selection.extentOffset < selection.baseOffset
+        ? core.CaretAffinity.downstream
+        : core.CaretAffinity.upstream;
+    return core.ImeSelection(
+      coordinateSpace: core.ImeCoordinateSpace.editingBuffer,
+      anchorUtf16: selection.baseOffset,
+      activeUtf16: selection.extentOffset,
+      affinity: affinity,
+    );
+  }
+
+  core.ImeOffsetRange _imeCompositionFromFlutter(
+    TextRange composing,
+    String text,
+  ) {
+    if (!_isValidTextRange(composing, text) || composing.isCollapsed) {
+      return const core.ImeOffsetRange();
+    }
+    return core.ImeOffsetRange(
+      coordinateSpace: core.ImeCoordinateSpace.editingBuffer,
+      startUtf16: composing.start,
+      endUtf16: composing.end,
+    );
   }
 
   @override
@@ -533,7 +574,16 @@ class _SweetEditorWidgetState extends State<SweetEditorWidget>
 
   @override
   void connectionClosed() {
+    final connection = _textInputConnection;
+    if (connection == null) {
+      return;
+    }
+    connection.connectionClosedReceived();
     _textInputConnection = null;
+    _finishLocalImeSession();
+    if (_focusNode.hasFocus) {
+      _focusNode.unfocus();
+    }
   }
 
   @override
@@ -591,42 +641,95 @@ class _SweetEditorWidgetState extends State<SweetEditorWidget>
       enableDeltaModel: _platformBehavior.usesDeltaTextInputModel,
     );
     if (_textInputConnection?.attached ?? false) {
+      final needsSessionBinding = _imeSessionId == 0;
+      if (needsSessionBinding && !_beginLocalImeSession()) {
+        _closeTextInputConnection(endSession: false);
+        return;
+      }
       _textInputConnection!.updateConfig(configuration);
-    } else {
-      _textInputConnection = TextInput.attach(this, configuration);
-    }
-    _updateTextInputStyle();
-    _syncTextInputState(force: true);
-    _updateTextInputGeometry();
-    if (show || !_platformBehavior.showsSoftKeyboard) {
-      _textInputConnection?.show();
-    }
-  }
-
-  void _closeTextInputConnection() {
-    _textInputConnection?.close();
-    _textInputConnection = null;
-    _clearTextInputStateContext();
-  }
-
-  void _syncTextInputState({bool force = false}) {
-    final nextValue = _buildEditingValueFromEditor();
-    if (!force && nextValue == _textEditingValue) {
+      _updateTextInputStyle();
+      if (needsSessionBinding) {
+        _textInputConnection!.setEditingState(_textEditingValue);
+      }
+      _updateTextInputGeometry();
+      if (show || !_platformBehavior.showsSoftKeyboard) {
+        _textInputConnection!.show();
+      }
       return;
     }
-    _textEditingValue = nextValue;
-    if (_textInputConnection?.attached ?? false) {
+
+    if (!_beginLocalImeSession()) {
+      return;
+    }
+
+    try {
+      _textInputConnection = TextInput.attach(this, configuration);
       _updateTextInputStyle();
-      _textInputConnection!.setEditingState(nextValue);
+      _textInputConnection!.setEditingState(_textEditingValue);
+      _updateTextInputGeometry();
+      if (show || !_platformBehavior.showsSoftKeyboard) {
+        _textInputConnection!.show();
+      }
+    } catch (_) {
+      _textInputConnection?.close();
+      _textInputConnection = null;
+      _finishLocalImeSession();
+      rethrow;
     }
   }
 
-  bool _ensureTextInputContextReady() {
-    if (_textInputContextReady) {
+  bool _beginLocalImeSession() {
+    if (_imeSessionId != 0) {
       return true;
     }
-    _syncTextInputState(force: true);
-    return _textInputContextReady;
+    final editorCore = _session.editorCore;
+    if (editorCore == null) {
+      return false;
+    }
+    final state = editorCore.beginImeSession(core.ImeMutationModel.textUpdate);
+    if (state.resultCode != core.ImeResultCode.ok || state.sessionId == 0) {
+      return false;
+    }
+    final context = editorCore.getImeContext(
+      state.sessionId,
+      core.ImeTextSource.editingBuffer,
+      0,
+      -1,
+    );
+    final value = _buildEditingValueFromContext(context);
+    if (value == null) {
+      _dispatchEditorActionResult(editorCore.endImeSession(state.sessionId));
+      return false;
+    }
+    _imeSessionId = state.sessionId;
+    _imeStateRevision = state.stateRevision;
+    _textEditingValue = value;
+    return true;
+  }
+
+  void _closeTextInputConnection({bool endSession = true}) {
+    _textInputConnection?.close();
+    _textInputConnection = null;
+    if (endSession) {
+      _finishLocalImeSession();
+    } else {
+      _clearLocalImeSession();
+    }
+  }
+
+  void _finishLocalImeSession() {
+    final sessionId = _imeSessionId;
+    _clearLocalImeSession();
+    final editorCore = _session.editorCore;
+    if (sessionId != 0 && editorCore != null) {
+      _dispatchEditorActionResult(editorCore.endImeSession(sessionId));
+    }
+  }
+
+  void _clearLocalImeSession() {
+    _imeSessionId = 0;
+    _imeStateRevision = 0;
+    _textEditingValue = TextEditingValue.empty;
   }
 
   void _updateTextInputStyle() {
@@ -664,87 +767,52 @@ class _SweetEditorWidgetState extends State<SweetEditorWidget>
     }
   }
 
-  TextEditingValue _buildEditingValueFromEditor() {
-    final editorCore = _session.editorCore;
-    if (editorCore == null) {
-      _clearTextInputStateContext();
-      return TextEditingValue.empty;
+  TextEditingValue? _buildEditingValueFromContext(core.ImeTextContext context) {
+    if (context.resultCode != core.ImeResultCode.ok ||
+        context.selection.coordinateSpace !=
+            core.ImeCoordinateSpace.contextSlice ||
+        !_isValidImeSelection(context.selection, context.text)) {
+      return null;
     }
-
-    final inputContext = editorCore.getImeTextUpdateInputContext(
-      _platformBehavior.imeTextUpdateScope,
-      1024,
-      1024,
-    );
-    final exposesTextWindow =
-        inputContext.kind == core.ImeInputContextKind.documentWindow ||
-        inputContext.kind == core.ImeInputContextKind.transientInput;
-    _textInputContextReady = exposesTextWindow && inputContext.id != 0;
-    _textInputContextId = _textInputContextReady ? inputContext.id : 0;
-    _textInputContextRevision = _textInputContextReady
-        ? inputContext.revision
-        : 0;
-    _textInputDocumentStartOffset = _textInputContextReady
-        ? inputContext.documentStartOffset
-        : 0;
-
-    final text = exposesTextWindow ? inputContext.text : '';
-    final selectionStart = _normalizeTextInputOffset(
-      exposesTextWindow ? inputContext.selection.start : 0,
-      text,
-    );
-    final selectionEnd = _normalizeTextInputOffset(
-      exposesTextWindow ? inputContext.selection.end : 0,
-      text,
-    );
     final selection = TextSelection(
-      baseOffset: selectionStart,
-      extentOffset: selectionEnd,
+      baseOffset: context.selection.anchorUtf16,
+      extentOffset: context.selection.activeUtf16,
+      affinity: _flutterAffinityFromIme(context.selection.affinity),
     );
-    var composing = TextRange.empty;
-    final core.ImeOffsetRange? markedRange =
-        exposesTextWindow && inputContext.hasSystemMarkRange
-        ? inputContext.systemMarkRange
-        : exposesTextWindow && inputContext.hasPreeditRange
-        ? inputContext.preeditRange
+    final range = context.compositionRange;
+    final composing = range.startUtf16 == -1 && range.endUtf16 == -1
+        ? TextRange.empty
+        : range.coordinateSpace == core.ImeCoordinateSpace.contextSlice &&
+              _isValidImeRange(range, context.text)
+        ? TextRange(start: range.startUtf16, end: range.endUtf16)
         : null;
-    if (markedRange != null) {
-      final composingStart = _normalizeTextInputOffset(markedRange.start, text);
-      final composingEnd = _normalizeTextInputOffset(markedRange.end, text);
-      if (composingEnd > composingStart) {
-        composing = TextRange(start: composingStart, end: composingEnd);
-      }
+    if (composing == null) {
+      return null;
     }
-    final editingValue = TextEditingValue(
-      text: text,
+    return TextEditingValue(
+      text: context.text,
       selection: selection,
       composing: composing,
     );
-    return editingValue;
   }
 
-  void _clearTextInputStateContext() {
-    _textInputContextId = 0;
-    _textInputContextRevision = 0;
-    _textInputDocumentStartOffset = 0;
-    _textInputContextReady = false;
+  bool _isValidImeSelection(core.ImeSelection selection, String text) {
+    return selection.anchorUtf16 >= 0 &&
+        selection.activeUtf16 >= 0 &&
+        selection.anchorUtf16 <= text.length &&
+        selection.activeUtf16 <= text.length;
   }
 
-  bool _dispatchImeAction(
-    core.EditorActionResult result, {
-    bool clearTextInputContext = true,
-  }) {
-    _dispatchEditorActionResult(result);
-    if (result.imeSync.clearSystemMark && clearTextInputContext) {
-      _clearTextInputStateContext();
-    }
-    return result.imeSync.clearSystemMark;
+  bool _isValidImeRange(core.ImeOffsetRange range, String text) {
+    return range.startUtf16 >= 0 &&
+        range.endUtf16 >= range.startUtf16 &&
+        range.endUtf16 <= text.length;
   }
 
-  bool _isActiveTextRange(TextRange range, String text) {
+  bool _isValidTextRange(TextRange range, String text) {
     return range.isValid &&
-        !range.isCollapsed &&
         range.start >= 0 &&
+        range.end >= range.start &&
         range.end <= text.length;
   }
 
@@ -756,14 +824,112 @@ class _SweetEditorWidgetState extends State<SweetEditorWidget>
         selection.end <= text.length;
   }
 
-  int _normalizeTextInputOffset(int offset, String text) {
-    return math.max(0, math.min(offset, text.length));
+  core.CaretAffinity _imeAffinityFromFlutter(TextAffinity affinity) {
+    return affinity == TextAffinity.upstream
+        ? core.CaretAffinity.upstream
+        : core.CaretAffinity.downstream;
+  }
+
+  TextAffinity _flutterAffinityFromIme(core.CaretAffinity affinity) {
+    return affinity == core.CaretAffinity.upstream
+        ? TextAffinity.upstream
+        : TextAffinity.downstream;
+  }
+
+  bool _isAffinityOnlyUpdate(
+    TextEditingDelta delta,
+    TextEditingValue before,
+    TextEditingValue after,
+  ) {
+    return delta is TextEditingDeltaNonTextUpdate &&
+        before.text == after.text &&
+        before.selection.baseOffset == after.selection.baseOffset &&
+        before.selection.extentOffset == after.selection.extentOffset &&
+        before.selection.affinity != after.selection.affinity &&
+        before.composing == after.composing;
+  }
+
+  void _recoverFromTextInputProtocolError() {
+    _finishLocalImeSession();
+    _scheduleImeSessionRebind();
+  }
+
+  void _handleImeHostAction(core.EditorActionResult result) {
+    final action = result.imeHostAction;
+    if (action == core.ImeHostAction.none) {
+      return;
+    }
+    if (action == core.ImeHostAction.syncEditingState) {
+      final editorCore = _session.editorCore;
+      final state = result.imeState;
+      if (editorCore == null ||
+          _textInputConnection == null ||
+          state.resultCode != core.ImeResultCode.ok ||
+          state.sessionId == 0 ||
+          state.sessionId != _imeSessionId) {
+        _recoverFromTextInputProtocolError();
+        return;
+      }
+      final context = editorCore.getImeContext(
+        state.sessionId,
+        core.ImeTextSource.editingBuffer,
+        0,
+        -1,
+      );
+      final value = _buildEditingValueFromContext(context);
+      if (value == null) {
+        _recoverFromTextInputProtocolError();
+        return;
+      }
+      final changed = value != _textEditingValue;
+      _textEditingValue = value;
+      _imeStateRevision = state.stateRevision;
+      if (changed) {
+        _textInputConnection!.setEditingState(value);
+      }
+      return;
+    }
+    _clearLocalImeSession();
+    if (action == core.ImeHostAction.closeSession) {
+      _closeTextInputConnection(endSession: false);
+    } else if (action == core.ImeHostAction.restartSession) {
+      _scheduleImeSessionRebind();
+    }
+  }
+
+  void _scheduleImeSessionRebind() {
+    if (_imeSessionRebindScheduled) {
+      return;
+    }
+    _imeSessionRebindScheduled = true;
+    scheduleMicrotask(() {
+      _imeSessionRebindScheduled = false;
+      if (_editorResourcesReleased ||
+          !_focusNode.hasFocus ||
+          _session.settings.isReadOnly() ||
+          _imeSessionId != 0) {
+        return;
+      }
+      final connection = _textInputConnection;
+      if (connection == null || !connection.attached) {
+        return;
+      }
+      if (!_beginLocalImeSession()) {
+        _closeTextInputConnection(endSession: false);
+        return;
+      }
+      connection.setEditingState(_textEditingValue);
+      _updateTextInputStyle();
+      _updateTextInputGeometry();
+    });
   }
 
   void _handleEditorActionResult(core.EditorActionResult result) {
     if (_editorResourcesReleased) return;
-    if (result.needsImeSync && !_handlingTextInputUpdate) {
-      _syncTextInputState(force: true);
+    _handleImeHostAction(result);
+    if (result.imeHostAction != core.ImeHostAction.none) {
+      _pendingShowTextInput = false;
+      return;
     }
     if (result.gestureType == core.GestureType.undefined) {
       return;
@@ -783,8 +949,8 @@ class _SweetEditorWidgetState extends State<SweetEditorWidget>
     }
 
     _pendingShowTextInput = false;
-    if (shouldShowKeyboard) {
-      _openTextInputConnection(show: true);
+    if (_platformBehavior.usesPlatformTextInput) {
+      _openTextInputConnection(show: shouldShowKeyboard);
     }
   }
 

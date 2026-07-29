@@ -147,6 +147,10 @@ class EditorSettings {
 
   double getScale() => _scale;
 
+  void _setScaleFromPlatform(double scale) {
+    _scale = scale;
+  }
+
   void setFoldArrowMode(core.FoldArrowMode mode) {
     _foldArrowMode = mode;
     _session?.applyFoldArrowMode(mode);

@@ -210,7 +210,7 @@ package final class CompletionProviderManager {
             dismiss()
             return
         }
-        let contextChanged = result.content_changed
+        let contextChanged = !result.text_changes.isEmpty
             || result.composition_changed
             || result.cursor_changed
             || result.selection_changed
@@ -218,6 +218,12 @@ package final class CompletionProviderManager {
 
         let completionActive = isActive
         if isLinkedEditing {
+            dismiss()
+            return
+        }
+
+        guard result.text_changes.count == 1,
+              let change = result.text_changes.first else {
             dismiss()
             return
         }
@@ -231,16 +237,11 @@ package final class CompletionProviderManager {
             return
         }
 
-        guard result.content_changed, let primaryChange = result.changes.first else {
-            dismiss()
-            return
-        }
-
         let triggerText: String
-        if primaryChange.new_text.count == 1 {
-            triggerText = primaryChange.new_text
+        if change.new_text.count == 1 {
+            triggerText = change.new_text
         } else if result.composition_changed,
-                  let lastCharacter = primaryChange.new_text.last {
+                  let lastCharacter = change.new_text.last {
             triggerText = String(lastCharacter)
         } else {
             triggerText = ""
