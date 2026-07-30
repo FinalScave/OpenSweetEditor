@@ -1,6 +1,6 @@
 {
   "name": "@qiplat/sweeteditor",
-  "version": "1.0.0-rc1",
+  "version": "1.0.0-rc2",
   "description": "SweetEditor is a high-performance OHOS code editor component powered by shared C++ core, delivering consistent cross-platform editing behavior with syntax highlighting, decorations, inlay hints, ghost text, code folding, completion, inline suggestions, diagnostics, selection menus, configurable wrapping, and extensible provider-based APIs for IDEs and developer tools.",
   "main": "./src/main/ets/Index.ets",
   "author": "Scave",

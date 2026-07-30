@@ -2,6 +2,14 @@
 
 该文件记录 `@qiplat/sweeteditor` 的重要变更。
 
+## 1.0.0-rc2
+
+### HarmonyOS PC/2in1 交互
+
+- 新增 HarmonyOS PC/2in1 设备支持，并保留手机端现有的触摸、选择手柄、选择菜单和软键盘交互。
+- PC/2in1 使用桌面端 scrollbar 与 gutter 行为，不绘制移动端选择手柄，也不显示移动端 SelectionMenu。
+- 支持桌面鼠标指针、鼠标滚轮与触控板滚动，并同步 Ctrl、Alt、Shift 修饰键状态。
+
 ## 1.0.0-rc1
 
 ### 编辑器与公共 API

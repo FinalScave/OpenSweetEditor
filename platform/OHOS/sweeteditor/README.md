@@ -30,7 +30,7 @@ SweetEditor for OHOS 采用分层架构：
 ## 安装
 
 ```bash
-ohpm install @qiplat/sweeteditor@1.0.0-rc1
+ohpm install @qiplat/sweeteditor@1.0.0-rc2
 ```
 
 该包依赖随包分发的原生库 `libsweeteditor.so`，依赖关系已经在 `oh-package.json5` 中声明。

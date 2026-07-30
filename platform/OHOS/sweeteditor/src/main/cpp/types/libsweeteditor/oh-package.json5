@@ -1,6 +1,6 @@
 {
   "name": "libsweeteditor.so",
   "types": "./Index.d.ts",
-  "version": "1.0.0-rc1",
+  "version": "1.0.0-rc2",
   "description": "Cross-platform code editor core for OHOS, powered by SweetEditor C++."
 }
