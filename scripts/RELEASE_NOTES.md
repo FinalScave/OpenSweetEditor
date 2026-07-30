@@ -1,17 +1,16 @@
 # SweetEditor v{{VERSION}}
 
-Cross-platform release assets for SweetEditor.
+Cross-platform native SDK for SweetEditor.
 
 ## Assets
 
-- Prebuilt binaries: `{{PREBUILT_ASSET_NAME}}`
-- C/C++ headers: `{{HEADERS_ASSET_NAME}}`
+- Native SDK: `{{NATIVE_ASSET_NAME}}`
 
-## Included Platforms In The Prebuilt Package
+## Included Platforms
 
 - Android: `arm64-v8a`, `x86_64`
-- iOS: `arm64`, `simulator-arm64`, `SweetEditorCoreIOS.xcframework.zip`
-- macOS: `arm64`, `x86_64`, `SweetEditorCoreMacOS.xcframework.zip`
+- iOS: `arm64/libsweeteditor.dylib`, `simulator-arm64/libsweeteditor.dylib`, `SweetEditorCoreIOS.xcframework.zip`
+- macOS: `arm64/libsweeteditor.dylib`, `x86_64/libsweeteditor.dylib`, `SweetEditorCoreMacOS.xcframework.zip`
 - Linux: `x86_64`, `aarch64`
 - Windows: `x64`
 - OHOS: `arm64-v8a`, `x86_64`
@@ -19,15 +18,12 @@ Cross-platform release assets for SweetEditor.
 
 ## Package Layout
 
-- `{{PREBUILT_ASSET_NAME}}`
-  - archive root contains platform directories directly
-  - includes `README.txt` and `SHA256SUMS.txt` by default
-- `{{HEADERS_ASSET_NAME}}`
-  - archive root contains `include/sweeteditor/...`
-  - includes `SHA256SUMS.txt` by default
+- `include/sweeteditor/`: C/C++ headers
+- `prebuilt/`: native binaries grouped by platform
+- `README.txt`: package metadata and included platforms
+- `SHA256SUMS.txt`: checksums for all packaged files
 
 ## Notes
 
 - Commit: `{{COMMIT}}`
-- The prebuilt package is built from the repository `prebuilt/` artifacts.
-- The headers package is built from `include/sweeteditor/` and uses the install-style layout `include/sweeteditor/`.
+- The SDK is built from the repository `prebuilt/` and `include/` directories.
