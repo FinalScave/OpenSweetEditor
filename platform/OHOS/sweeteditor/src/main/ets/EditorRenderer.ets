@@ -46,6 +46,7 @@ interface FontMetricsSnapshot {
 export class EditorRenderer {
   private theme: EditorTheme;
   private density: number;
+  private readonly showSelectionHandles: boolean;
   private readonly handleConfig: HandleConfig;
   private scrollbarConfig: ScrollbarConfig | null = null;
   private textSize: number = DEFAULT_TEXT_SIZE;
@@ -78,9 +79,10 @@ export class EditorRenderer {
     }
   };
 
-  constructor(theme: EditorTheme, density: number) {
+  constructor(theme: EditorTheme, density: number, showSelectionHandles: boolean) {
     this.theme = theme;
     this.density = density;
+    this.showSelectionHandles = showSelectionHandles;
     this.handleConfig = this.computeHandleHitConfig();
   }
 
@@ -189,7 +191,9 @@ export class EditorRenderer {
 
     this.drawLineNumbers(ctx, model);
     perf.mark(PerfStepRecorder.STEP_LINE_NO);
-    this.drawSelectionHandles(ctx, model.selectionStartHandle, model.selectionEndHandle);
+    if (this.showSelectionHandles) {
+      this.drawSelectionHandles(ctx, model.selectionStartHandle, model.selectionEndHandle);
+    }
     perf.mark(PerfStepRecorder.STEP_HANDLES);
     this.drawScrollbars(ctx, model);
     perf.mark(PerfStepRecorder.STEP_SCROLLBARS);
@@ -947,6 +951,13 @@ export class EditorRenderer {
   }
 
   private computeHandleHitConfig(): HandleConfig {
+    if (!this.showSelectionHandles) {
+      const disabledConfig = new HandleConfig();
+      disabledConfig.startHitArea = { left: 1, top: 1, right: -1, bottom: -1 };
+      disabledConfig.endHitArea = { left: 1, top: 1, right: -1, bottom: -1 };
+      return disabledConfig;
+    }
+
     const angle = Math.PI / 4;
     const cos = Math.cos(angle);
     const sin = Math.sin(angle);

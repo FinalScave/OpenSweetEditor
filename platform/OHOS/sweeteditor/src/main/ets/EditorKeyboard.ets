@@ -57,20 +57,15 @@ function mapOhosKeyCodeToOverlayAction(ohosKeyCode: number): OverlayKeyAction {
 }
 
 export function getNativeModifiers(event: KeyEvent): number {
-  let modifiers = KeyModifier.NONE;
-  if (isModifierPressed(event, 'shift')) {
-    modifiers |= KeyModifier.SHIFT;
-  }
-  if (isModifierPressed(event, 'ctrl')) {
-    modifiers |= KeyModifier.CTRL;
-  }
-  if (isModifierPressed(event, 'alt')) {
-    modifiers |= KeyModifier.ALT;
-  }
+  let modifiers = getEventModifiers(event);
   if (event.metaKey === OHOS_META_KEY_PRESSED) {
     modifiers |= KeyModifier.META;
   }
   return modifiers;
+}
+
+export function getPointerModifiers(event: BaseEvent): number {
+  return getEventModifiers(event);
 }
 
 export function extractPrintableKeyText(event: KeyEvent): string | null {
@@ -141,7 +136,21 @@ function mapOhosKeyCodeToNative(ohosKeyCode: number): number {
   }
 }
 
-function isModifierPressed(event: KeyEvent, key: string): boolean {
+function getEventModifiers(event: KeyEvent | BaseEvent): number {
+  let modifiers = KeyModifier.NONE;
+  if (isModifierPressed(event, 'Shift')) {
+    modifiers |= KeyModifier.SHIFT;
+  }
+  if (isModifierPressed(event, 'Ctrl')) {
+    modifiers |= KeyModifier.CTRL;
+  }
+  if (isModifierPressed(event, 'Alt')) {
+    modifiers |= KeyModifier.ALT;
+  }
+  return modifiers;
+}
+
+function isModifierPressed(event: KeyEvent | BaseEvent, key: string): boolean {
   if (!event.getModifierKeyState) {
     return false;
   }

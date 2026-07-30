@@ -14,7 +14,7 @@ export class EditorSettings {
   private lineSpacingMult: number = 1.2;
   private contentStartPadding: number = 3.0;
   private showSplitLine: boolean = true;
-  private gutterSticky: boolean = false;
+  private gutterSticky: boolean;
   private gutterVisible: boolean = true;
   private currentLineRenderMode: CurrentLineRenderMode = CurrentLineRenderMode.BACKGROUND;
   private autoIndentMode: AutoIndentMode = AutoIndentMode.KEEP_INDENT;
@@ -24,8 +24,9 @@ export class EditorSettings {
   private decorationScrollRefreshMinIntervalMs: number = 16;
   private decorationOverscanViewportMultiplier: number = 1.5;
 
-  constructor(editor: SweetEditor) {
+  constructor(editor: SweetEditor, gutterSticky: boolean) {
     this.editor = editor;
+    this.gutterSticky = gutterSticky;
   }
 
   setEditorTextSize(size: number): void {

@@ -37,6 +37,7 @@ export interface SelectionHandleInfo {
  * Controls the lifecycle of the selection context menu.
  */
 export class SelectionMenuController {
+  private readonly enabled: boolean;
   private editor: SweetEditor;
   private controller: SweetEditorController;
   private eventBus: EditorEventBus;
@@ -50,7 +51,8 @@ export class SelectionMenuController {
   private stateListener: ((state: SelectionMenuState) => void) | null = null;
   private state: SelectionMenuState = { visible: false, items: [], anchorRect: popupRect(0, 0, 0, 0) };
 
-  constructor(editor: SweetEditor, controller: SweetEditorController, eventBus: EditorEventBus) {
+  constructor(enabled: boolean, editor: SweetEditor, controller: SweetEditorController, eventBus: EditorEventBus) {
+    this.enabled = enabled;
     this.editor = editor;
     this.controller = controller;
     this.eventBus = eventBus;
@@ -66,6 +68,9 @@ export class SelectionMenuController {
   }
 
   updateSelectionHandles(start: SelectionHandleInfo | null, end: SelectionHandleInfo | null): void {
+    if (!this.enabled) {
+      return;
+    }
     this.startHandle = start;
     this.endHandle = end;
     if (this.lifecycleState === SelectionMenuLifecycleState.VISIBLE) {
@@ -79,6 +84,9 @@ export class SelectionMenuController {
   }
 
   onEditorActionResult(result: EditorActionResult): void {
+    if (!this.enabled) {
+      return;
+    }
     this.hasSelection = result.hasSelectionAfter;
     this.coreBlocked = hasActiveInteraction(result) || needsViewportMotion(result);
 
@@ -134,7 +142,7 @@ export class SelectionMenuController {
   }
 
   private scheduleShow(): void {
-    if (!this.hasSelection) {
+    if (!this.enabled || !this.hasSelection) {
       this.dismiss();
       return;
     }

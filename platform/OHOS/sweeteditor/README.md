@@ -12,7 +12,8 @@ SweetEditor 是一个面向 HarmonyOS 的代码编辑器组件，提供 ArkTS AP
 - 支持 inlay hint、phantom text、ghost text 和 inline suggestion
 - 支持代码折叠、折叠占位、括号高亮和 linked editing
 - 支持 CompletionProvider、补全面板、键盘导航和 snippet 插入
-- 支持选择手柄、选择菜单、剪贴板操作和 IME 组合输入
+- 在手机上支持选择手柄和选择菜单，在 PC/2in1 上提供桌面鼠标交互
+- 支持剪贴板操作和 IME 组合输入
 - 支持自动换行模式、行间距、缩放、只读模式和 gutter 行为配置
 - 同时支持等宽字体和非等宽字体
 - 提供 completion、decoration、newline action 和自定义菜单项等扩展点
@@ -37,7 +38,7 @@ ohpm install @qiplat/sweeteditor@1.0.0-rc1
 ## 环境要求
 
 - HarmonyOS 5.1.1（API 19）Stage 模型工程与兼容的 DevEco Studio 工具链
-- `phone` 设备类型
+- `phone` 或 `2in1` 设备类型
 - `arm64-v8a` 或 `x86_64` 原生运行环境
 - 可用的 `ohpm` 与 Hvigor 环境
 

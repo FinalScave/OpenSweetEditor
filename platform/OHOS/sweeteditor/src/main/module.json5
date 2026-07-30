@@ -4,7 +4,8 @@
     "type": "har",
     "description": "$string:module_desc",
     "deviceTypes": [
-      "phone"
+      "phone",
+      "2in1"
     ],
     "installationFree": false
   }

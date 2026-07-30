@@ -44,7 +44,7 @@ import {
   KeyCode,
   KeyModifier
 } from './core/CoreKeymap';
-import { CursorRect, EditorRenderModel, ScrollMetrics } from './core/CoreVisual';
+import { CursorRect, EditorRenderModel, PointerCursorType, ScrollMetrics } from './core/CoreVisual';
 import { SearchRequest, SearchState, createEmptySearchState } from './core/CoreSearch';
 import {
   BracketGuide,
@@ -69,6 +69,7 @@ import { EditorKeyMap } from './EditorKeymap';
 import {
   extractPrintableKeyText,
   getNativeModifiers,
+  getPointerModifiers,
   OverlayKeyAction,
   resolveNativeKeyCode,
   resolveOverlayKeyAction
@@ -149,7 +150,9 @@ import {
 import pasteboard from '@ohos.pasteboard';
 import display from '@ohos.display';
 import hilog from '@ohos.hilog';
+import { deviceInfo } from '@kit.BasicServicesKit';
 import { inputMethod } from '@kit.IMEKit';
+import { pointer } from '@kit.InputKit';
 import { window } from '@kit.ArkUI';
 import { displaySync } from '@kit.ArkGraphics2D';
 
@@ -187,9 +190,10 @@ const SELECTION_MENU_PLACEMENTS: PopupPlacement[] = [
 @Component
 export struct SweetEditor {
   controller: SweetEditorController = new SweetEditorController();
+  private readonly isMobileStyle: boolean = deviceInfo.deviceType !== '2in1';
   private editorCore: EditorCore | null = null;
   private renderer: EditorRenderer | null = null;
-  private settings: EditorSettings = new EditorSettings(this);
+  private settings: EditorSettings = new EditorSettings(this, !this.isMobileStyle);
   private theme: EditorTheme = EditorTheme.dark();
   private keyMap: EditorKeyMap = EditorKeyMap.defaultKeyMap();
   private eventBus: EditorEventBus = new EditorEventBus();
@@ -210,6 +214,8 @@ export struct SweetEditor {
   private frameSyncRunning: boolean = false;
   private animationWaiting: boolean = false;
   private animationDelayTimerId: number = -1;
+  private pointerModifiers: number = KeyModifier.NONE;
+  private axisGestureActive: boolean = false;
   private density: number = 2.0;
   private viewWidth: number = 0;
   private viewHeight: number = 0;
@@ -254,6 +260,10 @@ export struct SweetEditor {
   }
 
   aboutToDisappear(): void {
+    if (!this.isMobileStyle) {
+      this.getUIContext().getCursorController().restoreDefault();
+    }
+    this.endAxisGesture({ x: 0, y: 0 });
     this.stopCursorBlink();
     this.stopAnimation();
     this.stopFrameSync();
@@ -332,6 +342,9 @@ export struct SweetEditor {
         .onHover((isHover: boolean, event: HoverEvent) => {
           this.handleHoverEvent(isHover, event);
         })
+        .onAxisEvent((event: AxisEvent) => {
+          this.handleAxisEvent(event);
+        })
         .onKeyEvent((event: KeyEvent) => {
           if (event.type === KeyType.Down || event.type === KeyType.Up) {
             this.refreshPointerModifiers(event);
@@ -344,6 +357,8 @@ export struct SweetEditor {
           this.inputConnection.onFocus();
         })
         .onBlur(() => {
+          this.endAxisGesture({ x: 0, y: 0 });
+          this.resetPointerModifiers();
           this.inputConnection.onBlur();
         })
         .focusable(true)
@@ -519,7 +534,7 @@ export struct SweetEditor {
     }
     this.initialized = true;
 
-    this.renderer = new EditorRenderer(this.theme, this.density);
+    this.renderer = new EditorRenderer(this.theme, this.density, this.isMobileStyle);
     this.renderer.applyTextSize(this.settings.getEditorTextSize());
     this.renderer.setEditorIconProvider(this.iconProvider);
 
@@ -527,16 +542,16 @@ export struct SweetEditor {
     const options = new EditorOptions();
     options.touchSlop = touchSlop;
     options.doubleTapTimeout = 300;
-    options.revealSelectionEndOnSelectAll = true;
+    options.revealSelectionEndOnSelectAll = this.isMobileStyle;
 
     const ctx = this.canvasContext!;
     this.renderer.attachCanvasContext(ctx);
 
     const scrollbarConfig = new ScrollbarConfig();
-    scrollbarConfig.thickness = 5.0;
-    scrollbarConfig.minThumb = 40.0;
-    scrollbarConfig.thumbHitPadding = 20.0;
-    scrollbarConfig.mode = ScrollbarMode.TRANSIENT;
+    scrollbarConfig.thickness = this.isMobileStyle ? 5.0 : 12.0;
+    scrollbarConfig.minThumb = this.isMobileStyle ? 40.0 : 32.0;
+    scrollbarConfig.thumbHitPadding = this.isMobileStyle ? 20.0 : 0.0;
+    scrollbarConfig.mode = this.isMobileStyle ? ScrollbarMode.TRANSIENT : ScrollbarMode.ALWAYS;
     scrollbarConfig.thumbDraggable = true;
     scrollbarConfig.trackTapMode = ScrollbarTrackTapMode.DISABLED;
     scrollbarConfig.fadeDelayMs = 700;
@@ -599,7 +614,8 @@ export struct SweetEditor {
     });
 
     // SelectionMenuController
-    this.selectionMenuController = new SelectionMenuController(this, this.controller, this.eventBus);
+    this.selectionMenuController = new SelectionMenuController(
+      this.isMobileStyle, this, this.controller, this.eventBus);
     this.selectionMenuController.setStateListener((state: SelectionMenuState): void => {
       this.applySelectionMenuState(state);
     });
@@ -1498,6 +1514,9 @@ export struct SweetEditor {
     if (this.selectionMenuController) {
       this.selectionMenuController.onEditorActionResult(result);
     }
+    if (result.pointerCursorChanged) {
+      this.updatePointerCursor(result.pointerCursorAfter);
+    }
     this.inputConnection.synchronize(result);
     this.updateAnimationSchedule(result);
     this.dispatchStateEvents(result);
@@ -1812,11 +1831,40 @@ export struct SweetEditor {
   }
 
   private refreshPointerModifiers(event: KeyEvent): void {
+    this.pointerModifiers = getNativeModifiers(event);
     if (!this.editorCore) {
       return;
     }
-    const result = this.editorCore.updatePointerModifiers(getNativeModifiers(event));
+    const result = this.editorCore.updatePointerModifiers(this.pointerModifiers);
     this.dispatchEditorActionResult(result);
+  }
+
+  private resetPointerModifiers(): void {
+    if (this.pointerModifiers === KeyModifier.NONE) {
+      return;
+    }
+    this.pointerModifiers = KeyModifier.NONE;
+    if (this.editorCore) {
+      this.dispatchEditorActionResult(this.editorCore.updatePointerModifiers(KeyModifier.NONE));
+    }
+  }
+
+  private updatePointerCursor(cursorType: PointerCursorType): void {
+    if (this.isMobileStyle) {
+      return;
+    }
+    const cursorController = this.getUIContext().getCursorController();
+    switch (cursorType) {
+      case PointerCursorType.TEXT:
+        cursorController.setCursor(pointer.PointerStyle.TEXT_CURSOR);
+        break;
+      case PointerCursorType.HAND:
+        cursorController.setCursor(pointer.PointerStyle.HAND_POINTING);
+        break;
+      case PointerCursorType.DEFAULT:
+        cursorController.restoreDefault();
+        break;
+    }
   }
 
   private handleKeyEvent(event: KeyEvent, allowTextFallback: boolean): void {
@@ -1937,6 +1985,7 @@ export struct SweetEditor {
   }
 
   private handleMouseEvent(event: MouseEvent): void {
+    this.refreshPointerEventModifiers(event);
     const gestureEvent: GestureEvent | null = this.convertMouseToGestureEvent(event);
     if (!gestureEvent) {
       return;
@@ -1945,13 +1994,91 @@ export struct SweetEditor {
     this.dispatchPointerGestureEvent(gestureEvent);
   }
 
+  private handleAxisEvent(event: AxisEvent): void {
+    if (!this.editorCore) {
+      return;
+    }
+
+    this.refreshPointerEventModifiers(event);
+    const point: PointF = { x: event.x, y: event.y };
+    switch (event.action) {
+      case AxisAction.BEGIN:
+        this.beginAxisGesture(point);
+        this.dispatchAxisWheel(event, point);
+        break;
+      case AxisAction.UPDATE:
+        if (!this.axisGestureActive) {
+          this.beginAxisGesture(point);
+        }
+        this.dispatchAxisWheel(event, point);
+        break;
+      case AxisAction.END:
+      case AxisAction.CANCEL:
+        this.endAxisGesture(point);
+        break;
+      case AxisAction.NONE:
+        this.beginAxisGesture(point);
+        this.dispatchAxisWheel(event, point);
+        this.endAxisGesture(point);
+        break;
+    }
+  }
+
+  private beginAxisGesture(point: PointF): void {
+    if (this.axisGestureActive) {
+      return;
+    }
+    this.axisGestureActive = true;
+    this.dispatchPointerGestureEvent({
+      type: EventType.DIRECT_GESTURE_BEGIN,
+      points: [point],
+      modifiers: this.pointerModifiers,
+      wheelDeltaX: 0,
+      wheelDeltaY: 0,
+      directScale: 1
+    });
+  }
+
+  private dispatchAxisWheel(event: AxisEvent, point: PointF): void {
+    const scrollStep = event.scrollStep && event.scrollStep > 0 ? event.scrollStep : 1;
+    const wheelDeltaX = event.getHorizontalAxisValue() * scrollStep;
+    const wheelDeltaY = event.getVerticalAxisValue() * scrollStep;
+    if (wheelDeltaX === 0 && wheelDeltaY === 0) {
+      return;
+    }
+    this.dispatchPointerGestureEvent({
+      type: EventType.MOUSE_WHEEL,
+      points: [point],
+      modifiers: this.pointerModifiers,
+      wheelDeltaX: wheelDeltaX,
+      wheelDeltaY: wheelDeltaY,
+      directScale: 1
+    });
+  }
+
+  private endAxisGesture(point: PointF): void {
+    if (!this.axisGestureActive) {
+      return;
+    }
+    this.axisGestureActive = false;
+    this.dispatchPointerGestureEvent({
+      type: EventType.DIRECT_GESTURE_END,
+      points: [point],
+      modifiers: this.pointerModifiers,
+      wheelDeltaX: 0,
+      wheelDeltaY: 0,
+      directScale: 1
+    });
+  }
+
   private handleHoverEvent(isHover: boolean, event: HoverEvent): void {
+    this.refreshPointerEventModifiers(event);
     if (!isHover) {
       const point: PointF = { x: -1, y: -1 };
       const gestureEvent: GestureEvent = {
         type: EventType.MOUSE_MOVE,
         points: [point],
-        modifiers: KeyModifier.NONE,
+        modifiers: this.pointerModifiers,
         wheelDeltaX: 0,
         wheelDeltaY: 0,
         directScale: 0
@@ -1965,12 +2092,23 @@ export struct SweetEditor {
       const gestureEvent: GestureEvent = {
         type: EventType.MOUSE_MOVE,
         points: [point],
-        modifiers: KeyModifier.NONE,
+        modifiers: this.pointerModifiers,
         wheelDeltaX: 0,
         wheelDeltaY: 0,
         directScale: 0
       };
       this.dispatchPointerGestureEvent(gestureEvent);
+    }
+  }
+
+  private refreshPointerEventModifiers(event: BaseEvent): void {
+    const modifiers = getPointerModifiers(event);
+    if (modifiers === this.pointerModifiers) {
+      return;
+    }
+    this.pointerModifiers = modifiers;
+    if (this.editorCore) {
+      this.dispatchEditorActionResult(this.editorCore.updatePointerModifiers(modifiers));
     }
   }
 
@@ -2049,7 +2187,7 @@ export struct SweetEditor {
     const gestureEvent: GestureEvent = {
       type: eventType,
       points: [point],
-      modifiers: KeyModifier.NONE,
+      modifiers: this.pointerModifiers,
       wheelDeltaX: 0,
       wheelDeltaY: 0,
       directScale: 0
