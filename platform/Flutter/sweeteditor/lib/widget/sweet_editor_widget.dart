@@ -94,6 +94,12 @@ class _SweetEditorWidgetState extends State<SweetEditorWidget>
   }
 
   @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    _session.updateDevicePixelRatio(View.of(context).devicePixelRatio);
+  }
+
+  @override
   void didUpdateWidget(covariant SweetEditorWidget oldWidget) {
     super.didUpdateWidget(oldWidget);
     if (!identical(widget.controller, oldWidget.controller)) {

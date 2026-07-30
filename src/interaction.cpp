@@ -414,14 +414,25 @@ namespace NS_SWEETEDITOR {
     }
 
     float dx = 0, dy = 0;
-    m_fling_->advance(dx, dy);
+    if (!m_fling_->advance(dx, dy)) {
+      return result;
+    }
 
+    const float scroll_x_before = m_context_.view_state->scroll_x;
+    const float scroll_y_before = m_context_.view_state->scroll_y;
     m_context_.view_state->scroll_x -= dx;
     m_context_.view_state->scroll_y -= dy;
     m_context_.view_state->scroll_x = std::round(m_context_.view_state->scroll_x);
     m_context_.view_state->scroll_y = std::round(m_context_.view_state->scroll_y);
     m_context_.text_layout->normalizeViewState(*m_context_.view_state);
-    markScrollbarInteraction();
+
+    const bool scroll_changed = m_context_.view_state->scroll_x != scroll_x_before
+                                || m_context_.view_state->scroll_y != scroll_y_before;
+    if (scroll_changed) {
+      markScrollbarInteraction();
+    } else {
+      m_fling_->stop();
+    }
 
     return result;
   }

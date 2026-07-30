@@ -18,10 +18,12 @@ class EditorCanvasPainter extends ChangeNotifier implements CustomPainter {
     required EditorTextMeasurer measurer,
     EditorIconProvider? iconProvider,
     required bool showSelectionHandles,
+    required double visualScale,
   }) : _theme = theme,
        _measurer = measurer,
        _iconProvider = iconProvider,
-       _showSelectionHandles = showSelectionHandles;
+       _showSelectionHandles = showSelectionHandles,
+       _visualScale = visualScale;
 
   core.EditorRenderModel _model = const core.EditorRenderModel();
   EditorTheme _theme;
@@ -29,6 +31,8 @@ class EditorCanvasPainter extends ChangeNotifier implements CustomPainter {
   bool _cursorVisible = true;
   EditorIconProvider? _iconProvider;
   final bool _showSelectionHandles;
+  double _visualScale;
+  double _devicePixelRatio = 1.0;
   final Map<int, _ResolvedEditorIcon> _resolvedIcons = {};
   final Map<_TextPainterKey, TextPainter> _textPainterCache = {};
 
@@ -56,6 +60,26 @@ class EditorCanvasPainter extends ChangeNotifier implements CustomPainter {
     _iconProvider = provider;
     _disposeResolvedIcons();
     notifyListeners();
+  }
+
+  void updateVisualScale(double scale) {
+    if (!scale.isFinite || scale <= 0 || _visualScale == scale) return;
+    _visualScale = scale;
+    notifyListeners();
+  }
+
+  void updateDevicePixelRatio(double devicePixelRatio) {
+    if (!devicePixelRatio.isFinite ||
+        devicePixelRatio <= 0 ||
+        _devicePixelRatio == devicePixelRatio) {
+      return;
+    }
+    _devicePixelRatio = devicePixelRatio;
+    notifyListeners();
+  }
+
+  double _scaledContentLength(double value) {
+    return math.max(value * _visualScale, 1.0 / _devicePixelRatio);
   }
 
   @override
@@ -87,7 +111,12 @@ class EditorCanvasPainter extends ChangeNotifier implements CustomPainter {
     if (_cursorVisible && m.cursor.visible) {
       final c = m.cursor;
       canvas.drawRect(
-        Rect.fromLTWH(c.position.x, c.position.y, 2, c.height),
+        Rect.fromLTWH(
+          c.position.x,
+          c.position.y,
+          _scaledContentLength(1.5),
+          c.height,
+        ),
         Paint()..color = Color(_theme.cursorColor),
       );
     }
@@ -654,10 +683,9 @@ class EditorCanvasPainter extends ChangeNotifier implements CustomPainter {
           Paint()
             ..color = Color(style.borderColor)
             ..style = PaintingStyle.stroke
-            ..strokeWidth =
-                effect.kind == core.RangeEffectKind.linkedEditingActive
-                ? 2
-                : 1.5,
+            ..strokeWidth = _scaledContentLength(
+              effect.kind == core.RangeEffectKind.linkedEditingActive ? 1.5 : 1,
+            ),
         );
       }
       if (style.underlineColor != 0 &&
@@ -673,9 +701,9 @@ class EditorCanvasPainter extends ChangeNotifier implements CustomPainter {
               Offset(x + r.width, y),
               Paint()
                 ..color = color
-                ..strokeWidth = 1,
-              3,
-              2,
+                ..strokeWidth = _scaledContentLength(1),
+              _scaledContentLength(3),
+              _scaledContentLength(2),
             );
           case core.RangeEffectUnderlineStyle.solid:
             canvas.drawLine(
@@ -683,7 +711,7 @@ class EditorCanvasPainter extends ChangeNotifier implements CustomPainter {
               Offset(x + r.width, y),
               Paint()
                 ..color = color
-                ..strokeWidth = 2,
+                ..strokeWidth = _scaledContentLength(1),
             );
           case core.RangeEffectUnderlineStyle.wavy:
             _drawWavyLine(canvas, x, y, r.width, color);
@@ -703,11 +731,11 @@ class EditorCanvasPainter extends ChangeNotifier implements CustomPainter {
   ) {
     final paint = Paint()
       ..color = color
-      ..strokeWidth = 1.2
+      ..strokeWidth = _scaledContentLength(1)
       ..style = PaintingStyle.stroke;
     final path = Path();
-    const amplitude = 2.0;
-    const wavelength = 4.0;
+    final amplitude = _scaledContentLength(2);
+    final wavelength = _scaledContentLength(4);
     path.moveTo(x, y);
     var cx = x;
     var up = true;

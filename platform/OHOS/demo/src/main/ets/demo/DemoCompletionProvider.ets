@@ -4,7 +4,8 @@ import {
   CompletionProvider,
   CompletionReceiver,
   CompletionResult,
-  CompletionTriggerKind
+  CompletionTriggerKind,
+  TextRange
 } from '@qiplat/sweeteditor';
 
 const ASYNC_DELAY_MS = 200;
@@ -25,7 +26,17 @@ export class DemoCompletionProvider implements CompletionProvider {
       if (receiver.isCancelled()) {
         return;
       }
-      receiver.accept(new CompletionResult(this.createGeneralItems(), false));
+      const items = this.createGeneralItems();
+      const replacementRange = this.getIdentifierRange(context);
+      if (replacementRange !== null) {
+        items.forEach((item: CompletionItem) => {
+          item.textEdit = {
+            range: replacementRange,
+            newText: item.insertText !== null ? item.insertText : item.label
+          };
+        });
+      }
+      receiver.accept(new CompletionResult(items, false));
     }, ASYNC_DELAY_MS);
   }
 
@@ -80,5 +91,33 @@ export class DemoCompletionProvider implements CompletionProvider {
     const item = this.item(label, detail, CompletionItem.KIND_SNIPPET, insertText, sortKey);
     item.insertTextFormat = CompletionItem.INSERT_TEXT_FORMAT_SNIPPET;
     return item;
+  }
+
+  private getIdentifierRange(context: CompletionContext): TextRange | null {
+    const range = context.wordRange;
+    const line = context.cursorPosition.line;
+    const cursorColumn = context.cursorPosition.column;
+    const startColumn = range.start.column;
+    const endColumn = range.end.column;
+    if (range.start.line !== line || range.end.line !== line ||
+      startColumn < 0 || startColumn >= endColumn ||
+      cursorColumn < startColumn || cursorColumn > endColumn ||
+      endColumn > context.lineText.length) {
+      return null;
+    }
+    for (let column = startColumn; column < endColumn; column++) {
+      if (!this.isWordChar(context.lineText.charCodeAt(column))) {
+        return null;
+      }
+    }
+    return range;
+  }
+
+  private isWordChar(ch: number): boolean {
+    return (ch >= 0x61 && ch <= 0x7A) ||
+      (ch >= 0x41 && ch <= 0x5A) ||
+      (ch >= 0x30 && ch <= 0x39) ||
+      ch === 0x5F ||
+      ch > 0x7F;
   }
 }

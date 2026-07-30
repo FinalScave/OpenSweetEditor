@@ -9,6 +9,8 @@ import com.qiplat.sweeteditor.completion.CompletionItem;
 import com.qiplat.sweeteditor.completion.CompletionProvider;
 import com.qiplat.sweeteditor.completion.CompletionReceiver;
 import com.qiplat.sweeteditor.completion.CompletionResult;
+import com.qiplat.sweeteditor.core.foundation.TextEdit;
+import com.qiplat.sweeteditor.core.foundation.TextRange;
 
 import java.util.*;
 import java.util.concurrent.ExecutorService;
@@ -122,35 +124,17 @@ public class DemoCompletionProvider implements CompletionProvider {
 
             List<CompletionItem> acceptedItems = new ArrayList<>();
 
-            int column = context.cursorPosition.column;
-            String lineText = context.lineText;
-            StringBuilder words = new StringBuilder();
-
-            while (column > 0) {
-                column--;
-                char ch  = lineText.charAt(column);
-
-                if (!Character.isUnicodeIdentifierPart(ch) && !Character.isUnicodeIdentifierStart(ch) && ch != ':') {
-                    //直接退出循环
-                    break;
-                }
-
-                if (words.length() == 0) {
-                    words.append(ch);
-                    continue;
-                }
-
-                words.insert(0, ch);
-            }
-
-            String pattern = words.toString();
+            TextRange replacementRange = getIdentifierRange(context);
+            String pattern = replacementRange == null
+                    ? ""
+                    : context.lineText.substring(replacementRange.start.column, context.cursorPosition.column);
             for (CompletionItem item : items) {
                 if (pattern.isEmpty()) {
                     break;
                 }
 
                 if (item.label.startsWith(pattern) || item.insertText.startsWith(pattern)) {
-                    item.insertText = item.insertText.substring(pattern.length());
+                    item.textEdit = new TextEdit(replacementRange, item.insertText);
                     acceptedItems.add(item);
                 }
             }
@@ -158,5 +142,33 @@ public class DemoCompletionProvider implements CompletionProvider {
             receiver.accept(new CompletionResult(Collections.unmodifiableList(acceptedItems), false));
             Log.d(TAG, "Asynchronous push: " + items.size() + " keyword/identifier candidates (200ms delay)");
         });
+    }
+
+    private static TextRange getIdentifierRange(CompletionContext context) {
+        TextRange range = context.wordRange;
+        int line = context.cursorPosition.line;
+        int cursorColumn = context.cursorPosition.column;
+        int startColumn = range.start.column;
+        int endColumn = range.end.column;
+        if (range.start.line != line || range.end.line != line
+                || startColumn < 0 || startColumn >= endColumn
+                || cursorColumn < startColumn || cursorColumn > endColumn
+                || endColumn > context.lineText.length()) {
+            return null;
+        }
+        for (int column = startColumn; column < endColumn; column++) {
+            if (!isWordChar(context.lineText.charAt(column))) {
+                return null;
+            }
+        }
+        return range;
+    }
+
+    private static boolean isWordChar(char ch) {
+        return (ch >= 'a' && ch <= 'z')
+                || (ch >= 'A' && ch <= 'Z')
+                || (ch >= '0' && ch <= '9')
+                || ch == '_'
+                || ch > 0x7F;
     }
 }

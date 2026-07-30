@@ -24,7 +24,8 @@ internal sealed class DemoCompletionProvider : ICompletionProvider
         if (receiver.IsCancelled)
             return;
 
-        string word = context.WordRange is TextRange wordRange
+        TextRange? replacementRange = GetIdentifierRange(context);
+        string word = replacementRange is TextRange wordRange
             ? context.LineText.Substring(
                 wordRange.Start.Column,
                 Math.Max(0, wordRange.End.Column - wordRange.Start.Column))
@@ -45,6 +46,7 @@ internal sealed class DemoCompletionProvider : ICompletionProvider
                 return;
 
             List<CompletionItem> items = BuildGlobalItems();
+            ApplyReplacementEdits(items, replacementRange);
             if (!string.IsNullOrWhiteSpace(normalized))
             {
                 items = items.FindAll(item =>
@@ -57,6 +59,47 @@ internal sealed class DemoCompletionProvider : ICompletionProvider
             receiver.Accept(new CompletionResult(items, false));
         });
     }
+
+    private static void ApplyReplacementEdits(List<CompletionItem> items, TextRange? range)
+    {
+        if (range == null)
+            return;
+
+        foreach (CompletionItem item in items)
+            item.TextEdit = new TextEdit(range, item.InsertText ?? item.Label);
+    }
+
+    private static TextRange? GetIdentifierRange(CompletionContext context)
+    {
+        if (context.WordRange is not TextRange range)
+            return null;
+
+        int line = context.CursorPosition.Line;
+        int cursorColumn = context.CursorPosition.Column;
+        int startColumn = range.Start.Column;
+        int endColumn = range.End.Column;
+        if (range.Start.Line != line || range.End.Line != line ||
+            startColumn < 0 || startColumn >= endColumn ||
+            cursorColumn < startColumn || cursorColumn > endColumn ||
+            endColumn > context.LineText.Length)
+        {
+            return null;
+        }
+
+        for (int column = startColumn; column < endColumn; column++)
+        {
+            if (!IsWordChar(context.LineText[column]))
+                return null;
+        }
+        return range;
+    }
+
+    private static bool IsWordChar(char ch) =>
+        (ch >= 'a' && ch <= 'z') ||
+        (ch >= 'A' && ch <= 'Z') ||
+        (ch >= '0' && ch <= '9') ||
+        ch == '_' ||
+        ch > 0x7F;
 
     private static List<CompletionItem> BuildMemberItems() => new()
     {

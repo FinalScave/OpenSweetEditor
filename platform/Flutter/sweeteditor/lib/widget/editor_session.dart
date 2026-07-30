@@ -47,6 +47,7 @@ class EditorSession {
       measurer: _measurer,
       iconProvider: _iconProvider,
       showSelectionHandles: platformBehavior.showsSelectionHandles,
+      visualScale: _platformScale,
     );
     final nativeMeasurer = _measurer.buildNativeMeasurer();
     _editorCore = core.EditorCore(
@@ -126,6 +127,10 @@ class EditorSession {
   double get effectiveScale => _platformScale;
   LanguageConfiguration? get languageConfiguration => _languageConfiguration;
   EditorMetadata? get metadata => _metadata;
+
+  void updateDevicePixelRatio(double devicePixelRatio) {
+    _painter.updateDevicePixelRatio(devicePixelRatio);
+  }
 
   void bindSettings() {
     _settings.bind(this);
@@ -805,6 +810,7 @@ class EditorSession {
     _platformScale = scale;
     _settings._setScaleFromPlatform(scale);
     _declarativeSettings?._setScaleFromPlatform(scale);
+    _painter.updateVisualScale(scale);
     _measurer.updateFont(
       platformBehavior.resolveFontFamily(fontFamily),
       textSize * scale,
@@ -821,6 +827,7 @@ class EditorSession {
     _platformScale = scale;
     _settings._setScaleFromPlatform(scale);
     _declarativeSettings?._setScaleFromPlatform(scale);
+    _painter.updateVisualScale(scale);
     _measurer.updateFont(
       platformBehavior.resolveFontFamily(_settings.getFontFamily()),
       _settings.getEditorTextSize() * scale,

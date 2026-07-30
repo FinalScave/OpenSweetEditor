@@ -261,6 +261,61 @@ TEST_CASE("EditorCore direct gesture begins by stopping an active fling") {
   CHECK_FALSE(settled.hasAnimationFlag(AnimationFlag::FLING));
 }
 
+TEST_CASE("EditorCore stops fling immediately when the scroll boundary prevents movement") {
+  EditorOptions options;
+  options.fling_min_velocity = 1.0f;
+  EditorCore editor(makeShared<FixedWidthTextMeasurer>(10.0f), options);
+
+  editor.loadDocument(makeShared<LineArrayDocument>(makeRepeatedLines(120, "abcdefghijklmnop")));
+  editor.setViewport({120, 80});
+
+  const float down_point[2] = {40.0f, 20.0f};
+  const float first_move[2] = {40.0f, 40.0f};
+  const float second_move[2] = {40.0f, 60.0f};
+  editor.handleGestureEvent(GestureEvent::create(EventType::TOUCH_DOWN, 1, down_point));
+  editor.handleGestureEvent(GestureEvent::create(EventType::TOUCH_MOVE, 1, first_move));
+  std::this_thread::sleep_for(std::chrono::milliseconds(5));
+  editor.handleGestureEvent(GestureEvent::create(EventType::TOUCH_MOVE, 1, second_move));
+  const EditorActionResult fling = editor.handleGestureEvent(GestureEvent::create(EventType::TOUCH_UP, 1, second_move));
+
+  REQUIRE(fling.hasAnimationFlag(AnimationFlag::FLING));
+  REQUIRE(fling.needsViewportMotion());
+  REQUIRE(editor.getScrollMetrics().scroll_y == 0.0f);
+
+  const EditorActionResult settled = editor.tickAnimations();
+  CHECK_FALSE(settled.hasAnimationFlag(AnimationFlag::FLING));
+  CHECK_FALSE(settled.needsViewportMotion());
+  CHECK(editor.getScrollMetrics().scroll_y == 0.0f);
+}
+
+TEST_CASE("EditorCore keeps diagonal fling active while one scroll axis can still move") {
+  EditorOptions options;
+  options.fling_min_velocity = 1.0f;
+  EditorCore editor(makeShared<FixedWidthTextMeasurer>(10.0f), options);
+
+  editor.loadDocument(makeShared<LineArrayDocument>(makeRepeatedLines(120, "abcdefghijklmnopqrstuvwxyz")));
+  editor.setViewport({120, 80});
+
+  const float down_point[2] = {80.0f, 20.0f};
+  const float first_move[2] = {60.0f, 40.0f};
+  const float second_move[2] = {40.0f, 60.0f};
+  editor.handleGestureEvent(GestureEvent::create(EventType::TOUCH_DOWN, 1, down_point));
+  editor.handleGestureEvent(GestureEvent::create(EventType::TOUCH_MOVE, 1, first_move));
+  std::this_thread::sleep_for(std::chrono::milliseconds(5));
+  editor.handleGestureEvent(GestureEvent::create(EventType::TOUCH_MOVE, 1, second_move));
+  const EditorActionResult fling = editor.handleGestureEvent(GestureEvent::create(EventType::TOUCH_UP, 1, second_move));
+
+  REQUIRE(fling.hasAnimationFlag(AnimationFlag::FLING));
+  const float scroll_x_before_tick = editor.getScrollMetrics().scroll_x;
+  REQUIRE(scroll_x_before_tick > 0.0f);
+  REQUIRE(editor.getScrollMetrics().scroll_y == 0.0f);
+
+  const EditorActionResult continued = editor.tickAnimations();
+  CHECK(continued.hasAnimationFlag(AnimationFlag::FLING));
+  CHECK(editor.getScrollMetrics().scroll_x > scroll_x_before_tick);
+  CHECK(editor.getScrollMetrics().scroll_y == 0.0f);
+}
+
 TEST_CASE("EditorCore keeps overlapping direct gesture sessions active until the final end") {
   EditorOptions options;
   EditorCore editor(makeShared<FixedWidthTextMeasurer>(10.0f), options);

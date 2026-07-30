@@ -41,7 +41,7 @@ public final class DemoCompletionProvider: CompletionProvider {
                 return
             }
 
-            let items: [CompletionItem] = [
+            var items: [CompletionItem] = [
                 CompletionItem(label: "std::string", detail: "class", kind: CompletionItem.kindClass,
                               insertText: "std::string", sortKey: "a_string"),
                 CompletionItem(label: "std::vector", detail: "template class", kind: CompletionItem.kindClass,
@@ -60,8 +60,45 @@ public final class DemoCompletionProvider: CompletionProvider {
                 CompletionItem(label: "return", detail: "keyword", kind: CompletionItem.kindKeyword,
                               insertText: "return ", sortKey: "g_return")
             ]
+            if let range = Self.identifierRange(in: context) {
+                for index in items.indices {
+                    items[index].textEdit = TextEdit(
+                        range: range,
+                        new_text: items[index].insertText ?? items[index].label
+                    )
+                }
+            }
             receiver.accept(CompletionResult(items: items))
             print("[DemoCompletionProvider] Async push: \(items.count) keyword/identifier candidates (200ms delay)")
         }
+    }
+
+    private static func identifierRange(in context: CompletionContext) -> TextRange? {
+        let range = context.wordRange
+        let line = context.cursorPosition.line
+        let cursorColumn = Int(context.cursorPosition.column)
+        let startColumn = Int(range.start.column)
+        let endColumn = Int(range.end.column)
+        let codeUnits = Array(context.lineText.utf16)
+        guard range.start.line == line,
+              range.end.line == line,
+              startColumn >= 0,
+              startColumn < endColumn,
+              cursorColumn >= startColumn,
+              cursorColumn <= endColumn,
+              endColumn <= codeUnits.count,
+              codeUnits[startColumn..<endColumn].allSatisfy(isWordCodeUnit)
+        else {
+            return nil
+        }
+        return range
+    }
+
+    private static func isWordCodeUnit(_ value: UInt16) -> Bool {
+        (value >= 0x61 && value <= 0x7A)
+            || (value >= 0x41 && value <= 0x5A)
+            || (value >= 0x30 && value <= 0x39)
+            || value == 0x5F
+            || value > 0x7F
     }
 }

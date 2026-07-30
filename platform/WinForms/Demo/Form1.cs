@@ -547,9 +547,47 @@ namespace Demo {
 						new() { Label = "class", Detail = "snippet - class definition", Kind = CompletionItem.KIND_SNIPPET, InsertText = "class ${1:ClassName} {\npublic:\n\t${1:ClassName}() {$2}\n\t~${1:ClassName}() {$3}\n$0\n};", InsertTextFormat = CompletionItem.INSERT_TEXT_FORMAT_SNIPPET, SortKey = "f_class" },
 						new() { Label = "return", Detail = "keyword", Kind = CompletionItem.KIND_KEYWORD, InsertText = "return ", SortKey = "g_return" }
 					};
+					ApplyReplacementEdits(items, context);
 					receiver.Accept(new CompletionResult(items));
 				});
 			}
+
+			private static void ApplyReplacementEdits(List<CompletionItem> items, CompletionContext context) {
+				SweetEditor.TextRange? range = GetIdentifierRange(context);
+				if (range == null) {
+					return;
+				}
+				foreach (CompletionItem item in items) {
+					item.TextEdit = new SweetEditor.TextEdit(range, item.InsertText ?? item.Label);
+				}
+			}
+
+			private static SweetEditor.TextRange? GetIdentifierRange(CompletionContext context) {
+				SweetEditor.TextRange range = context.WordRange;
+				int line = context.CursorPosition.Line;
+				int cursorColumn = context.CursorPosition.Column;
+				int startColumn = range.Start.Column;
+				int endColumn = range.End.Column;
+				if (range.Start.Line != line || range.End.Line != line
+						|| startColumn < 0 || startColumn >= endColumn
+						|| cursorColumn < startColumn || cursorColumn > endColumn
+						|| endColumn > context.LineText.Length) {
+					return null;
+				}
+				for (int column = startColumn; column < endColumn; column++) {
+					if (!IsWordChar(context.LineText[column])) {
+						return null;
+					}
+				}
+				return range;
+			}
+
+			private static bool IsWordChar(char ch) =>
+				(ch >= 'a' && ch <= 'z')
+				|| (ch >= 'A' && ch <= 'Z')
+				|| (ch >= '0' && ch <= '9')
+				|| ch == '_'
+				|| ch > 0x7F;
 		}
 
 		private sealed class DemoDecorationProvider : IDecorationProvider {
