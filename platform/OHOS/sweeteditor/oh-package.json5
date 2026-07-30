@@ -3,7 +3,10 @@
   "version": "1.0.0-rc2",
   "description": "SweetEditor is a high-performance OHOS code editor component powered by shared C++ core, delivering consistent cross-platform editing behavior with syntax highlighting, decorations, inlay hints, ghost text, code folding, completion, inline suggestions, diagnostics, selection menus, configurable wrapping, and extensible provider-based APIs for IDEs and developer tools.",
   "main": "./src/main/ets/Index.ets",
-  "author": "Scave",
+  "author": {
+    "name": "Scave",
+    "url": "https://github.com/FinalScave"
+  },
   "license": "MIT",
   "keywords": ["code editor", "editor", "rich text", "cross platform", "cpp"],
   "homepage": "https://github.com/FinalScave/SweetEditor",
