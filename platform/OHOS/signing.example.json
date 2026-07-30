@@ -1,0 +1,15 @@
+[
+  {
+    "name": "default",
+    "type": "HarmonyOS",
+    "material": {
+      "certpath": "C:\\Users\\username\\.ohos\\config\\default.cer",
+      "storePassword": "encrypted-store-password",
+      "keyAlias": "debugKey",
+      "keyPassword": "encrypted-key-password",
+      "profile": "C:\\Users\\username\\.ohos\\config\\default.p7b",
+      "signAlg": "SHA256withECDSA",
+      "storeFile": "C:\\Users\\username\\.ohos\\config\\default.p12"
+    }
+  }
+]

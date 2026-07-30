@@ -10,4 +10,5 @@
 /.clang-tidy
 **/.test
 /.appanalyzer
+/signing.local.json
 /demo/src/main/resources/rawfile/demo_shared/
