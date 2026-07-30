@@ -46,26 +46,29 @@ class EditorSession {
       theme: _theme,
       measurer: _measurer,
       iconProvider: _iconProvider,
-      showSelectionHandles: platformBehavior.showsSelectionHandles,
+      showSelectionHandles: platformBehavior.isMobileStyle,
       visualScale: _platformScale,
     );
     final nativeMeasurer = _measurer.buildNativeMeasurer();
     _editorCore = core.EditorCore(
       measurer: nativeMeasurer,
       options: core.EditorOptions(
-        revealSelectionEndOnSelectAll:
-            platformBehavior.revealSelectionEndOnSelectAll,
+        revealSelectionEndOnSelectAll: platformBehavior.isMobileStyle,
       ),
     );
     _keyMap = initialKeyMap;
-    _editorCore!.setHandleConfig(platformBehavior.handleConfig);
-    _editorCore!.setScrollbarConfig(platformBehavior.scrollbarConfig);
+    _editorCore!.setHandleConfig(
+      _buildHandleConfig(isMobileStyle: platformBehavior.isMobileStyle),
+    );
+    _editorCore!.setScrollbarConfig(
+      _buildScrollbarConfig(isMobileStyle: platformBehavior.isMobileStyle),
+    );
     _editorCore!.setKeyMap(_keyMap.bindings);
     _languageConfiguration = initialLanguageConfiguration;
     _metadata = initialMetadata;
     completionPopupController = CompletionPopupController();
     selectionMenuController = SelectionMenuController(
-      enabled: platformBehavior.showsFloatingSelectionMenu,
+      enabled: platformBehavior.isMobileStyle,
       buildContext: _buildSelectionMenuContext,
     );
     completionProviderManager = CompletionProviderManager(session: this);
@@ -76,6 +79,54 @@ class EditorSession {
     _setEditorRangeEffectStyles();
     _editorCore!.registerBatchTextStyles(_theme.textStyles);
     _applyInitialLanguageConfiguration(_languageConfiguration);
+  }
+
+  static core.HandleConfig _buildHandleConfig({required bool isMobileStyle}) {
+    if (!isMobileStyle) {
+      return const core.HandleConfig(
+        startHitArea: core.HandleHitArea(
+          left: 1,
+          top: 1,
+          right: -1,
+          bottom: -1,
+        ),
+        endHitArea: core.HandleHitArea(left: 1, top: 1, right: -1, bottom: -1),
+      );
+    }
+
+    // Matches the 10px radius, 24px offset, and 45-degree handle geometry.
+    const extent = 32.04163056034262;
+    return const core.HandleConfig(
+      startHitArea: core.HandleHitArea(
+        left: -extent,
+        top: -8,
+        right: 8,
+        bottom: extent,
+      ),
+      endHitArea: core.HandleHitArea(
+        left: -8,
+        top: -8,
+        right: extent,
+        bottom: extent,
+      ),
+    );
+  }
+
+  static core.ScrollbarConfig _buildScrollbarConfig({
+    required bool isMobileStyle,
+  }) {
+    return core.ScrollbarConfig(
+      thickness: isMobileStyle ? 5.0 : 12.0,
+      minThumb: isMobileStyle ? 40.0 : 32.0,
+      thumbHitPadding: isMobileStyle ? 20.0 : 0.0,
+      mode: isMobileStyle
+          ? core.ScrollbarMode.transient
+          : core.ScrollbarMode.always,
+      thumbDraggable: true,
+      trackTapMode: core.ScrollbarTrackTapMode.disabled,
+      fadeDelayMs: 700,
+      fadeDurationMs: 300,
+    );
   }
 
   final EditorEventBus eventBus;

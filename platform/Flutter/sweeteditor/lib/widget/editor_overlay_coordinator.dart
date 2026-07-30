@@ -96,8 +96,9 @@ class EditorOverlayCoordinator {
     final menuWidth = _measureSelectionMenuWidth(items);
     const menuHeight = _kSelectionMenuMeasureHeight;
     const offsetY = 8.0;
-    final handleClearance =
-        _session.platformBehavior.selectionMenuHandleClearance;
+    final handleClearance = _session.platformBehavior.isMobileStyle
+        ? 32.0
+        : 0.0;
 
     final x = (anchorX - menuWidth / 2)
         .clamp(0.0, math.max(0.0, viewportSize.width - menuWidth))

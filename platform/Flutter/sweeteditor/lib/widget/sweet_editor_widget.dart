@@ -114,7 +114,7 @@ class _SweetEditorWidgetState extends State<SweetEditorWidget>
       widget.settings,
       fontSize: _resolvedFontSize,
       fontFamily: widget.fontFamily,
-      gutterSticky: _platformBehavior.gutterStickyDefault,
+      gutterSticky: !_platformBehavior.isMobileStyle,
     );
     _applyKeyMap(widget.keyMap ?? EditorKeyMap.defaultKeyMap());
     _applyIconProvider(widget.iconProvider);
@@ -162,7 +162,7 @@ class _SweetEditorWidgetState extends State<SweetEditorWidget>
       initialSettings: widget.settings,
       fontFamily: widget.fontFamily,
       fontSize: _resolvedFontSize,
-      gutterSticky: _platformBehavior.gutterStickyDefault,
+      gutterSticky: !_platformBehavior.isMobileStyle,
       platformBehavior: _platformBehavior,
       initialKeyMap: widget.keyMap ?? EditorKeyMap.defaultKeyMap(),
       initialIconProvider: widget.iconProvider,
@@ -638,9 +638,7 @@ class _SweetEditorWidgetState extends State<SweetEditorWidget>
     final configuration = TextInputConfiguration(
       viewId: View.of(context).viewId,
       inputType: TextInputType.multiline,
-      inputAction: _platformBehavior.usesTextInputNewlineAction
-          ? TextInputAction.newline
-          : TextInputAction.none,
+      inputAction: _platformBehavior.textInputAction,
       readOnly: _session.settings.isReadOnly(),
       autocorrect: true,
       enableSuggestions: true,
@@ -658,7 +656,7 @@ class _SweetEditorWidgetState extends State<SweetEditorWidget>
         _textInputConnection!.setEditingState(_textEditingValue);
       }
       _updateTextInputGeometry();
-      if (show || !_platformBehavior.showsSoftKeyboard) {
+      if (show || !_platformBehavior.isMobileStyle) {
         _textInputConnection!.show();
       }
       return;
@@ -673,7 +671,7 @@ class _SweetEditorWidgetState extends State<SweetEditorWidget>
       _updateTextInputStyle();
       _textInputConnection!.setEditingState(_textEditingValue);
       _updateTextInputGeometry();
-      if (show || !_platformBehavior.showsSoftKeyboard) {
+      if (show || !_platformBehavior.isMobileStyle) {
         _textInputConnection!.show();
       }
     } catch (_) {
@@ -946,7 +944,7 @@ class _SweetEditorWidgetState extends State<SweetEditorWidget>
     }
 
     final shouldShowKeyboard =
-        _platformBehavior.showsSoftKeyboard &&
+        _platformBehavior.isMobileStyle &&
         result.hitTarget.type == core.HitTargetType.none;
     if (!_focusNode.hasFocus) {
       _pendingShowTextInput = shouldShowKeyboard;
@@ -967,7 +965,7 @@ class _SweetEditorWidgetState extends State<SweetEditorWidget>
   }
 
   MouseCursor _resolveMouseCursor() {
-    if (_editorResourcesReleased || !_platformBehavior.usesMouseCursor) {
+    if (_editorResourcesReleased || _platformBehavior.isMobileStyle) {
       return SystemMouseCursors.basic;
     }
     switch (_pointerCursorType) {

@@ -103,7 +103,7 @@ class EditorInteractionController {
     if (event is! PointerScrollEvent) return null;
     final point = _pointFromEvent(event);
     final modifiers = _currentGestureModifiers(
-      allowCtrl: _session.platformBehavior.supportsCtrlWheelScale,
+      allowCtrl: !_session.platformBehavior.isMobileStyle,
     );
     _sendGestureEvent(
       type: core.EventType.directGestureBegin,
@@ -127,7 +127,7 @@ class EditorInteractionController {
   core.EditorActionResult? onPointerPanZoomStart(
     PointerPanZoomStartEvent event,
   ) {
-    if (!_session.platformBehavior.supportsTrackpadPanZoom) {
+    if (_session.platformBehavior.isMobileStyle) {
       return null;
     }
     if (_activePanZoomScales.containsKey(event.pointer)) {
@@ -143,7 +143,7 @@ class EditorInteractionController {
   core.EditorActionResult? onPointerPanZoomUpdate(
     PointerPanZoomUpdateEvent event,
   ) {
-    if (!_session.platformBehavior.supportsTrackpadPanZoom) {
+    if (_session.platformBehavior.isMobileStyle) {
       return null;
     }
     final previousScale = _activePanZoomScales[event.pointer];
@@ -182,7 +182,7 @@ class EditorInteractionController {
   }
 
   core.EditorActionResult? onPointerPanZoomEnd(PointerPanZoomEndEvent event) {
-    if (!_session.platformBehavior.supportsTrackpadPanZoom) {
+    if (_session.platformBehavior.isMobileStyle) {
       return null;
     }
     if (_activePanZoomScales.remove(event.pointer) == null) {
@@ -195,7 +195,7 @@ class EditorInteractionController {
   }
 
   core.EditorActionResult? _handleTouchDown(PointerDownEvent event) {
-    if (!_session.platformBehavior.supportsTouchScale &&
+    if (!_session.platformBehavior.isMobileStyle &&
         _activeTouchPoints.isNotEmpty) {
       return null;
     }
@@ -210,7 +210,7 @@ class EditorInteractionController {
 
   core.EditorActionResult? _handleTouchMove(PointerMoveEvent event) {
     if (!_activeTouchPoints.containsKey(event.pointer) &&
-        !_session.platformBehavior.supportsTouchScale &&
+        !_session.platformBehavior.isMobileStyle &&
         _activeTouchPoints.isNotEmpty) {
       return null;
     }
@@ -223,7 +223,7 @@ class EditorInteractionController {
 
   core.EditorActionResult? _handleTouchUp(PointerUpEvent event) {
     if (!_activeTouchPoints.containsKey(event.pointer) &&
-        !_session.platformBehavior.supportsTouchScale &&
+        !_session.platformBehavior.isMobileStyle &&
         _activeTouchPoints.isNotEmpty) {
       _activeTouchPoints.remove(event.pointer);
       return null;
