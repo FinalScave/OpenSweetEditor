@@ -94,7 +94,7 @@ final class InputConnection {
 
     func endSession() -> EditorActionResult? {
         lifecycleVersion &+= 1
-        imeSession.end()
+        return imeSession.end()
     }
 
     func setCompositionEnabled(_ enabled: Bool) -> EditorActionResult? {

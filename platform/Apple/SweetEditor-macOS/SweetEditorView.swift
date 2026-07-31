@@ -62,7 +62,11 @@ public class SweetEditorView: NSView, NSTextInputClient, CompletionEditorAccesso
     public private(set) var languageConfiguration: LanguageConfiguration?
 
     /// Extensible metadata supplied by external callers (cast to concrete type when used).
-    public var metadata: EditorMetadata?
+    public var metadata: EditorMetadata? {
+        didSet {
+            decorationProviderManager?.requestRefresh()
+        }
+    }
 
     public override var acceptsFirstResponder: Bool { true }
     public override var isFlipped: Bool { true }
@@ -564,24 +568,25 @@ public class SweetEditorView: NSView, NSTextInputClient, CompletionEditorAccesso
     /// Sets language configuration and syncs bracket pairs to the Core layer.
     public func setLanguageConfiguration(_ config: LanguageConfiguration?) {
         self.languageConfiguration = config
-        guard let config = config else { return }
+        let brackets = config?.brackets ?? []
+        let opens = brackets.map { Int32($0.open.unicodeScalars.first?.value ?? 0) }
+        let closes = brackets.map { Int32($0.close.unicodeScalars.first?.value ?? 0) }
+        dispatchEditorActionResult(editorCore.setBracketPairs(openChars: opens, closeChars: closes))
 
-        if let brackets = config.brackets {
-            let opens = brackets.map { Int32(($0.open.unicodeScalars.first?.value ?? 0)) }
-            let closes = brackets.map { Int32(($0.close.unicodeScalars.first?.value ?? 0)) }
-            dispatchEditorActionResult(editorCore.setBracketPairs(openChars: opens, closeChars: closes))
-        }
-        if let acPairs = config.autoClosingPairs {
-            let acOpens = acPairs.map { Int32(($0.open.unicodeScalars.first?.value ?? 0)) }
-            let acCloses = acPairs.map { Int32(($0.close.unicodeScalars.first?.value ?? 0)) }
-            dispatchEditorActionResult(editorCore.setAutoClosingPairs(openChars: acOpens, closeChars: acCloses))
-        }
-        if let tabSize = config.tabSize, tabSize > 0 {
-            dispatchEditorActionResult(editorCore.setTabSize(tabSize))
-        }
-        if let insertSpaces = config.insertSpaces {
-            dispatchEditorActionResult(editorCore.setInsertSpaces(insertSpaces))
-        }
+        let autoClosingPairs = config?.autoClosingPairs ?? []
+        let autoClosingOpens = autoClosingPairs.map { Int32($0.open.unicodeScalars.first?.value ?? 0) }
+        let autoClosingCloses = autoClosingPairs.map { Int32($0.close.unicodeScalars.first?.value ?? 0) }
+        dispatchEditorActionResult(editorCore.setAutoClosingPairs(
+            openChars: autoClosingOpens,
+            closeChars: autoClosingCloses
+        ))
+
+        let tabSize = config?.tabSize ?? LanguageConfiguration.defaultTabSize
+        dispatchEditorActionResult(editorCore.setTabSize(
+            tabSize > 0 ? tabSize : LanguageConfiguration.defaultTabSize
+        ))
+        dispatchEditorActionResult(editorCore.setInsertSpaces(config?.insertSpaces ?? false))
+        decorationProviderManager?.requestRefresh()
     }
 
     // MARK: - EditorMetadata
@@ -1426,39 +1431,19 @@ public class SweetEditorView: NSView, NSTextInputClient, CompletionEditorAccesso
     }
 
     public override func performKeyEquivalent(with event: NSEvent) -> Bool {
-        // Handle Cmd+key shortcuts
         guard event.modifierFlags.contains(.command) else { return false }
+        let keyCode = mapShortcutKeyCode(event)
+        guard keyCode != KeyCode.NONE else { return false }
         resetCursorBlink()
 
-        // Manually trigger completion via Cmd+Space.
-        if event.charactersIgnoringModifiers == " " {
-            triggerCompletion()
-            return true
-        }
-
-        switch event.charactersIgnoringModifiers {
-        case "a":
-            selectAll()
-            return true
-        case "c":
-            return copyToClipboard()
-        case "v":
-            pasteFromClipboard()
-            return true
-        case "x":
-            return cutToClipboard()
-        case "z":
-            let editResult: EditorActionResult?
-            if event.modifierFlags.contains(.shift) {
-                editResult = editorCore.redo()
-            } else {
-                editResult = editorCore.undo()
-            }
-            dispatchEditorActionResult(editResult)
-            return true
-        default:
-            return false
-        }
+        let result = editorCore.handleKeyEvent(
+            keyCode: keyCode,
+            modifiers: modifiersFromEvent(event)
+        )
+        guard result.handled else { return false }
+        dispatchEditorActionResult(result)
+        performHostCommand(result.command)
+        return true
     }
 
     // MARK: - NSTextInputClient
@@ -1666,11 +1651,14 @@ public class SweetEditorView: NSView, NSTextInputClient, CompletionEditorAccesso
         }
 
         let mods = modifiersFromEvent(event)
-        let mappedKeyCode = mapNSKeyCodeToKeyCode(event.keyCode)
+        let mappedKeyCode = mapShortcutKeyCode(event)
         if mappedKeyCode != KeyCode.NONE {
             let result = editorCore.handleKeyEvent(keyCode: mappedKeyCode, modifiers: mods)
-            dispatchEditorActionResult(result)
-            return true
+            if result.handled {
+                dispatchEditorActionResult(result)
+                performHostCommand(result.command)
+                return true
+            }
         }
 
         if event.modifierFlags.contains(.control) || event.modifierFlags.contains(.option) {
@@ -1772,6 +1760,40 @@ public class SweetEditorView: NSView, NSTextInputClient, CompletionEditorAccesso
         case 116: return KeyCode.PAGE_UP
         case 121: return KeyCode.PAGE_DOWN
         default: return KeyCode.NONE
+        }
+    }
+
+    private func mapShortcutKeyCode(_ event: NSEvent) -> Int32 {
+        let keyCode = mapNSKeyCodeToKeyCode(event.keyCode)
+        if keyCode != KeyCode.NONE {
+            return keyCode
+        }
+        switch event.charactersIgnoringModifiers?.lowercased() {
+        case " ": return KeyCode.SPACE
+        case "a": return KeyCode.A
+        case "c": return KeyCode.C
+        case "d": return KeyCode.D
+        case "k": return KeyCode.K
+        case "v": return KeyCode.V
+        case "x": return KeyCode.X
+        case "y": return KeyCode.Y
+        case "z": return KeyCode.Z
+        default: return KeyCode.NONE
+        }
+    }
+
+    private func performHostCommand(_ command: Int32) {
+        switch EditorBuiltinCommand.fromValue(command) {
+        case .COPY:
+            _ = copyToClipboard()
+        case .PASTE:
+            pasteFromClipboard()
+        case .CUT:
+            _ = cutToClipboard()
+        case .TRIGGER_COMPLETION:
+            triggerCompletion()
+        default:
+            break
         }
     }
 

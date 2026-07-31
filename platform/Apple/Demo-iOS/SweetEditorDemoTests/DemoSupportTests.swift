@@ -2,6 +2,7 @@ import Foundation
 import CoreGraphics
 import Testing
 import SweetEditorIOS
+@testable import SweetEditorShared
 @testable import SweetEditorDemo
 
 struct DemoSupportTests {
@@ -153,6 +154,98 @@ struct DemoSupportTests {
             Issue.record("Expected primary role for light theme title")
         }
     }
+
+    @Test
+    @MainActor
+    func completionProviderReturnsMemberItemsImmediately() {
+        let provider = DemoCompletionProvider()
+        let receiver = CapturingCompletionReceiver()
+
+        provider.provideCompletions(
+            context: completionContext(
+                triggerKind: .character,
+                triggerCharacter: ".",
+                lineText: "value.",
+                cursorColumn: 6,
+                wordStart: 6,
+                wordEnd: 6
+            ),
+            receiver: receiver
+        )
+
+        let result = receiver.wait(timeout: 0.1)
+        #expect(result?.items.map(\.label) == ["length", "push_back", "begin", "end", "size"])
+        #expect(result?.items.first?.kind == CompletionItem.kindProperty)
+    }
+
+    @Test
+    @MainActor
+    func completionProviderFiltersAndReplacesIdentifier() {
+        let provider = DemoCompletionProvider()
+        let receiver = CapturingCompletionReceiver()
+
+        provider.provideCompletions(
+            context: completionContext(
+                triggerKind: .invoked,
+                lineText: "ret",
+                cursorColumn: 3,
+                wordStart: 0,
+                wordEnd: 3
+            ),
+            receiver: receiver
+        )
+
+        let result = receiver.wait(timeout: 1)
+        let item = result?.items.first
+        #expect(result?.items.count == 1)
+        #expect(item?.label == "return")
+        #expect(item?.textEdit?.range.start.column == 0)
+        #expect(item?.textEdit?.range.end.column == 3)
+        #expect(item?.textEdit?.new_text == "return ")
+    }
+
+    @Test
+    @MainActor
+    func completionProviderHonorsCancellation() {
+        let provider = DemoCompletionProvider()
+        let receiver = CapturingCompletionReceiver()
+        receiver.cancel()
+
+        provider.provideCompletions(
+            context: completionContext(
+                triggerKind: .invoked,
+                lineText: "",
+                cursorColumn: 0,
+                wordStart: 0,
+                wordEnd: 0
+            ),
+            receiver: receiver
+        )
+
+        #expect(receiver.wait(timeout: 0.4) == nil)
+    }
+
+    private func completionContext(
+        triggerKind: CompletionTriggerKind,
+        triggerCharacter: String? = nil,
+        lineText: String,
+        cursorColumn: Int32,
+        wordStart: Int32,
+        wordEnd: Int32
+    ) -> CompletionContext {
+        CompletionContext(
+            triggerKind: triggerKind,
+            triggerCharacter: triggerCharacter,
+            cursorPosition: TextPosition(line: 0, column: cursorColumn),
+            lineText: lineText,
+            wordRange: SweetEditorShared.TextRange(
+                start: TextPosition(line: 0, column: wordStart),
+                end: TextPosition(line: 0, column: wordEnd)
+            ),
+            languageConfiguration: nil,
+            editorMetadata: nil
+        )
+    }
 }
 
 private final class CapturingDecorationReceiver: DecorationReceiver {
@@ -162,5 +255,39 @@ private final class CapturingDecorationReceiver: DecorationReceiver {
     func accept(_ result: DecorationResult) -> Bool {
         self.result = result
         return true
+    }
+}
+
+private final class CapturingCompletionReceiver: CompletionReceiver {
+    private let lock = NSLock()
+    private let semaphore = DispatchSemaphore(value: 0)
+    private var result: CompletionResult?
+    private var cancelled = false
+
+    var isCancelled: Bool {
+        lock.withLock { cancelled }
+    }
+
+    func cancel() {
+        lock.withLock {
+            cancelled = true
+        }
+    }
+
+    func accept(_ result: CompletionResult) -> Bool {
+        let accepted = lock.withLock {
+            guard !cancelled else { return false }
+            self.result = result
+            return true
+        }
+        if accepted {
+            semaphore.signal()
+        }
+        return accepted
+    }
+
+    func wait(timeout: TimeInterval) -> CompletionResult? {
+        guard semaphore.wait(timeout: .now() + timeout) == .success else { return nil }
+        return lock.withLock { result }
     }
 }

@@ -85,6 +85,9 @@ struct DemoEditorContainer: UIViewRepresentable {
         )
         context.coordinator.decorationProvider = decorationProvider
         view.attachDecorationProvider(decorationProvider)
+        let completionProvider = DemoCompletionProvider()
+        context.coordinator.completionProvider = completionProvider
+        view.attachCompletionProvider(completionProvider)
         editorHandle.bind(view)
 
         applyState(to: view, coordinator: context.coordinator)
@@ -123,6 +126,7 @@ struct DemoEditorContainer: UIViewRepresentable {
 
     final class Coordinator {
         var decorationProvider: SweetLineDecorationProvider?
+        var completionProvider: DemoCompletionProvider?
         var fileName: String?
         var lastReloadToken: Int?
         var lastIsDarkTheme: Bool?

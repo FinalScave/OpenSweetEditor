@@ -183,7 +183,17 @@ final class CompletionPopupController {
             : .clear
         cell.isUserInteractionEnabled = true
 
-        let label = UILabel(frame: CGRect(x: 8, y: 0, width: frame.width * 0.6, height: frame.height))
+        let badge = UILabel(frame: CGRect(x: 6, y: 3, width: 18, height: 18))
+        badge.backgroundColor = kindColor(item.kind)
+        badge.layer.cornerRadius = 6
+        badge.clipsToBounds = true
+        badge.text = item.kindAbbreviation
+        badge.font = UIFont.systemFont(ofSize: 10, weight: .bold)
+        badge.textColor = .white
+        badge.textAlignment = .center
+        cell.addSubview(badge)
+
+        let label = UILabel(frame: CGRect(x: 32, y: 0, width: frame.width * 0.5, height: frame.height))
         label.text = item.label
         label.font = UIFont.monospacedSystemFont(ofSize: 13, weight: .regular)
         label.textColor = UIColor(cgColor: theme.completionLabelColor)
@@ -205,6 +215,20 @@ final class CompletionPopupController {
             cell.addSubview(detailLabel)
         }
         return cell
+    }
+
+    private func kindColor(_ kind: Int) -> UIColor {
+        switch kind {
+        case CompletionItem.kindKeyword: return UIColor(red: 0.78, green: 0.47, blue: 0.87, alpha: 1)
+        case CompletionItem.kindFunction: return UIColor(red: 0.38, green: 0.69, blue: 0.94, alpha: 1)
+        case CompletionItem.kindVariable: return UIColor(red: 0.90, green: 0.75, blue: 0.48, alpha: 1)
+        case CompletionItem.kindClass: return UIColor(red: 0.88, green: 0.42, blue: 0.46, alpha: 1)
+        case CompletionItem.kindInterface: return UIColor(red: 0.34, green: 0.71, blue: 0.76, alpha: 1)
+        case CompletionItem.kindModule: return UIColor(red: 0.82, green: 0.60, blue: 0.40, alpha: 1)
+        case CompletionItem.kindProperty: return UIColor(red: 0.60, green: 0.76, blue: 0.47, alpha: 1)
+        case CompletionItem.kindSnippet: return UIColor(red: 0.75, green: 0.40, blue: 0.36, alpha: 1)
+        default: return UIColor(cgColor: theme.completionDetailColor)
+        }
     }
 }
 #endif

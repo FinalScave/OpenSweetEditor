@@ -208,11 +208,21 @@ final class CompletionPopupController {
                 ? controller.theme.completionSelectedBgColor
                 : NSColor.clear.cgColor
 
+            let badge = NSTextField(labelWithString: item.kindAbbreviation)
+            badge.font = NSFont.systemFont(ofSize: 10, weight: .bold)
+            badge.textColor = .white
+            badge.alignment = .center
+            badge.wantsLayer = true
+            badge.layer?.backgroundColor = controller.kindColor(item.kind).cgColor
+            badge.layer?.cornerRadius = 6
+            badge.frame = NSRect(x: 6, y: 3, width: 18, height: 18)
+            cell.addSubview(badge)
+
             let label = NSTextField(labelWithString: item.label)
             label.font = NSFont.monospacedSystemFont(ofSize: 12, weight: .regular)
             label.textColor = controller.color(controller.theme.completionLabelColor)
             label.lineBreakMode = .byTruncatingTail
-            label.frame = NSRect(x: 8, y: 3, width: 166, height: 18)
+            label.frame = NSRect(x: 32, y: 3, width: 142, height: 18)
             cell.addSubview(label)
 
             if let detail = item.detail {
@@ -234,6 +244,20 @@ final class CompletionPopupController {
                 controller.selectedIndex = row
                 controller.confirmSelected()
             }
+        }
+    }
+
+    private func kindColor(_ kind: Int) -> NSColor {
+        switch kind {
+        case CompletionItem.kindKeyword: return NSColor(red: 0.78, green: 0.47, blue: 0.87, alpha: 1)
+        case CompletionItem.kindFunction: return NSColor(red: 0.38, green: 0.69, blue: 0.94, alpha: 1)
+        case CompletionItem.kindVariable: return NSColor(red: 0.90, green: 0.75, blue: 0.48, alpha: 1)
+        case CompletionItem.kindClass: return NSColor(red: 0.88, green: 0.42, blue: 0.46, alpha: 1)
+        case CompletionItem.kindInterface: return NSColor(red: 0.34, green: 0.71, blue: 0.76, alpha: 1)
+        case CompletionItem.kindModule: return NSColor(red: 0.82, green: 0.60, blue: 0.40, alpha: 1)
+        case CompletionItem.kindProperty: return NSColor(red: 0.60, green: 0.76, blue: 0.47, alpha: 1)
+        case CompletionItem.kindSnippet: return NSColor(red: 0.75, green: 0.40, blue: 0.36, alpha: 1)
+        default: return color(theme.completionDetailColor)
         }
     }
 }

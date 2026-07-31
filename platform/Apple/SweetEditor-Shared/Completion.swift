@@ -19,7 +19,6 @@ public enum CompletionTriggerKind {
 public struct CompletionItem {
     public let label: String
     public var detail: String?
-    public var iconId: Int = 0
     public var insertText: String?
     public var insertTextFormat: Int = CompletionItem.insertTextFormatPlainText
     public var textEdit: TextEdit?
@@ -45,6 +44,21 @@ public struct CompletionItem {
     /// VSCode snippet format (supports placeholders like $1, ${1:default}, $0).
     public static let insertTextFormatSnippet = 2
 
+    package var kindAbbreviation: String {
+        switch kind {
+        case Self.kindKeyword: return "K"
+        case Self.kindFunction: return "F"
+        case Self.kindVariable: return "V"
+        case Self.kindClass: return "C"
+        case Self.kindInterface: return "I"
+        case Self.kindModule: return "M"
+        case Self.kindProperty: return "P"
+        case Self.kindSnippet: return "S"
+        case Self.kindText: return "T"
+        default: return "?"
+        }
+    }
+
     public init(
         label: String,
         detail: String? = nil,
@@ -54,12 +68,10 @@ public struct CompletionItem {
         textEdit: TextEdit? = nil,
         additionalTextEdits: [TextEdit] = [],
         filterText: String? = nil,
-        sortKey: String? = nil,
-        iconId: Int = 0
+        sortKey: String? = nil
     ) {
         self.label = label
         self.detail = detail
-        self.iconId = iconId
         self.insertText = insertText
         self.insertTextFormat = insertTextFormat
         self.textEdit = textEdit
@@ -251,6 +263,8 @@ package final class CompletionProviderManager {
             triggerCompletion(.character, triggerCharacter: triggerText)
         } else if completionActive {
             triggerCompletion(.retrigger)
+        } else if shouldAutoTriggerCompletion(for: change.new_text, source: result.source) {
+            triggerCompletion(.invoked)
         } else {
             invalidate()
         }
@@ -329,6 +343,16 @@ package final class CompletionProviderManager {
         } else {
             displayedGeneration = generation
             onItemsUpdated(mergedItems)
+        }
+    }
+
+    private func shouldAutoTriggerCompletion(
+        for text: String,
+        source: EditorActionSource
+    ) -> Bool {
+        guard source == .KEYBOARD || source == .IME, text.count == 1 else { return false }
+        return text.unicodeScalars.allSatisfy {
+            $0.value == 0x5F || CharacterSet.alphanumerics.contains($0)
         }
     }
 

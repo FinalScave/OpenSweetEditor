@@ -50,7 +50,11 @@ public class SweetEditorView: UIView, UIKeyInput, UITextInput, UITextInputTraits
     public private(set) var languageConfiguration: LanguageConfiguration?
 
     /// Extensible metadata supplied by external callers (cast to concrete type when used).
-    public var metadata: EditorMetadata?
+    public var metadata: EditorMetadata? {
+        didSet {
+            decorationProviderManager?.requestRefresh()
+        }
+    }
 
     // UIKeyInput
     public var hasText: Bool { (document?.editingUTF16Length ?? 0) > 0 }
@@ -570,24 +574,25 @@ public class SweetEditorView: UIView, UIKeyInput, UITextInput, UITextInputTraits
     /// Sets language configuration and syncs bracket pairs to the Core layer.
     public func setLanguageConfiguration(_ config: LanguageConfiguration?) {
         self.languageConfiguration = config
-        guard let config = config else { return }
+        let brackets = config?.brackets ?? []
+        let opens = brackets.map { Int32($0.open.unicodeScalars.first?.value ?? 0) }
+        let closes = brackets.map { Int32($0.close.unicodeScalars.first?.value ?? 0) }
+        dispatchEditorActionResult(editorCore.setBracketPairs(openChars: opens, closeChars: closes))
 
-        if let brackets = config.brackets {
-            let opens = brackets.map { Int32(($0.open.unicodeScalars.first?.value ?? 0)) }
-            let closes = brackets.map { Int32(($0.close.unicodeScalars.first?.value ?? 0)) }
-            dispatchEditorActionResult(editorCore.setBracketPairs(openChars: opens, closeChars: closes))
-        }
-        if let acPairs = config.autoClosingPairs {
-            let acOpens = acPairs.map { Int32(($0.open.unicodeScalars.first?.value ?? 0)) }
-            let acCloses = acPairs.map { Int32(($0.close.unicodeScalars.first?.value ?? 0)) }
-            dispatchEditorActionResult(editorCore.setAutoClosingPairs(openChars: acOpens, closeChars: acCloses))
-        }
-        if let tabSize = config.tabSize, tabSize > 0 {
-            dispatchEditorActionResult(editorCore.setTabSize(tabSize))
-        }
-        if let insertSpaces = config.insertSpaces {
-            dispatchEditorActionResult(editorCore.setInsertSpaces(insertSpaces))
-        }
+        let autoClosingPairs = config?.autoClosingPairs ?? []
+        let autoClosingOpens = autoClosingPairs.map { Int32($0.open.unicodeScalars.first?.value ?? 0) }
+        let autoClosingCloses = autoClosingPairs.map { Int32($0.close.unicodeScalars.first?.value ?? 0) }
+        dispatchEditorActionResult(editorCore.setAutoClosingPairs(
+            openChars: autoClosingOpens,
+            closeChars: autoClosingCloses
+        ))
+
+        let tabSize = config?.tabSize ?? LanguageConfiguration.defaultTabSize
+        dispatchEditorActionResult(editorCore.setTabSize(
+            tabSize > 0 ? tabSize : LanguageConfiguration.defaultTabSize
+        ))
+        dispatchEditorActionResult(editorCore.setInsertSpaces(config?.insertSpaces ?? false))
+        decorationProviderManager?.requestRefresh()
     }
 
     // MARK: - EditorMetadata
@@ -1406,50 +1411,13 @@ public class SweetEditorView: UIView, UIKeyInput, UITextInput, UITextInputTraits
                 }
             }
 
-            // Manually trigger completion via Cmd+Space.
-            if key.modifierFlags.contains(.command) && key.keyCode == .keyboardSpacebar {
-                triggerCompletion()
-                handled = true
-                continue
-            }
-
-            // Handle Cmd+key shortcuts directly
-            if key.modifierFlags.contains(.command) {
-                switch key.keyCode {
-                case .keyboardA:
-                    selectAll()
-                    handled = true
-                case .keyboardC:
-                    handled = copyToClipboard()
-                case .keyboardV:
-                    if UIPasteboard.general.string != nil {
-                        pasteFromClipboard()
-                        handled = true
-                    }
-                case .keyboardX:
-                    handled = cutToClipboard()
-                case .keyboardZ:
-                    let editResult: EditorActionResult?
-                    if key.modifierFlags.contains(.shift) {
-                        editResult = editorCore.redo()
-                    } else {
-                        editResult = editorCore.undo()
-                    }
-                    dispatchEditorActionResult(editResult)
-                    handled = true
-                default:
-                    break
-                }
-                continue
-            }
-
-            // Non-shortcut keys
             let keyCode = mapUIKeyToKeyCode(key)
             if keyCode != KeyCode.NONE {
                 let mods = modifiersFromUIKey(key)
                 let result = editorCore.handleKeyEvent(keyCode: keyCode, modifiers: mods)
-                dispatchEditorActionResult(result)
                 if result.handled {
+                    dispatchEditorActionResult(result)
+                    performHostCommand(result.command)
                     handled = true
                 }
             }
@@ -1481,6 +1449,15 @@ public class SweetEditorView: UIView, UIKeyInput, UITextInput, UITextInputTraits
         case .keyboardEnd: return KeyCode.END
         case .keyboardPageUp: return KeyCode.PAGE_UP
         case .keyboardPageDown: return KeyCode.PAGE_DOWN
+        case .keyboardSpacebar: return KeyCode.SPACE
+        case .keyboardA: return KeyCode.A
+        case .keyboardC: return KeyCode.C
+        case .keyboardD: return KeyCode.D
+        case .keyboardK: return KeyCode.K
+        case .keyboardV: return KeyCode.V
+        case .keyboardX: return KeyCode.X
+        case .keyboardY: return KeyCode.Y
+        case .keyboardZ: return KeyCode.Z
         default: return KeyCode.NONE
         }
     }
@@ -1492,6 +1469,21 @@ public class SweetEditorView: UIView, UIKeyInput, UITextInput, UITextInputTraits
         if key.modifierFlags.contains(.alternate) { mods |= KeyModifier.ALT }
         if key.modifierFlags.contains(.command) { mods |= KeyModifier.META }
         return mods
+    }
+
+    private func performHostCommand(_ command: Int32) {
+        switch EditorBuiltinCommand.fromValue(command) {
+        case .COPY:
+            _ = copyToClipboard()
+        case .PASTE:
+            pasteFromClipboard()
+        case .CUT:
+            _ = cutToClipboard()
+        case .TRIGGER_COMPLETION:
+            triggerCompletion()
+        default:
+            break
+        }
     }
 
     private func textChanges(from result: EditorActionResult?) -> [TextChange] {

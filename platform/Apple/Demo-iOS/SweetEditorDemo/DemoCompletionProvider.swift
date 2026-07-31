@@ -1,17 +1,14 @@
 import Foundation
-import SweetEditorMacOS
+import SweetEditorIOS
 
-/// Demonstrates immediate member completion and delayed LSP-style completion.
-public final class DemoCompletionProvider: CompletionProvider {
+final class DemoCompletionProvider: CompletionProvider {
     private static let triggerCharacters: Set<String> = [".", ":"]
 
-    public init() {}
-
-    public func isTriggerCharacter(_ ch: String) -> Bool {
+    func isTriggerCharacter(_ ch: String) -> Bool {
         Self.triggerCharacters.contains(ch)
     }
 
-    public func provideCompletions(context: CompletionContext, receiver: CompletionReceiver) {
+    func provideCompletions(context: CompletionContext, receiver: CompletionReceiver) {
         if context.triggerKind == .character && context.triggerCharacter == "." {
             receiver.accept(CompletionResult(items: Self.memberItems()))
             return
@@ -79,7 +76,7 @@ public final class DemoCompletionProvider: CompletionProvider {
 
     private static func identifierPrefix(
         in context: CompletionContext,
-        range: SweetEditorMacOS.TextRange?
+        range: SweetEditorIOS.TextRange?
     ) -> String {
         guard let range else { return "" }
         let start = Int(range.start.column)
@@ -89,7 +86,7 @@ public final class DemoCompletionProvider: CompletionProvider {
         return String(decoding: codeUnits[start..<cursor], as: UTF16.self)
     }
 
-    private static func identifierRange(in context: CompletionContext) -> SweetEditorMacOS.TextRange? {
+    private static func identifierRange(in context: CompletionContext) -> SweetEditorIOS.TextRange? {
         let range = context.wordRange
         let line = context.cursorPosition.line
         let cursorColumn = Int(context.cursorPosition.column)
