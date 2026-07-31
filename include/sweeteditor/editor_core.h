@@ -190,10 +190,6 @@ namespace NS_SWEETEDITOR {
 
 #pragma region[Rendering & Input]
 
-    /// Get editor text-style registry
-    /// @return Text-style registry
-    SharedPtr<TextStyleRegistry> getTextStyleRegistry() const;
-
     /// Build editor render model
     /// @param model Input EditorRenderModel
     void buildRenderModel(EditorRenderModel& model);
@@ -712,8 +708,8 @@ namespace NS_SWEETEDITOR {
     SharedPtr<TextMeasurer> m_measurer_;
     EditorOptions m_options_;
     EditorSettings m_settings_;
+    TextStyleRegistry m_text_styles_;
     SharedPtr<Document> m_document_;
-    SharedPtr<DecorationManager> m_decorations_;
     UniquePtr<TextLayout> m_text_layout_;
     UniquePtr<EditorInteraction> m_interaction_;
     UniquePtr<RenderModelComposer> m_render_model_composer_;
@@ -881,7 +877,7 @@ namespace NS_SWEETEDITOR {
     bool toggleFoldAtInternal(size_t line);
     void foldAllInternal();
     void unfoldAllInternal();
-    /// Sync fold state in DecorationManager to each LogicalLine.is_fold_hidden
+    /// Sync fold state in Decorations to each LogicalLine.is_fold_hidden
     void syncFoldState();
 
     /// Auto unfold when edit range overlaps folded region

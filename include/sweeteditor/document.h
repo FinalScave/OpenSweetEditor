@@ -8,6 +8,7 @@
 #include <cstdint>
 #include <sweeteditor/foundation.h>
 #include <sweeteditor/buffer.h>
+#include <sweeteditor/decoration.h>
 #include <sweeteditor/visual.h>
 
 namespace NS_SWEETEDITOR {
@@ -116,11 +117,22 @@ namespace NS_SWEETEDITOR {
     /// Get UTF-16 text reference of specified line, refreshing cache if dirty
     virtual const U16String& getLineU16TextRef(size_t line) = 0;
 
+    /// Get mutable document decorations
+    /// @return Mutable document decorations
+    Decorations& getDecorations() { return m_decorations_; }
+
+    /// Get read-only document decorations
+    /// @return Read-only document decorations
+    const Decorations& getDecorations() const { return m_decorations_; }
+
   protected:
     /// Refresh cached data for specified line (reload text from storage, update char offsets, etc.)
     /// @param index Line index
     /// @param logical_line Logical line to refresh (is_u16_dirty flag will be cleared)
     virtual void updateDirtyLine(size_t index, LogicalLine& logical_line) = 0;
+
+  private:
+    Decorations m_decorations_;
   };
 
   /// Text segment type

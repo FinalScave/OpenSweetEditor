@@ -591,3 +591,35 @@ TEST_CASE("EditorCore line-start word selection end handle can cross CodeLens vi
   CHECK(up.handled);
   CHECK_FALSE(up.hasActiveInteraction());
 }
+
+TEST_CASE("EditorCore keeps decorations with their document across document switches") {
+  EditorOptions options;
+  EditorCore editor(makeShared<FixedWidthTextMeasurer>(10.0f), options);
+  SharedPtr<Document> first_document = makeShared<LineArrayDocument>("alpha\nbeta");
+  SharedPtr<Document> second_document = makeShared<LineArrayDocument>("plain");
+
+  constexpr uint32_t style_id = 7;
+  constexpr int32_t text_color = static_cast<int32_t>(0xFF123456u);
+  editor.registerTextStyle(style_id, TextStyle{text_color, 0, FONT_STYLE_NORMAL});
+  editor.loadDocument(first_document);
+  editor.setViewport({420, 160});
+  editor.setLineSpans(0, SpanLayer::SYNTAX, {{0, 5, style_id}});
+  editor.setFoldRegions({{0, 1, true}});
+
+  REQUIRE_FALSE(editor.isLineVisible(1));
+  REQUIRE(first_document->getDecorations().getLineSpans(0, SpanLayer::SYNTAX).size() == 1);
+
+  editor.loadDocument(second_document);
+  CHECK(second_document->getDecorations().getLineSpans(0, SpanLayer::SYNTAX).empty());
+  CHECK(editor.isLineVisible(0));
+
+  editor.loadDocument(first_document);
+  CHECK_FALSE(editor.isLineVisible(1));
+  REQUIRE(first_document->getDecorations().getLineSpans(0, SpanLayer::SYNTAX).size() == 1);
+
+  EditorRenderModel model;
+  editor.buildRenderModel(model);
+  REQUIRE_FALSE(model.lines.empty());
+  const VisualRun& text_run = findFirstRunOfType(model.lines.front(), VisualRunType::TEXT);
+  CHECK(text_run.style.color == text_color);
+}

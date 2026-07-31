@@ -22,10 +22,9 @@ namespace NS_SWEETEDITOR {
   }
 
 #pragma region[Class: TextLayout]
-  TextLayout::TextLayout(const SharedPtr<TextMeasurer>& measurer,
-                         const SharedPtr<DecorationManager>& decoration_manager)
+  TextLayout::TextLayout(const SharedPtr<TextMeasurer>& measurer, const TextStyleRegistry& text_styles)
       : m_measurer_(measurer),
-        m_decoration_manager_(decoration_manager) {
+        m_text_styles_(text_styles) {
     resetMeasurer();
   }
 
@@ -127,7 +126,7 @@ namespace NS_SWEETEDITOR {
     layoutLineIntoVisualLines(index, line_text, logical_line.start_y, logical_line.visual_lines);
 
     // Collapsed first line: append fold placeholder + tail-line content
-    if (m_decoration_manager_->getFoldStateForLine(index) == 2 && !logical_line.visual_lines.empty()) {
+    if (m_document_->getDecorations().getFoldStateForLine(index) == 2 && !logical_line.visual_lines.empty()) {
       appendFoldTailRuns(index, line_text, logical_line);
     }
 
@@ -196,7 +195,7 @@ namespace NS_SWEETEDITOR {
         if (visual_line.owns_gutter_semantics && m_layout_metrics_.gutter_visible) {
           buildGutterIconRenderItems(i, screen_y, gutter_offset, model.gutter_icons);
           // Set fold state (used by platform to draw fold/unfold arrow)
-          int fs = m_decoration_manager_->getFoldStateForLine(i);
+          int fs = m_document_->getDecorations().getFoldStateForLine(i);
           visual_line.fold_state = static_cast<FoldState>(fs);
           FoldMarkerRenderItem fold_marker;
           if (buildFoldMarkerRenderItem(i, screen_y, gutter_offset, fold_marker)) {
@@ -445,7 +444,7 @@ namespace NS_SWEETEDITOR {
 
       // Fold marker hit-test
       const bool show_fold_arrows = m_layout_metrics_.shouldShowFoldArrows();
-      const int fold_state = m_decoration_manager_->getFoldStateForLine(hit_line);
+      const int fold_state = m_document_->getDecorations().getFoldStateForLine(hit_line);
       if (show_fold_arrows && fold_state != 0) {
         const float fold_width = m_layout_metrics_.foldArrowAreaWidth();
         if (fold_width > 0) {
@@ -458,7 +457,7 @@ namespace NS_SWEETEDITOR {
       }
 
       // Gutter icon hit-test
-      const Vector<GutterIcon>& gutter_icons = m_decoration_manager_->getLineGutterIcons(hit_line);
+      const Vector<GutterIcon>& gutter_icons = m_document_->getDecorations().getLineGutterIcons(hit_line);
       if (!gutter_icons.empty() && icon_size > 0 && screen_point.y >= item_top
           && screen_point.y < item_top + icon_size) {
         if (m_layout_metrics_.max_gutter_icons == 0) {
@@ -529,7 +528,7 @@ namespace NS_SWEETEDITOR {
       } else if (run.type == VisualRunType::LINK) {
         if (click_x >= run_x && click_x < run_right) {
           const size_t source_line = runSourceLine(vl, run);
-          LineLayoutDecorations decorations = m_decoration_manager_->getLineLayoutDecorations(source_line);
+          LineLayoutDecorations decorations = m_document_->getDecorations().getLineLayoutDecorations(source_line);
           for (const LinkSpan& link : decorations.links) {
             if (run.column >= link.column && run.column < static_cast<size_t>(link.column) + link.length) {
               return {HitTargetType::LINK, source_line, link.column, 0};
@@ -561,8 +560,7 @@ namespace NS_SWEETEDITOR {
     size_t target_col = std::min(position.column, source_text.length());
     size_t owner_line = position.line;
     if (!resolveSourceVisualOwnerLine(position.line, target_col, target_col, true, owner_line)) {
-      const FoldRegion* fold_region =
-          m_decoration_manager_ != nullptr ? m_decoration_manager_->getFoldRegionForLine(position.line) : nullptr;
+      const FoldRegion* fold_region = m_document_->getDecorations().getFoldRegionForLine(position.line);
       if (fold_region != nullptr && fold_region->start_line < logical_lines.size()) {
         return getPositionScreenCoord({fold_region->start_line, m_document_->getLineColumns(fold_region->start_line)});
       }
@@ -902,7 +900,7 @@ namespace NS_SWEETEDITOR {
   }
 
   bool TextLayout::buildFoldTailProjection(const FoldRegion& region, FoldTailProjection& out_projection) {
-    if (m_document_ == nullptr || m_decoration_manager_ == nullptr) {
+    if (m_document_ == nullptr) {
       return false;
     }
     const auto& lines = m_document_->getLogicalLines();
@@ -928,7 +926,7 @@ namespace NS_SWEETEDITOR {
   }
 
   bool TextLayout::resolveFoldTailProjectionForOwnerLine(size_t owner_line, FoldTailProjection& out_projection) {
-    if (m_document_ == nullptr || m_decoration_manager_ == nullptr) {
+    if (m_document_ == nullptr) {
       return false;
     }
     const auto& lines = m_document_->getLogicalLines();
@@ -936,7 +934,7 @@ namespace NS_SWEETEDITOR {
       return false;
     }
 
-    for (const FoldRegion& region : m_decoration_manager_->getFoldRegions()) {
+    for (const FoldRegion& region : m_document_->getDecorations().getFoldRegions()) {
       if (region.start_line != owner_line) {
         continue;
       }
@@ -948,7 +946,7 @@ namespace NS_SWEETEDITOR {
   }
 
   bool TextLayout::resolveFoldTailProjectionForSourceLine(size_t source_line, FoldTailProjection& out_projection) {
-    if (m_document_ == nullptr || m_decoration_manager_ == nullptr) {
+    if (m_document_ == nullptr) {
       return false;
     }
     const auto& lines = m_document_->getLogicalLines();
@@ -958,7 +956,7 @@ namespace NS_SWEETEDITOR {
 
     bool found = false;
     FoldTailProjection best_projection;
-    for (const FoldRegion& region : m_decoration_manager_->getFoldRegions()) {
+    for (const FoldRegion& region : m_document_->getDecorations().getFoldRegions()) {
       if (region.end_line != source_line || region.start_line >= lines.size()
           || lines[region.start_line].is_fold_hidden) {
         continue;
@@ -1102,7 +1100,7 @@ namespace NS_SWEETEDITOR {
         if (prev.height >= 0) {
           h = prev.height;
         } else {
-          bool has_codelens = !m_decoration_manager_->getLineCodeLens(i - 1).empty();
+          bool has_codelens = !m_document_->getDecorations().getLineCodeLens(i - 1).empty();
           h = has_codelens ? default_height * 2 : default_height;
         }
         if (h == run_height && run_count > 0) {
@@ -1202,14 +1200,14 @@ namespace NS_SWEETEDITOR {
     float line_height = getLineHeight();
     const float base_start_y = start_y; // Save original start_y for phantom continuation y calculation
 
-    const Vector<CodeLensItem>& line_codelens_items = m_decoration_manager_->getLineCodeLens(line_index);
+    const Vector<CodeLensItem>& line_codelens_items = m_document_->getDecorations().getLineCodeLens(line_index);
     const bool has_codelens = !line_codelens_items.empty();
     if (has_codelens) {
       start_y += line_height;
     }
 
     // Build runs for original line (includes first phantom line segment)
-    LineLayoutDecorations decorations = m_decoration_manager_->getLineLayoutDecorations(line_index);
+    LineLayoutDecorations decorations = m_document_->getDecorations().getLineLayoutDecorations(line_index);
     Vector<VisualRun> all_runs;
     buildLineRuns(line_index, line_text, decorations, all_runs);
 
@@ -1476,7 +1474,7 @@ namespace NS_SWEETEDITOR {
     auto findSpanStyle = [&](uint32_t col) -> TextStyle {
       for (const auto& span : merged_spans) {
         if (col >= span.column && col < span.column + span.length) {
-          return m_decoration_manager_->getTextStyleRegistry()->getStyle(span.style_id);
+          return m_text_styles_.getStyle(span.style_id);
         }
       }
       return {};
@@ -1747,7 +1745,7 @@ namespace NS_SWEETEDITOR {
       if (run.type == VisualRunType::LINK) {
         auto it = line_decoration_cache.find(source_line);
         if (it == line_decoration_cache.end()) {
-          LineLayoutDecorations decorations = m_decoration_manager_->getLineLayoutDecorations(source_line);
+          LineLayoutDecorations decorations = m_document_->getDecorations().getLineLayoutDecorations(source_line);
           it = line_decoration_cache.emplace(source_line, std::move(decorations)).first;
         }
         for (const LinkSpan& link : it->second.links) {
@@ -2266,7 +2264,7 @@ namespace NS_SWEETEDITOR {
     const U16String& end_text = m_document_->getLineU16TextRef(end_line_idx);
 
     // Use buildLineRuns to get complete runs for the tail line (with highlight styles)
-    LineLayoutDecorations end_decorations = m_decoration_manager_->getLineLayoutDecorations(end_line_idx);
+    LineLayoutDecorations end_decorations = m_document_->getDecorations().getLineLayoutDecorations(end_line_idx);
     Vector<VisualRun> end_runs;
     buildLineRuns(end_line_idx, end_text, end_decorations, end_runs);
 
@@ -2360,7 +2358,7 @@ namespace NS_SWEETEDITOR {
 
   void TextLayout::buildGutterIconRenderItems(size_t logical_line, float line_top_screen, float gutter_offset,
                                               Vector<GutterIconRenderItem>& out_items) const {
-    const Vector<GutterIcon>& gutter_icons = m_decoration_manager_->getLineGutterIcons(logical_line);
+    const Vector<GutterIcon>& gutter_icons = m_document_->getDecorations().getLineGutterIcons(logical_line);
     if (gutter_icons.empty()) return;
 
     const float line_height = getLineHeight();
@@ -2398,7 +2396,7 @@ namespace NS_SWEETEDITOR {
   bool TextLayout::buildFoldMarkerRenderItem(size_t logical_line, float line_top_screen, float gutter_offset,
                                              FoldMarkerRenderItem& out_item) const {
     if (!m_layout_metrics_.shouldShowFoldArrows()) return false;
-    int fs = m_decoration_manager_->getFoldStateForLine(logical_line);
+    int fs = m_document_->getDecorations().getFoldStateForLine(logical_line);
     if (fs == 0) return false;
     const float fold_width = m_layout_metrics_.foldArrowAreaWidth();
     if (fold_width <= 0) return false;

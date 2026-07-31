@@ -59,10 +59,11 @@ namespace NS_SWEETEDITOR {
 
     /// Get text style info by style ID
     /// @param style_id Style ID
-    /// @return Matching text style info
-    TextStyle& getStyle(uint32_t style_id);
+    /// @return Matching text style info, or the default style if the ID is not registered
+    const TextStyle& getStyle(uint32_t style_id) const;
   private:
     HashMap<uint32_t, TextStyle> style_map_;
+    static const TextStyle kDefaultStyle;
   };
 
   /// Highlight span definition
@@ -240,12 +241,8 @@ namespace NS_SWEETEDITOR {
 #pragma endregion
 
   /// Operation interface for all embedded text and styles
-  class DecorationManager {
+  class Decorations {
   public:
-    DecorationManager();
-
-    SharedPtr<TextStyleRegistry> getTextStyleRegistry();
-
     LineLayoutDecorations getLineLayoutDecorations(size_t line) const;
 
     /// Set highlight spans for a given line and layer (externally provided, sorted by column ascending)
@@ -404,7 +401,6 @@ namespace NS_SWEETEDITOR {
   private:
     void ensureLineCapacity_(size_t line_count);
 
-    SharedPtr<TextStyleRegistry> m_text_style_reg_;
     std::array<Vector<Vector<StyleSpan>>, kSpanLayerCount> m_layer_spans_;
     Vector<Vector<InlayHint>> m_inlay_hints_;
     Vector<Vector<PhantomText>> m_phantom_texts_;

@@ -35,8 +35,7 @@ namespace NS_SWEETEDITOR {
       : m_measurer_(measurer),
         m_options_(options),
         m_key_resolver_(options.key_chord_timeout_ms) {
-    m_decorations_ = makeShared<DecorationManager>();
-    m_text_layout_ = makeUnique<TextLayout>(measurer, m_decorations_);
+    m_text_layout_ = makeUnique<TextLayout>(measurer, m_text_styles_);
     InteractionContext interaction_context;
     interaction_context.touch_config = options.simpleAsTouchConfig();
     interaction_context.settings = &m_settings_;
@@ -46,7 +45,7 @@ namespace NS_SWEETEDITOR {
     interaction_context.caret = &m_caret_;
     m_interaction_ = makeUnique<EditorInteraction>(interaction_context);
     m_render_model_composer_ =
-        makeUnique<RenderModelComposer>(*m_text_layout_, *m_decorations_, *m_measurer_, m_settings_, *m_interaction_);
+        makeUnique<RenderModelComposer>(*m_text_layout_, *m_measurer_, m_settings_, *m_interaction_);
     m_undo_manager_ = makeUnique<UndoManager>(options.max_undo_stack_size);
     m_key_resolver_.setKeyMap(KeyMap::createDefault());
     loadDocument(makeShared<LineArrayDocument>(""));
@@ -118,7 +117,6 @@ namespace NS_SWEETEDITOR {
     m_undo_manager_->clear();
     m_interaction_->resetForDocumentLoad();
     clearMatchedBrackets();
-    m_decorations_->clearAll();
     clearHoverHitTarget();
     clearPressHitTarget();
     m_mouse_button_down_ = false;
@@ -134,6 +132,7 @@ namespace NS_SWEETEDITOR {
 
     m_document_ = document;
     m_text_layout_->loadDocument(document);
+    m_text_layout_->getLayoutMetrics().has_fold_regions = !m_document_->getDecorations().getFoldRegions().empty();
     syncFoldState();
     m_caret_ = {};
     setCursorPositionInternal({});
@@ -193,7 +192,7 @@ namespace NS_SWEETEDITOR {
           if (lines[mid].height >= 0) {
             h = lines[mid].height;
           } else {
-            bool has_codelens = !m_decorations_->getLineCodeLens(mid).empty();
+            bool has_codelens = !m_document_->getDecorations().getLineCodeLens(mid).empty();
             h = has_codelens ? old_line_height * 2 : old_line_height;
           }
           if (line_y + h <= scroll_y) {
@@ -208,7 +207,7 @@ namespace NS_SWEETEDITOR {
         if (lines[anchor_line].height >= 0) {
           anchor_h = lines[anchor_line].height;
         } else {
-          bool has_codelens = !m_decorations_->getLineCodeLens(anchor_line).empty();
+          bool has_codelens = !m_document_->getDecorations().getLineCodeLens(anchor_line).empty();
           anchor_h = has_codelens ? old_line_height * 2 : old_line_height;
         }
         anchor_fraction = (anchor_h > 0) ? (scroll_y - anchor_y) / anchor_h : 0.0f;
@@ -236,7 +235,7 @@ namespace NS_SWEETEDITOR {
           if (line.height >= 0) {
             old_height = line.height;
           } else {
-            bool has_codelens = !m_decorations_->getLineCodeLens(line_index).empty();
+            bool has_codelens = !m_document_->getDecorations().getLineCodeLens(line_index).empty();
             old_height = has_codelens ? old_line_height * 2 : old_line_height;
           }
           return std::max(new_line_height, old_height * wrap_scale_ratio);
@@ -452,10 +451,6 @@ namespace NS_SWEETEDITOR {
 #pragma endregion
 
 #pragma region[Rendering & Input]
-
-  SharedPtr<TextStyleRegistry> EditorCore::getTextStyleRegistry() const {
-    return m_decorations_->getTextStyleRegistry();
-  }
 
   void EditorCore::buildRenderModel(EditorRenderModel& model) {
     drainPendingSearchResult();
@@ -1708,7 +1703,7 @@ namespace NS_SWEETEDITOR {
 
   EditorActionResult EditorCore::registerTextStyle(uint32_t style_id, TextStyle&& style) {
     const ActionSnapshot before = captureActionSnapshot();
-    m_decorations_->getTextStyleRegistry()->registerTextStyle(style_id, std::move(style));
+    m_text_styles_.registerTextStyle(style_id, std::move(style));
     markAllLinesDirty();
     return finishAction(before, EditorActionSource::DECORATION, true, {}, true, true);
   }
@@ -1716,9 +1711,8 @@ namespace NS_SWEETEDITOR {
   EditorActionResult EditorCore::registerBatchTextStyles(Vector<std::pair<uint32_t, TextStyle>>&& entries) {
     const ActionSnapshot before = captureActionSnapshot();
     if (entries.empty()) return finishAction(before, EditorActionSource::DECORATION, true);
-    auto registry = m_decorations_->getTextStyleRegistry();
     for (auto& [style_id, style] : entries) {
-      registry->registerTextStyle(style_id, std::move(style));
+      m_text_styles_.registerTextStyle(style_id, std::move(style));
     }
     markAllLinesDirty();
     return finishAction(before, EditorActionSource::DECORATION, true, {}, true, true);
@@ -1726,7 +1720,7 @@ namespace NS_SWEETEDITOR {
 
   EditorActionResult EditorCore::setLineSpans(size_t line, SpanLayer layer, Vector<StyleSpan>&& spans) {
     const ActionSnapshot before = captureActionSnapshot();
-    m_decorations_->setLineSpans(line, layer, std::move(spans));
+    m_document_->getDecorations().setLineSpans(line, layer, std::move(spans));
     if (hasComposition()) {
       markAllLinesDirty();
       return finishAction(before, EditorActionSource::DECORATION, true, {}, true, true);
@@ -1746,7 +1740,7 @@ namespace NS_SWEETEDITOR {
     auto& lines = m_document_->getLogicalLines();
     size_t min_line = entries[0].first;
     for (auto& [line, spans] : entries) {
-      m_decorations_->setLineSpans(line, layer, std::move(spans));
+      m_document_->getDecorations().setLineSpans(line, layer, std::move(spans));
       if (line < lines.size()) {
         lines[line].is_layout_dirty = true;
       }
@@ -1762,7 +1756,7 @@ namespace NS_SWEETEDITOR {
 
   EditorActionResult EditorCore::setLineInlayHints(size_t line, Vector<InlayHint>&& hints) {
     const ActionSnapshot before = captureActionSnapshot();
-    m_decorations_->setLineInlayHints(line, std::move(hints));
+    m_document_->getDecorations().setLineInlayHints(line, std::move(hints));
     if (hasComposition()) {
       markAllLinesDirty();
       return finishAction(before, EditorActionSource::DECORATION, true, {}, true, true);
@@ -1781,7 +1775,7 @@ namespace NS_SWEETEDITOR {
     auto& lines = m_document_->getLogicalLines();
     size_t min_line = entries[0].first;
     for (auto& [line, hints] : entries) {
-      m_decorations_->setLineInlayHints(line, std::move(hints));
+      m_document_->getDecorations().setLineInlayHints(line, std::move(hints));
       if (line < lines.size()) {
         lines[line].is_layout_dirty = true;
       }
@@ -1797,7 +1791,7 @@ namespace NS_SWEETEDITOR {
 
   EditorActionResult EditorCore::setLinePhantomTexts(size_t line, Vector<PhantomText>&& phantoms) {
     const ActionSnapshot before = captureActionSnapshot();
-    m_decorations_->setLinePhantomTexts(line, std::move(phantoms));
+    m_document_->getDecorations().setLinePhantomTexts(line, std::move(phantoms));
     if (hasComposition()) {
       markAllLinesDirty();
       return finishAction(before, EditorActionSource::DECORATION, true, {}, true, true);
@@ -1816,7 +1810,7 @@ namespace NS_SWEETEDITOR {
     auto& lines = m_document_->getLogicalLines();
     size_t min_line = entries[0].first;
     for (auto& [line, phantoms] : entries) {
-      m_decorations_->setLinePhantomTexts(line, std::move(phantoms));
+      m_document_->getDecorations().setLinePhantomTexts(line, std::move(phantoms));
       if (line < lines.size()) {
         lines[line].is_layout_dirty = true;
       }
@@ -1832,7 +1826,7 @@ namespace NS_SWEETEDITOR {
 
   EditorActionResult EditorCore::setLineGutterIcons(size_t line, Vector<GutterIcon>&& icons) {
     const ActionSnapshot before = captureActionSnapshot();
-    m_decorations_->setLineGutterIcons(line, std::move(icons));
+    m_document_->getDecorations().setLineGutterIcons(line, std::move(icons));
     return finishAction(before, EditorActionSource::DECORATION, true, {}, true, true);
   }
 
@@ -1840,7 +1834,7 @@ namespace NS_SWEETEDITOR {
     const ActionSnapshot before = captureActionSnapshot();
     if (entries.empty()) return finishAction(before, EditorActionSource::DECORATION, true);
     for (auto& [line, icons] : entries) {
-      m_decorations_->setLineGutterIcons(line, std::move(icons));
+      m_document_->getDecorations().setLineGutterIcons(line, std::move(icons));
     }
     return finishAction(before, EditorActionSource::DECORATION, true, {}, true, true);
   }
@@ -1857,7 +1851,7 @@ namespace NS_SWEETEDITOR {
 
   EditorActionResult EditorCore::setLineCodeLens(size_t line, Vector<CodeLensItem>&& items) {
     const ActionSnapshot before = captureActionSnapshot();
-    m_decorations_->setLineCodeLens(line, std::move(items));
+    m_document_->getDecorations().setLineCodeLens(line, std::move(items));
     auto& lines = m_document_->getLogicalLines();
     if (line < lines.size()) {
       lines[line].is_layout_dirty = true;
@@ -1872,7 +1866,7 @@ namespace NS_SWEETEDITOR {
     auto& lines = m_document_->getLogicalLines();
     size_t min_line = entries[0].first;
     for (auto& [line, items] : entries) {
-      m_decorations_->setLineCodeLens(line, std::move(items));
+      m_document_->getDecorations().setLineCodeLens(line, std::move(items));
       if (line < lines.size()) {
         lines[line].is_layout_dirty = true;
       }
@@ -1884,7 +1878,7 @@ namespace NS_SWEETEDITOR {
 
   EditorActionResult EditorCore::clearCodeLens() {
     const ActionSnapshot before = captureActionSnapshot();
-    m_decorations_->clearCodeLens();
+    m_document_->getDecorations().clearCodeLens();
     markAllLinesDirty();
     normalizeScrollState();
     return finishAction(before, EditorActionSource::DECORATION, true, {}, true, true);
@@ -1892,7 +1886,7 @@ namespace NS_SWEETEDITOR {
 
   EditorActionResult EditorCore::setLineLinks(size_t line, Vector<LinkSpan>&& links) {
     const ActionSnapshot before = captureActionSnapshot();
-    m_decorations_->setLineLinks(line, std::move(links));
+    m_document_->getDecorations().setLineLinks(line, std::move(links));
     if (hasComposition()) {
       markAllLinesDirty();
       return finishAction(before, EditorActionSource::DECORATION, true, {}, true, true);
@@ -1911,7 +1905,7 @@ namespace NS_SWEETEDITOR {
     auto& lines = m_document_->getLogicalLines();
     size_t min_line = entries[0].first;
     for (auto& [line, links] : entries) {
-      m_decorations_->setLineLinks(line, std::move(links));
+      m_document_->getDecorations().setLineLinks(line, std::move(links));
       if (line < lines.size()) {
         lines[line].is_layout_dirty = true;
       }
@@ -1927,14 +1921,14 @@ namespace NS_SWEETEDITOR {
 
   EditorActionResult EditorCore::clearLinks() {
     const ActionSnapshot before = captureActionSnapshot();
-    m_decorations_->clearLinks();
+    m_document_->getDecorations().clearLinks();
     markAllLinesDirty();
     normalizeScrollState();
     return finishAction(before, EditorActionSource::DECORATION, true, {}, true, true);
   }
 
   U8String EditorCore::getLinkTargetAt(size_t line, size_t column) const {
-    LineLayoutDecorations decorations = m_decorations_->getLineLayoutDecorations(line);
+    LineLayoutDecorations decorations = m_document_->getDecorations().getLineLayoutDecorations(line);
     for (const LinkSpan& link : decorations.links) {
       const size_t end = static_cast<size_t>(link.column) + link.length;
       if (column >= link.column && column < end) {
@@ -1946,7 +1940,7 @@ namespace NS_SWEETEDITOR {
 
   EditorActionResult EditorCore::setLineDiagnostics(size_t line, Vector<Diagnostic>&& diagnostics) {
     const ActionSnapshot before = captureActionSnapshot();
-    m_decorations_->setLineDiagnostics(line, std::move(diagnostics));
+    m_document_->getDecorations().setLineDiagnostics(line, std::move(diagnostics));
     return finishAction(before, EditorActionSource::DECORATION, true, {}, true, true);
   }
 
@@ -1954,20 +1948,20 @@ namespace NS_SWEETEDITOR {
     const ActionSnapshot before = captureActionSnapshot();
     if (entries.empty()) return finishAction(before, EditorActionSource::DECORATION, true);
     for (auto& [line, diagnostics] : entries) {
-      m_decorations_->setLineDiagnostics(line, std::move(diagnostics));
+      m_document_->getDecorations().setLineDiagnostics(line, std::move(diagnostics));
     }
     return finishAction(before, EditorActionSource::DECORATION, true, {}, true, true);
   }
 
   EditorActionResult EditorCore::clearDiagnostics() {
     const ActionSnapshot before = captureActionSnapshot();
-    m_decorations_->clearDiagnostics();
+    m_document_->getDecorations().clearDiagnostics();
     return finishAction(before, EditorActionSource::DECORATION, true, {}, true, true);
   }
 
   EditorActionResult EditorCore::setLineDocumentHighlights(size_t line, Vector<DocumentHighlight>&& highlights) {
     const ActionSnapshot before = captureActionSnapshot();
-    m_decorations_->setLineDocumentHighlights(line, std::move(highlights));
+    m_document_->getDecorations().setLineDocumentHighlights(line, std::move(highlights));
     return finishAction(before, EditorActionSource::DECORATION, true, {}, true, true);
   }
 
@@ -1976,38 +1970,38 @@ namespace NS_SWEETEDITOR {
     const ActionSnapshot before = captureActionSnapshot();
     if (entries.empty()) return finishAction(before, EditorActionSource::DECORATION, true);
     for (auto& [line, highlights] : entries) {
-      m_decorations_->setLineDocumentHighlights(line, std::move(highlights));
+      m_document_->getDecorations().setLineDocumentHighlights(line, std::move(highlights));
     }
     return finishAction(before, EditorActionSource::DECORATION, true, {}, true, true);
   }
 
   EditorActionResult EditorCore::clearDocumentHighlights() {
     const ActionSnapshot before = captureActionSnapshot();
-    m_decorations_->clearDocumentHighlights();
+    m_document_->getDecorations().clearDocumentHighlights();
     return finishAction(before, EditorActionSource::DECORATION, true, {}, true, true);
   }
 
   EditorActionResult EditorCore::setIndentGuides(Vector<IndentGuide>&& guides) {
     const ActionSnapshot before = captureActionSnapshot();
-    m_decorations_->setIndentGuides(std::move(guides));
+    m_document_->getDecorations().setIndentGuides(std::move(guides));
     return finishAction(before, EditorActionSource::DECORATION, true, {}, true, true);
   }
 
   EditorActionResult EditorCore::setBracketGuides(Vector<BracketGuide>&& guides) {
     const ActionSnapshot before = captureActionSnapshot();
-    m_decorations_->setBracketGuides(std::move(guides));
+    m_document_->getDecorations().setBracketGuides(std::move(guides));
     return finishAction(before, EditorActionSource::DECORATION, true, {}, true, true);
   }
 
   EditorActionResult EditorCore::setFlowGuides(Vector<FlowGuide>&& guides) {
     const ActionSnapshot before = captureActionSnapshot();
-    m_decorations_->setFlowGuides(std::move(guides));
+    m_document_->getDecorations().setFlowGuides(std::move(guides));
     return finishAction(before, EditorActionSource::DECORATION, true, {}, true, true);
   }
 
   EditorActionResult EditorCore::setSeparatorGuides(Vector<SeparatorGuide>&& guides) {
     const ActionSnapshot before = captureActionSnapshot();
-    m_decorations_->setSeparatorGuides(std::move(guides));
+    m_document_->getDecorations().setSeparatorGuides(std::move(guides));
     return finishAction(before, EditorActionSource::DECORATION, true, {}, true, true);
   }
 
@@ -2018,7 +2012,7 @@ namespace NS_SWEETEDITOR {
     if (had_fold_regions != m_text_layout_->getLayoutMetrics().has_fold_regions) {
       markAllLinesDirty();
     }
-    m_decorations_->setFoldRegions(std::move(regions));
+    m_document_->getDecorations().setFoldRegions(std::move(regions));
     syncFoldState();
     return finishAction(before, EditorActionSource::FOLDING, true, {}, true, true);
   }
@@ -2054,26 +2048,26 @@ namespace NS_SWEETEDITOR {
   }
 
   bool EditorCore::isLineVisible(size_t line) const {
-    return !m_decorations_->isLineHidden(line);
+    return !m_document_->getDecorations().isLineHidden(line);
   }
 
   EditorActionResult EditorCore::clearHighlights(SpanLayer layer) {
     const ActionSnapshot before = captureActionSnapshot();
-    m_decorations_->clearHighlights(layer);
+    m_document_->getDecorations().clearHighlights(layer);
     markAllLinesDirty();
     return finishAction(before, EditorActionSource::DECORATION, true, {}, true, true);
   }
 
   EditorActionResult EditorCore::clearHighlights() {
     const ActionSnapshot before = captureActionSnapshot();
-    m_decorations_->clearHighlights();
+    m_document_->getDecorations().clearHighlights();
     markAllLinesDirty();
     return finishAction(before, EditorActionSource::DECORATION, true, {}, true, true);
   }
 
   EditorActionResult EditorCore::clearInlayHints() {
     const ActionSnapshot before = captureActionSnapshot();
-    m_decorations_->clearInlayHints();
+    m_document_->getDecorations().clearInlayHints();
     markAllLinesDirty();
     normalizeScrollState();
     return finishAction(before, EditorActionSource::DECORATION, true, {}, true, true);
@@ -2081,7 +2075,7 @@ namespace NS_SWEETEDITOR {
 
   EditorActionResult EditorCore::clearPhantomTexts() {
     const ActionSnapshot before = captureActionSnapshot();
-    m_decorations_->clearPhantomTexts();
+    m_document_->getDecorations().clearPhantomTexts();
     markAllLinesDirty();
     normalizeScrollState();
     return finishAction(before, EditorActionSource::DECORATION, true, {}, true, true);
@@ -2089,21 +2083,21 @@ namespace NS_SWEETEDITOR {
 
   EditorActionResult EditorCore::clearGutterIcons() {
     const ActionSnapshot before = captureActionSnapshot();
-    m_decorations_->clearGutterIcons();
+    m_document_->getDecorations().clearGutterIcons();
     markAllLinesDirty();
     return finishAction(before, EditorActionSource::DECORATION, true, {}, true, true);
   }
 
   EditorActionResult EditorCore::clearGuides() {
     const ActionSnapshot before = captureActionSnapshot();
-    m_decorations_->clearGuides();
+    m_document_->getDecorations().clearGuides();
     markAllLinesDirty();
     return finishAction(before, EditorActionSource::DECORATION, true, {}, true, true);
   }
 
   EditorActionResult EditorCore::clearAllDecorations() {
     const ActionSnapshot before = captureActionSnapshot();
-    m_decorations_->clearAll();
+    m_document_->getDecorations().clearAll();
     markAllLinesDirty();
     return finishAction(before, EditorActionSource::DECORATION, true, {}, true, true);
   }
@@ -3226,7 +3220,7 @@ namespace NS_SWEETEDITOR {
         const bool projected_tail =
             m_text_layout_ != nullptr && m_text_layout_->isFoldTailProjectedPosition(m_caret_.active, true);
         if (!projected_tail) {
-          const FoldRegion* fr = m_decorations_->getFoldRegionForLine(m_caret_.active.line);
+          const FoldRegion* fr = m_document_->getDecorations().getFoldRegionForLine(m_caret_.active.line);
           if (fr != nullptr) {
             m_caret_.active.line = fr->start_line;
             m_caret_.active.column = m_document_->getLineColumns(fr->start_line);
@@ -3431,7 +3425,7 @@ namespace NS_SWEETEDITOR {
 
   void EditorCore::noteDocumentContentChanged() {
     const uint64_t generation = m_search_generation_->fetch_add(1) + 1;
-    m_decorations_->clearDocumentHighlights();
+    m_document_->getDecorations().clearDocumentHighlights();
     clearPendingSearchResult();
     if (m_search_state_.status == SearchStatus::INACTIVE) {
       SharedPtr<const SearchState> published_state = std::atomic_load(&m_published_search_state_);
@@ -3605,7 +3599,7 @@ namespace NS_SWEETEDITOR {
 
     for (auto it = pending.rbegin(); it != pending.rend(); ++it) {
       const TextPosition new_end = calcPositionAfterInsert(it->edit.range.start, it->edit.new_text);
-      m_decorations_->adjustForEdit(it->edit.range, new_end);
+      m_document_->getDecorations().adjustForEdit(it->edit.range, new_end);
       if (it->keep_fold_collapsed) {
         first_affected_line = std::min(first_affected_line, it->fold_tail_owner_line);
       }
@@ -3697,30 +3691,30 @@ namespace NS_SWEETEDITOR {
 #pragma region[Navigation & Decorations Internals]
 
   bool EditorCore::foldAtInternal(size_t line) {
-    bool result = m_decorations_->foldAt(line);
+    bool result = m_document_->getDecorations().foldAt(line);
     if (result) syncFoldState();
     return result;
   }
 
   bool EditorCore::unfoldAtInternal(size_t line) {
-    bool result = m_decorations_->unfoldAt(line);
+    bool result = m_document_->getDecorations().unfoldAt(line);
     if (result) syncFoldState();
     return result;
   }
 
   bool EditorCore::toggleFoldAtInternal(size_t line) {
-    bool result = m_decorations_->toggleFoldAt(line);
+    bool result = m_document_->getDecorations().toggleFoldAt(line);
     if (result) syncFoldState();
     return result;
   }
 
   void EditorCore::foldAllInternal() {
-    m_decorations_->foldAll();
+    m_document_->getDecorations().foldAll();
     syncFoldState();
   }
 
   void EditorCore::unfoldAllInternal() {
-    m_decorations_->unfoldAll();
+    m_document_->getDecorations().unfoldAll();
     syncFoldState();
   }
 
@@ -3737,7 +3731,7 @@ namespace NS_SWEETEDITOR {
       }
     }
     // Start line of each fold region needs relayout (fold state changes affect FOLD_PLACEHOLDER generation)
-    for (const auto& fr : m_decorations_->getFoldRegions()) {
+    for (const auto& fr : m_document_->getDecorations().getFoldRegions()) {
       const size_t start_line = fr.start_line;
       const size_t end_line = fr.end_line;
       if (start_line < lines.size()) {
@@ -3754,7 +3748,7 @@ namespace NS_SWEETEDITOR {
 
   void EditorCore::autoUnfoldForEdit(const TextRange& range) {
     bool unfolded = false;
-    for (auto& fr : m_decorations_->getFoldRegionsMut()) {
+    for (auto& fr : m_document_->getDecorations().getFoldRegionsMut()) {
       if (!fr.collapsed) continue;
       bool overlaps = range.start.line <= fr.end_line && range.end.line >= fr.start_line;
       if (overlaps) {

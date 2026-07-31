@@ -25,8 +25,8 @@ namespace NS_SWEETEDITOR {
 
   class RenderModelComposer {
   public:
-    RenderModelComposer(TextLayout& text_layout, DecorationManager& decorations, TextMeasurer& measurer,
-                        EditorSettings& settings, const EditorInteraction& interaction);
+    RenderModelComposer(TextLayout& text_layout, TextMeasurer& measurer, EditorSettings& settings,
+                        const EditorInteraction& interaction);
 
     void compose(EditorRenderModel& model, const RenderModelInput& input) const;
 
@@ -38,10 +38,11 @@ namespace NS_SWEETEDITOR {
     void composeCompositionEffects(EditorRenderModel& model, const RenderModelInput& input, float line_height) const;
     void composeSelection(EditorRenderModel& model, const RenderModelInput& input, float line_height) const;
     void composeSearchEffects(EditorRenderModel& model, const RenderModelInput& input, float line_height) const;
-    void composeDocumentHighlightEffects(EditorRenderModel& model, float line_height) const;
+    void composeDocumentHighlightEffects(EditorRenderModel& model, const RenderModelInput& input,
+                                         float line_height) const;
     void composeLinkedEditingEffects(EditorRenderModel& model, const RenderModelInput& input, float line_height) const;
     void composeGuides(EditorRenderModel& model, const RenderModelInput& input, float line_height) const;
-    void composeDiagnosticEffects(EditorRenderModel& model, float line_height) const;
+    void composeDiagnosticEffects(EditorRenderModel& model, const RenderModelInput& input, float line_height) const;
     void composeBracketMatchEffects(EditorRenderModel& model, const RenderModelInput& input, float line_height) const;
     void composeScrollbars(EditorRenderModel& model) const;
     void appendRangeEffectsForRange(EditorRenderModel& model, size_t line, size_t col_start, size_t col_end,
@@ -49,7 +50,6 @@ namespace NS_SWEETEDITOR {
                                     const RangeEffectStyle& style) const;
 
     TextLayout& m_text_layout_;
-    DecorationManager& m_decorations_;
     TextMeasurer& m_measurer_;
     EditorSettings& m_settings_;
     const EditorInteraction& m_interaction_;

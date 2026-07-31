@@ -9,8 +9,8 @@ using namespace NS_SWEETEDITOR;
 
 TEST_CASE("TextLayout hitTest matches getPositionScreenCoord in non-wrap mode") {
   SharedPtr<TextMeasurer> measurer = makeShared<FixedWidthTextMeasurer>(10.0f);
-  SharedPtr<DecorationManager> decorations = makeShared<DecorationManager>();
-  TextLayout layout(measurer, decorations);
+  TextStyleRegistry text_styles;
+  TextLayout layout(measurer, text_styles);
 
   SharedPtr<Document> document = makeShared<LineArrayDocument>("abcdef");
   layout.loadDocument(document);
@@ -35,8 +35,8 @@ TEST_CASE("TextLayout hitTest matches getPositionScreenCoord in non-wrap mode") 
 
 TEST_CASE("TextLayout hitTest/getPositionScreenCoord stay consistent in wrap mode") {
   SharedPtr<TextMeasurer> measurer = makeShared<FixedWidthTextMeasurer>(10.0f);
-  SharedPtr<DecorationManager> decorations = makeShared<DecorationManager>();
-  TextLayout layout(measurer, decorations);
+  TextStyleRegistry text_styles;
+  TextLayout layout(measurer, text_styles);
 
   SharedPtr<Document> document = makeShared<LineArrayDocument>("abcdefghij");
   layout.loadDocument(document);
@@ -61,8 +61,8 @@ TEST_CASE("TextLayout hitTest/getPositionScreenCoord stay consistent in wrap mod
 
 TEST_CASE("TextLayout preserves both caret sides at a soft wrap boundary") {
   SharedPtr<TextMeasurer> measurer = makeShared<FixedWidthTextMeasurer>(10.0f);
-  SharedPtr<DecorationManager> decorations = makeShared<DecorationManager>();
-  TextLayout layout(measurer, decorations);
+  TextStyleRegistry text_styles;
+  TextLayout layout(measurer, text_styles);
 
   SharedPtr<Document> document = makeShared<LineArrayDocument>("abcdefghij");
   layout.loadDocument(document);
@@ -90,8 +90,8 @@ TEST_CASE("TextLayout preserves both caret sides at a soft wrap boundary") {
 
 TEST_CASE("TextLayout hitTest snaps emoji modifier graphemes to left and right boundaries") {
   SharedPtr<TextMeasurer> measurer = makeShared<FixedWidthTextMeasurer>(10.0f);
-  SharedPtr<DecorationManager> decorations = makeShared<DecorationManager>();
-  TextLayout layout(measurer, decorations);
+  TextStyleRegistry text_styles;
+  TextLayout layout(measurer, text_styles);
 
   SharedPtr<Document> document = makeShared<LineArrayDocument>("A\xF0\x9F\x91\x8D\xF0\x9F\x8F\xBB"
                                                                "B");
@@ -114,8 +114,8 @@ TEST_CASE("TextLayout hitTest snaps emoji modifier graphemes to left and right b
 
 TEST_CASE("TextLayout horizontal cropping preserves grapheme hit testing") {
   SharedPtr<TextMeasurer> measurer = makeShared<FixedWidthTextMeasurer>(10.0f);
-  SharedPtr<DecorationManager> decorations = makeShared<DecorationManager>();
-  TextLayout layout(measurer, decorations);
+  TextStyleRegistry text_styles;
+  TextLayout layout(measurer, text_styles);
 
   SharedPtr<Document> document = makeShared<LineArrayDocument>("A\xF0\x9F\x91\x8D\xF0\x9F\x8F\xBB"
                                                                "B");
@@ -147,8 +147,8 @@ TEST_CASE("TextLayout horizontal cropping preserves grapheme hit testing") {
 
 TEST_CASE("TextLayout wrap keeps emoji modifier grapheme on one visual line") {
   SharedPtr<TextMeasurer> measurer = makeShared<FixedGraphemeWidthTextMeasurer>(10.0f);
-  SharedPtr<DecorationManager> decorations = makeShared<DecorationManager>();
-  TextLayout layout(measurer, decorations);
+  TextStyleRegistry text_styles;
+  TextLayout layout(measurer, text_styles);
 
   SharedPtr<Document> document = makeShared<LineArrayDocument>("A\xF0\x9F\x91\x8D\xF0\x9F\x8F\xBB"
                                                                "B");
@@ -169,8 +169,8 @@ TEST_CASE("TextLayout wrap keeps emoji modifier grapheme on one visual line") {
 
 TEST_CASE("TextLayout monospace left crop does not over-trim complex graphemes") {
   SharedPtr<TextMeasurer> measurer = makeShared<FixedGraphemeWidthTextMeasurer>(10.0f);
-  SharedPtr<DecorationManager> decorations = makeShared<DecorationManager>();
-  TextLayout layout(measurer, decorations);
+  TextStyleRegistry text_styles;
+  TextLayout layout(measurer, text_styles);
 
   SharedPtr<Document> document =
       makeShared<LineArrayDocument>("\xF0\x9F\x92\x9D\xF0\x9F\x92\x97\xF0\x9F\x87\xA8\xF0\x9F\x87\xB3\xF0\x9F\x87\xB2"
@@ -194,8 +194,8 @@ TEST_CASE("TextLayout monospace left crop does not over-trim complex graphemes")
 
 TEST_CASE("TextLayout getPositionScreenCoord skips CodeLens virtual line for line start") {
   SharedPtr<TextMeasurer> measurer = makeShared<FixedWidthTextMeasurer>(10.0f);
-  SharedPtr<DecorationManager> decorations = makeShared<DecorationManager>();
-  TextLayout layout(measurer, decorations);
+  TextStyleRegistry text_styles;
+  TextLayout layout(measurer, text_styles);
 
   SharedPtr<Document> document = makeShared<LineArrayDocument>("abcdef");
   layout.loadDocument(document);
@@ -206,7 +206,7 @@ TEST_CASE("TextLayout getPositionScreenCoord skips CodeLens virtual line for lin
 
   Vector<CodeLensItem> items;
   items.push_back({0, 101, "3 references"});
-  decorations->setLineCodeLens(0, std::move(items));
+  document->getDecorations().setLineCodeLens(0, std::move(items));
 
   const PointF line_start = layout.getPositionScreenCoord({0, 0});
   CHECK(line_start.y == Catch::Approx(layout.getLineHeight()));
@@ -214,8 +214,8 @@ TEST_CASE("TextLayout getPositionScreenCoord skips CodeLens virtual line for lin
 
 TEST_CASE("TextLayout hitTestTextBoundary maps CodeLens virtual line to previous visible line end") {
   SharedPtr<TextMeasurer> measurer = makeShared<FixedWidthTextMeasurer>(10.0f);
-  SharedPtr<DecorationManager> decorations = makeShared<DecorationManager>();
-  TextLayout layout(measurer, decorations);
+  TextStyleRegistry text_styles;
+  TextLayout layout(measurer, text_styles);
 
   SharedPtr<Document> document = makeShared<LineArrayDocument>("alpha\nbeta");
   layout.loadDocument(document);
@@ -225,7 +225,7 @@ TEST_CASE("TextLayout hitTestTextBoundary maps CodeLens virtual line to previous
 
   Vector<CodeLensItem> items;
   items.push_back({0, 101, "3 references"});
-  decorations->setLineCodeLens(1, std::move(items));
+  document->getDecorations().setLineCodeLens(1, std::move(items));
 
   const PointF line_start = layout.getPositionScreenCoord({1, 0});
   const float probe_y = line_start.y - layout.getLineHeight() * 0.5f;
@@ -237,8 +237,8 @@ TEST_CASE("TextLayout hitTestTextBoundary maps CodeLens virtual line to previous
 
 TEST_CASE("TextLayout hitTestDecoration returns unique command ids for CodeLens runs") {
   SharedPtr<TextMeasurer> measurer = makeShared<FixedWidthTextMeasurer>(10.0f);
-  SharedPtr<DecorationManager> decorations = makeShared<DecorationManager>();
-  TextLayout layout(measurer, decorations);
+  TextStyleRegistry text_styles;
+  TextLayout layout(measurer, text_styles);
 
   SharedPtr<Document> document = makeShared<LineArrayDocument>("abcdef");
   layout.loadDocument(document);
@@ -249,7 +249,7 @@ TEST_CASE("TextLayout hitTestDecoration returns unique command ids for CodeLens 
   Vector<CodeLensItem> items;
   items.push_back({1, 101, "3 references"});
   items.push_back({4, 202, "2 implementations"});
-  decorations->setLineCodeLens(0, std::move(items));
+  document->getDecorations().setLineCodeLens(0, std::move(items));
 
   EditorRenderModel model;
   layout.layoutVisibleLines(model);
@@ -273,8 +273,8 @@ TEST_CASE("TextLayout hitTestDecoration returns unique command ids for CodeLens 
 
 TEST_CASE("TextLayout positions CodeLens runs by anchored columns") {
   SharedPtr<TextMeasurer> measurer = makeShared<FixedWidthTextMeasurer>(10.0f);
-  SharedPtr<DecorationManager> decorations = makeShared<DecorationManager>();
-  TextLayout layout(measurer, decorations);
+  TextStyleRegistry text_styles;
+  TextLayout layout(measurer, text_styles);
 
   SharedPtr<Document> document = makeShared<LineArrayDocument>("abcdefghij");
   layout.loadDocument(document);
@@ -285,7 +285,7 @@ TEST_CASE("TextLayout positions CodeLens runs by anchored columns") {
   Vector<CodeLensItem> items;
   items.push_back({2, 101, "refs"});
   items.push_back({7, 202, "impl"});
-  decorations->setLineCodeLens(0, std::move(items));
+  document->getDecorations().setLineCodeLens(0, std::move(items));
 
   EditorRenderModel model;
   layout.layoutVisibleLines(model);
@@ -302,8 +302,8 @@ TEST_CASE("TextLayout positions CodeLens runs by anchored columns") {
 
 TEST_CASE("TextLayout hitTestDecoration resolves LINK target by canonical start column") {
   SharedPtr<TextMeasurer> measurer = makeShared<FixedWidthTextMeasurer>(10.0f);
-  SharedPtr<DecorationManager> decorations = makeShared<DecorationManager>();
-  TextLayout layout(measurer, decorations);
+  TextStyleRegistry text_styles;
+  TextLayout layout(measurer, text_styles);
 
   SharedPtr<Document> document = makeShared<LineArrayDocument>("prefixLinkSuffix");
   layout.loadDocument(document);
@@ -313,7 +313,7 @@ TEST_CASE("TextLayout hitTestDecoration resolves LINK target by canonical start 
 
   Vector<LinkSpan> links;
   links.push_back({6, 4, "doc://link"});
-  decorations->setLineLinks(0, std::move(links));
+  document->getDecorations().setLineLinks(0, std::move(links));
 
   EditorRenderModel model;
   layout.layoutVisibleLines(model);
@@ -325,14 +325,14 @@ TEST_CASE("TextLayout hitTestDecoration resolves LINK target by canonical start 
   CHECK(target.type == HitTargetType::LINK);
   CHECK(target.line == 0);
   CHECK(target.column == 6);
-  CHECK(decorations->findLinkAt(target.line, target.column) != nullptr);
-  CHECK(decorations->findLinkAt(target.line, target.column)->target == "doc://link");
+  CHECK(document->getDecorations().findLinkAt(target.line, target.column) != nullptr);
+  CHECK(document->getDecorations().findLinkAt(target.line, target.column)->target == "doc://link");
 }
 
 TEST_CASE("TextLayout maps collapsed fold tail runs to their source line") {
   SharedPtr<TextMeasurer> measurer = makeShared<FixedWidthTextMeasurer>(10.0f);
-  SharedPtr<DecorationManager> decorations = makeShared<DecorationManager>();
-  TextLayout layout(measurer, decorations);
+  TextStyleRegistry text_styles;
+  TextLayout layout(measurer, text_styles);
 
   SharedPtr<Document> document = makeShared<LineArrayDocument>("if {\n  body\n}");
   layout.loadDocument(document);
@@ -342,7 +342,7 @@ TEST_CASE("TextLayout maps collapsed fold tail runs to their source line") {
 
   Vector<FoldRegion> folds;
   folds.push_back({0, 2, true});
-  decorations->setFoldRegions(std::move(folds));
+  document->getDecorations().setFoldRegions(std::move(folds));
 
   auto& lines = document->getLogicalLines();
   lines[1].is_fold_hidden = true;
@@ -371,8 +371,8 @@ TEST_CASE("TextLayout maps collapsed fold tail runs to their source line") {
 
 TEST_CASE("TextLayout gutter fold hit uses content line geometry when CodeLens exists") {
   SharedPtr<TextMeasurer> measurer = makeShared<FixedWidthTextMeasurer>(10.0f);
-  SharedPtr<DecorationManager> decorations = makeShared<DecorationManager>();
-  TextLayout layout(measurer, decorations);
+  TextStyleRegistry text_styles;
+  TextLayout layout(measurer, text_styles);
 
   SharedPtr<Document> document = makeShared<LineArrayDocument>("head\nbody");
   layout.loadDocument(document);
@@ -383,10 +383,10 @@ TEST_CASE("TextLayout gutter fold hit uses content line geometry when CodeLens e
 
   Vector<CodeLensItem> items;
   items.push_back({0, 101, "3 references"});
-  decorations->setLineCodeLens(0, std::move(items));
+  document->getDecorations().setLineCodeLens(0, std::move(items));
   Vector<FoldRegion> folds;
   folds.push_back({0, 1, false});
-  decorations->setFoldRegions(std::move(folds));
+  document->getDecorations().setFoldRegions(std::move(folds));
 
   const float line_height = layout.getLineHeight();
   const LayoutMetrics& metrics = layout.getLayoutMetrics();
@@ -404,8 +404,8 @@ TEST_CASE("TextLayout gutter fold hit uses content line geometry when CodeLens e
 
 TEST_CASE("TextLayout gutter icon hit uses content line geometry when CodeLens exists") {
   SharedPtr<TextMeasurer> measurer = makeShared<FixedWidthTextMeasurer>(10.0f);
-  SharedPtr<DecorationManager> decorations = makeShared<DecorationManager>();
-  TextLayout layout(measurer, decorations);
+  TextStyleRegistry text_styles;
+  TextLayout layout(measurer, text_styles);
 
   SharedPtr<Document> document = makeShared<LineArrayDocument>("head");
   layout.loadDocument(document);
@@ -416,10 +416,10 @@ TEST_CASE("TextLayout gutter icon hit uses content line geometry when CodeLens e
 
   Vector<CodeLensItem> items;
   items.push_back({0, 101, "3 references"});
-  decorations->setLineCodeLens(0, std::move(items));
+  document->getDecorations().setLineCodeLens(0, std::move(items));
   Vector<GutterIcon> icons;
   icons.push_back({77});
-  decorations->setLineGutterIcons(0, std::move(icons));
+  document->getDecorations().setLineGutterIcons(0, std::move(icons));
 
   const float line_height = layout.getLineHeight();
   const LayoutMetrics& metrics = layout.getLayoutMetrics();

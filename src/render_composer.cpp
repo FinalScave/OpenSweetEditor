@@ -31,11 +31,9 @@ namespace NS_SWEETEDITOR {
     }
   }
 
-  RenderModelComposer::RenderModelComposer(TextLayout& text_layout, DecorationManager& decorations,
-                                           TextMeasurer& measurer, EditorSettings& settings,
+  RenderModelComposer::RenderModelComposer(TextLayout& text_layout, TextMeasurer& measurer, EditorSettings& settings,
                                            const EditorInteraction& interaction)
       : m_text_layout_(text_layout),
-        m_decorations_(decorations),
         m_measurer_(measurer),
         m_settings_(settings),
         m_interaction_(interaction) {
@@ -46,12 +44,12 @@ namespace NS_SWEETEDITOR {
 
     finalizeTextRuns(model, input);
     composeCursor(model, input, line_height);
-    composeDocumentHighlightEffects(model, line_height);
+    composeDocumentHighlightEffects(model, input, line_height);
     composeSearchEffects(model, input, line_height);
     composeCompositionEffects(model, input, line_height);
     composeSelection(model, input, line_height);
     composeGuides(model, input, line_height);
-    composeDiagnosticEffects(model, line_height);
+    composeDiagnosticEffects(model, input, line_height);
     composeLinkedEditingEffects(model, input, line_height);
     composeBracketMatchEffects(model, input, line_height);
     composeScrollbars(model);
@@ -60,6 +58,7 @@ namespace NS_SWEETEDITOR {
   void RenderModelComposer::finalizeTextRuns(EditorRenderModel& model, const RenderModelInput& input) const {
     const Vector<SearchMatch>& matches = input.search_matches;
     const int32_t current_index = input.current_search_match;
+    const Decorations& decorations = input.document.getDecorations();
 
     HashSet<size_t> visible_lines;
     collectVisibleRangeEffectSourceLines(model, m_text_layout_, visible_lines);
@@ -95,7 +94,7 @@ namespace NS_SWEETEDITOR {
         }
       }
 
-      for (const DocumentHighlight& highlight : m_decorations_.getLineDocumentHighlights(line)) {
+      for (const DocumentHighlight& highlight : decorations.getLineDocumentHighlights(line)) {
         if (highlight.length == 0) continue;
         const RangeEffectStyle& style =
             RenderStyleUtil::documentHighlightRangeEffectStyle(m_settings_.range_effect_styles, highlight.kind);
@@ -302,11 +301,13 @@ namespace NS_SWEETEDITOR {
     }
   }
 
-  void RenderModelComposer::composeDocumentHighlightEffects(EditorRenderModel& model, float line_height) const {
+  void RenderModelComposer::composeDocumentHighlightEffects(EditorRenderModel& model, const RenderModelInput& input,
+                                                             float line_height) const {
+    const Decorations& decorations = input.document.getDecorations();
     HashSet<size_t> source_lines;
     collectVisibleRangeEffectSourceLines(model, m_text_layout_, source_lines);
     for (size_t editing_line : source_lines) {
-      for (const DocumentHighlight& highlight : m_decorations_.getLineDocumentHighlights(editing_line)) {
+      for (const DocumentHighlight& highlight : decorations.getLineDocumentHighlights(editing_line)) {
         if (highlight.length == 0) continue;
         appendRangeEffectsForRange(
             model, editing_line, highlight.column, static_cast<size_t>(highlight.column) + highlight.length,
@@ -338,6 +339,7 @@ namespace NS_SWEETEDITOR {
 
   void RenderModelComposer::composeGuides(EditorRenderModel& model, const RenderModelInput& input,
                                           float line_height) const {
+    const Decorations& decorations = input.document.getDecorations();
     const LayoutMetrics& params = m_text_layout_.getLayoutMetrics();
     float half_line = line_height * 0.5f;
     float equal_gap = params.font_height * 0.1f;
@@ -357,7 +359,7 @@ namespace NS_SWEETEDITOR {
       return line >= input.document.getLineCount() || input.document.getLogicalLines()[line].is_fold_hidden;
     };
 
-    for (const IndentGuide& guide : m_decorations_.getIndentGuides()) {
+    for (const IndentGuide& guide : decorations.getIndentGuides()) {
       if (is_hidden(guide.start.line) || is_hidden(guide.end.line)) {
         continue;
       }
@@ -374,7 +376,7 @@ namespace NS_SWEETEDITOR {
       model.guide_segments.push_back(seg);
     }
 
-    for (const BracketGuide& guide : m_decorations_.getBracketGuides()) {
+    for (const BracketGuide& guide : decorations.getBracketGuides()) {
       if (is_hidden(guide.parent.line) || is_hidden(guide.end.line)) {
         continue;
       }
@@ -404,7 +406,7 @@ namespace NS_SWEETEDITOR {
       }
     }
 
-    for (const FlowGuide& guide : m_decorations_.getFlowGuides()) {
+    for (const FlowGuide& guide : decorations.getFlowGuides()) {
       if (is_hidden(guide.start.line) || is_hidden(guide.end.line)) {
         continue;
       }
@@ -439,7 +441,7 @@ namespace NS_SWEETEDITOR {
       model.guide_segments.push_back(h_top);
     }
 
-    for (const SeparatorGuide& guide : m_decorations_.getSeparatorGuides()) {
+    for (const SeparatorGuide& guide : decorations.getSeparatorGuides()) {
       if (guide.line < 0) continue;
       const size_t line = static_cast<size_t>(guide.line);
       if (is_hidden(line)) continue;
@@ -467,7 +469,9 @@ namespace NS_SWEETEDITOR {
     }
   }
 
-  void RenderModelComposer::composeDiagnosticEffects(EditorRenderModel& model, float line_height) const {
+  void RenderModelComposer::composeDiagnosticEffects(EditorRenderModel& model, const RenderModelInput& input,
+                                                      float line_height) const {
+    const Decorations& decorations = input.document.getDecorations();
     float font_height = m_text_layout_.getLayoutMetrics().font_height;
     float top_padding = (line_height - font_height) * 0.5f;
 
@@ -476,7 +480,7 @@ namespace NS_SWEETEDITOR {
       if (getVisualLineSemantics(vl.kind).text_semantics != TextSemanticsPolicy::PARTICIPATES) continue;
       const size_t editing_line = vl.logical_line;
       if (!emitted_lines.insert(editing_line).second) continue;
-      for (const Diagnostic& diagnostic : m_decorations_.getLineDiagnostics(editing_line)) {
+      for (const Diagnostic& diagnostic : decorations.getLineDiagnostics(editing_line)) {
         if (diagnostic.length == 0) continue;
         appendRangeEffectsForRange(
             model, editing_line, diagnostic.column, static_cast<size_t>(diagnostic.column) + diagnostic.length,

@@ -723,3 +723,30 @@ TEST_CASE("EditorCore rebuilds text run styles after batch style re-registration
   REQUIRE(updated_model.lines[0].runs.size() == 1);
   CHECK(updated_model.lines[0].runs[0].style.color == updated_color);
 }
+
+TEST_CASE("EditorCore adjusts only the active document decorations for edits") {
+  EditorOptions options;
+  EditorCore editor(makeShared<FixedWidthTextMeasurer>(), options);
+  SharedPtr<Document> line_array_document = makeShared<LineArrayDocument>("abc");
+  SharedPtr<Document> piece_table_document = makeShared<PieceTableDocument>("xyz");
+
+  line_array_document->getDecorations().setLineDiagnostics(0, {{1, 1, DiagnosticSeverity::DIAG_WARNING}});
+  piece_table_document->getDecorations().setLineDiagnostics(0, {{1, 1, DiagnosticSeverity::DIAG_ERROR}});
+
+  editor.loadDocument(line_array_document);
+  editor.setCursorPosition({0, 0});
+  editor.insertText("Q");
+
+  REQUIRE(line_array_document->getDecorations().getLineDiagnostics(0).size() == 1);
+  REQUIRE(piece_table_document->getDecorations().getLineDiagnostics(0).size() == 1);
+  CHECK(line_array_document->getDecorations().getLineDiagnostics(0)[0].column == 2);
+  CHECK(piece_table_document->getDecorations().getLineDiagnostics(0)[0].column == 1);
+
+  editor.loadDocument(piece_table_document);
+  editor.setCursorPosition({0, 0});
+  editor.insertText("R");
+
+  REQUIRE(piece_table_document->getDecorations().getLineDiagnostics(0).size() == 1);
+  CHECK(piece_table_document->getDecorations().getLineDiagnostics(0)[0].column == 2);
+  CHECK(line_array_document->getDecorations().getLineDiagnostics(0)[0].column == 2);
+}

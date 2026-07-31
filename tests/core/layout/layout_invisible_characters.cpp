@@ -10,8 +10,8 @@ namespace {
   EditorRenderModel renderInvisibleModel(const U8String& text, WhitespaceRenderMode mode, bool line_breaks = false,
                                          TextRange selection = {}) {
     SharedPtr<TextMeasurer> measurer = makeShared<FixedWidthTextMeasurer>(10.0f);
-    SharedPtr<DecorationManager> decorations = makeShared<DecorationManager>();
-    TextLayout layout(measurer, decorations);
+    TextStyleRegistry text_styles;
+    TextLayout layout(measurer, text_styles);
     SharedPtr<Document> document = makeShared<LineArrayDocument>(text);
     layout.loadDocument(document);
     layout.setViewport({640, 240});
@@ -97,8 +97,8 @@ TEST_CASE("TextLayout materializes line break markers from real line endings") {
 
 TEST_CASE("TextLayout hit test on line break marker maps to line end") {
   SharedPtr<TextMeasurer> measurer = makeShared<FixedWidthTextMeasurer>(10.0f);
-  SharedPtr<DecorationManager> decorations = makeShared<DecorationManager>();
-  TextLayout layout(measurer, decorations);
+  TextStyleRegistry text_styles;
+  TextLayout layout(measurer, text_styles);
   SharedPtr<Document> document = makeShared<LineArrayDocument>("abc\n");
   layout.loadDocument(document);
   layout.setViewport({320, 120});

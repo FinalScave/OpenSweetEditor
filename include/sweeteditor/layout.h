@@ -132,7 +132,7 @@ namespace NS_SWEETEDITOR {
   /// Text layout engine
   class TextLayout {
   public:
-    TextLayout(const SharedPtr<TextMeasurer>& measurer, const SharedPtr<DecorationManager>& decoration_manager);
+    TextLayout(const SharedPtr<TextMeasurer>& measurer, const TextStyleRegistry& text_styles);
 
     void loadDocument(const SharedPtr<Document>& document);
 
@@ -237,7 +237,7 @@ namespace NS_SWEETEDITOR {
   private:
     SharedPtr<TextMeasurer> m_measurer_;
     SharedPtr<Document> m_document_;
-    SharedPtr<DecorationManager> m_decoration_manager_;
+    const TextStyleRegistry& m_text_styles_;
     Size m_viewport_;
     ViewState m_view_state_;
     WrapMode m_wrap_mode_{WrapMode::NONE};

@@ -8,8 +8,8 @@ using namespace NS_SWEETEDITOR;
 
 TEST_CASE("TextLayout hitTest/getPositionScreenCoord stay consistent with inlay and phantom runs") {
   SharedPtr<TextMeasurer> measurer = makeShared<FixedWidthTextMeasurer>(10.0f);
-  SharedPtr<DecorationManager> decorations = makeShared<DecorationManager>();
-  TextLayout layout(measurer, decorations);
+  TextStyleRegistry text_styles;
+  TextLayout layout(measurer, text_styles);
 
   SharedPtr<Document> document = makeShared<LineArrayDocument>("abcd");
   layout.loadDocument(document);
@@ -17,8 +17,8 @@ TEST_CASE("TextLayout hitTest/getPositionScreenCoord stay consistent with inlay 
   layout.setViewState({1.0f, 0.0f, 0.0f});
   layout.setWrapMode(WrapMode::NONE);
 
-  decorations->setLineInlayHints(0, {InlayHint{InlayType::TEXT, 1, 0, "hint"}});
-  decorations->setLinePhantomTexts(0, {PhantomText{2, "ghost"}});
+  document->getDecorations().setLineInlayHints(0, {InlayHint{InlayType::TEXT, 1, 0, "hint"}});
+  document->getDecorations().setLinePhantomTexts(0, {PhantomText{2, "ghost"}});
 
   EditorRenderModel model;
   layout.layoutVisibleLines(model);

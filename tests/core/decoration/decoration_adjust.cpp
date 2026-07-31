@@ -12,32 +12,32 @@ namespace {
   }
 }
 
-TEST_CASE("DecorationManager adjustForEdit shifts same-line point and span decorations") {
-  DecorationManager manager;
+TEST_CASE("Decorations adjustForEdit shifts same-line point and span decorations") {
+  Decorations decorations;
 
-  manager.setLineInlayHints(0, {InlayHint{InlayType::TEXT, 1, 0, "lhs"}, InlayHint{InlayType::TEXT, 3, 0, "rhs"}});
-  manager.setLinePhantomTexts(0, {PhantomText{4, "ghost"}});
-  manager.setLineLinks(0, {{1, 3, "doc://lhs"}, {5, 2, "doc://rhs"}});
+  decorations.setLineInlayHints(0, {InlayHint{InlayType::TEXT, 1, 0, "lhs"}, InlayHint{InlayType::TEXT, 3, 0, "rhs"}});
+  decorations.setLinePhantomTexts(0, {PhantomText{4, "ghost"}});
+  decorations.setLineLinks(0, {{1, 3, "doc://lhs"}, {5, 2, "doc://rhs"}});
 
   Vector<Diagnostic> diagnostics;
   diagnostics.push_back({0, 2, DiagnosticSeverity::DIAG_WARNING});
   diagnostics.push_back({1, 3, DiagnosticSeverity::DIAG_ERROR});
   diagnostics.push_back({3, 2, DiagnosticSeverity::DIAG_INFO});
-  manager.setLineDiagnostics(0, std::move(diagnostics));
+  decorations.setLineDiagnostics(0, std::move(diagnostics));
 
   // Insert 3 columns at (0,2).
-  manager.adjustForEdit({{0, 2}, {0, 2}}, {0, 5});
+  decorations.adjustForEdit({{0, 2}, {0, 2}}, {0, 5});
 
-  const auto& hints = manager.getLineInlayHints(0);
+  const auto& hints = decorations.getLineInlayHints(0);
   REQUIRE(hints.size() == 2);
   CHECK(hints[0].column == 1);
   CHECK(hints[1].column == 6);
 
-  const auto& phantoms = manager.getLinePhantomTexts(0);
+  const auto& phantoms = decorations.getLinePhantomTexts(0);
   REQUIRE(phantoms.size() == 1);
   CHECK(phantoms[0].column == 7);
 
-  const auto& diags = manager.getLineDiagnostics(0);
+  const auto& diags = decorations.getLineDiagnostics(0);
   REQUIRE(diags.size() == 3);
 
   const Diagnostic* warning = findDiag(diags, DiagnosticSeverity::DIAG_WARNING);
@@ -56,45 +56,45 @@ TEST_CASE("DecorationManager adjustForEdit shifts same-line point and span decor
   CHECK(info->length == 2);
 }
 
-TEST_CASE("DecorationManager adjustForEdit updates fold regions and line-based decorations across line delta") {
-  DecorationManager manager;
+TEST_CASE("Decorations adjustForEdit updates fold regions and line-based decorations across line delta") {
+  Decorations decorations;
 
-  manager.setLineInlayHints(5, {InlayHint{InlayType::TEXT, 2, 0, "tail"}});
-  manager.setLinePhantomTexts(6, {PhantomText{1, "p"}});
-  manager.setLineLinks(5, {{2, 4, "doc://tail"}});
-  manager.setLineGutterIcons(2, {GutterIcon{11}});
-  manager.setLineGutterIcons(6, {GutterIcon{22}});
+  decorations.setLineInlayHints(5, {InlayHint{InlayType::TEXT, 2, 0, "tail"}});
+  decorations.setLinePhantomTexts(6, {PhantomText{1, "p"}});
+  decorations.setLineLinks(5, {{2, 4, "doc://tail"}});
+  decorations.setLineGutterIcons(2, {GutterIcon{11}});
+  decorations.setLineGutterIcons(6, {GutterIcon{22}});
 
   Vector<FoldRegion> regions;
   regions.push_back({1, 3, false});
   regions.push_back({5, 7, true});
-  manager.setFoldRegions(std::move(regions));
+  decorations.setFoldRegions(std::move(regions));
 
   // Replace range [2:1, 4:2] with text ending at 3:0 => line_delta = -1.
-  manager.adjustForEdit({{2, 1}, {4, 2}}, {3, 0});
+  decorations.adjustForEdit({{2, 1}, {4, 2}}, {3, 0});
 
-  const auto& hints_line4 = manager.getLineInlayHints(4);
+  const auto& hints_line4 = decorations.getLineInlayHints(4);
   REQUIRE(hints_line4.size() == 1);
   CHECK(hints_line4[0].column == 2);
-  CHECK(manager.getLineInlayHints(5).empty());
+  CHECK(decorations.getLineInlayHints(5).empty());
 
-  const auto& phantom_line5 = manager.getLinePhantomTexts(5);
+  const auto& phantom_line5 = decorations.getLinePhantomTexts(5);
   REQUIRE(phantom_line5.size() == 1);
   CHECK(phantom_line5[0].column == 1);
-  CHECK(manager.getLinePhantomTexts(6).empty());
+  CHECK(decorations.getLinePhantomTexts(6).empty());
 
-  const auto& links_line4 = manager.getLineLinks(4);
+  const auto& links_line4 = decorations.getLineLinks(4);
   REQUIRE(links_line4.size() == 1);
   CHECK(links_line4[0].column == 2);
   CHECK(links_line4[0].length == 4);
   CHECK(links_line4[0].target == "doc://tail");
-  CHECK(manager.getLineLinks(5).empty());
+  CHECK(decorations.getLineLinks(5).empty());
 
-  CHECK(manager.getLineGutterIcons(2).size() == 1);
-  CHECK(manager.getLineGutterIcons(5).size() == 1);
-  CHECK(manager.getLineGutterIcons(6).empty());
+  CHECK(decorations.getLineGutterIcons(2).size() == 1);
+  CHECK(decorations.getLineGutterIcons(5).size() == 1);
+  CHECK(decorations.getLineGutterIcons(6).empty());
 
-  const auto& adjusted_regions = manager.getFoldRegions();
+  const auto& adjusted_regions = decorations.getFoldRegions();
   REQUIRE(adjusted_regions.size() == 2);
   CHECK(adjusted_regions[0].start_line == 1);
   CHECK(adjusted_regions[0].end_line == 2);

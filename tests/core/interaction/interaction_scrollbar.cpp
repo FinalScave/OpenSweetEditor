@@ -19,9 +19,9 @@ namespace {
 
 TEST_CASE("EditorInteraction track tap jumps vertical scrollbar position") {
   SharedPtr<TextMeasurer> measurer = makeShared<FixedWidthTextMeasurer>(10.0f);
-  SharedPtr<DecorationManager> decorations = makeShared<DecorationManager>();
+  TextStyleRegistry text_styles;
   SharedPtr<Document> document = makeShared<LineArrayDocument>(makeRepeatedLines(80, "abcdefghij"));
-  TextLayout layout(measurer, decorations);
+  TextLayout layout(measurer, text_styles);
   layout.loadDocument(document);
 
   Size viewport{120.0f, 80.0f};
@@ -63,9 +63,9 @@ TEST_CASE("EditorInteraction track tap jumps vertical scrollbar position") {
 
 TEST_CASE("EditorInteraction thumb drag updates vertical scroll offset") {
   SharedPtr<TextMeasurer> measurer = makeShared<FixedWidthTextMeasurer>(10.0f);
-  SharedPtr<DecorationManager> decorations = makeShared<DecorationManager>();
+  TextStyleRegistry text_styles;
   SharedPtr<Document> document = makeShared<LineArrayDocument>(makeRepeatedLines(120, "abcdefghijklmnop"));
-  TextLayout layout(measurer, decorations);
+  TextLayout layout(measurer, text_styles);
   layout.loadDocument(document);
 
   Size viewport{120.0f, 80.0f};
@@ -117,9 +117,9 @@ TEST_CASE("EditorInteraction thumb drag updates vertical scroll offset") {
 
 TEST_CASE("EditorInteraction scrollbar capture stops active fling") {
   SharedPtr<TextMeasurer> measurer = makeShared<FixedWidthTextMeasurer>(10.0f);
-  SharedPtr<DecorationManager> decorations = makeShared<DecorationManager>();
+  TextStyleRegistry text_styles;
   SharedPtr<Document> document = makeShared<LineArrayDocument>(makeRepeatedLines(120, "abcdefghijklmnop"));
-  TextLayout layout(measurer, decorations);
+  TextLayout layout(measurer, text_styles);
   layout.loadDocument(document);
 
   Size viewport{120.0f, 80.0f};
@@ -170,9 +170,9 @@ TEST_CASE("EditorInteraction scrollbar capture stops active fling") {
 
 TEST_CASE("EditorInteraction releases scrollbar capture when viewport becomes invalid") {
   SharedPtr<TextMeasurer> measurer = makeShared<FixedWidthTextMeasurer>(10.0f);
-  SharedPtr<DecorationManager> decorations = makeShared<DecorationManager>();
+  TextStyleRegistry text_styles;
   SharedPtr<Document> document = makeShared<LineArrayDocument>(makeRepeatedLines(120, "abcdefghijklmnop"));
-  TextLayout layout(measurer, decorations);
+  TextLayout layout(measurer, text_styles);
   layout.loadDocument(document);
 
   Size viewport{120.0f, 80.0f};
@@ -217,9 +217,9 @@ TEST_CASE("EditorInteraction releases scrollbar capture when viewport becomes in
 
 TEST_CASE("EditorInteraction restarts transient scrollbar hold after thumb release") {
   SharedPtr<TextMeasurer> measurer = makeShared<FixedWidthTextMeasurer>(10.0f);
-  SharedPtr<DecorationManager> decorations = makeShared<DecorationManager>();
+  TextStyleRegistry text_styles;
   SharedPtr<Document> document = makeShared<LineArrayDocument>(makeRepeatedLines(120, "abcdefghijklmnop"));
-  TextLayout layout(measurer, decorations);
+  TextLayout layout(measurer, text_styles);
   layout.loadDocument(document);
 
   Size viewport{120.0f, 80.0f};
@@ -265,9 +265,9 @@ TEST_CASE("EditorInteraction restarts transient scrollbar hold after thumb relea
 
 TEST_CASE("EditorInteraction keeps transient scrollbar fully visible after quick thumb release") {
   SharedPtr<TextMeasurer> measurer = makeShared<FixedWidthTextMeasurer>(10.0f);
-  SharedPtr<DecorationManager> decorations = makeShared<DecorationManager>();
+  TextStyleRegistry text_styles;
   SharedPtr<Document> document = makeShared<LineArrayDocument>(makeRepeatedLines(120, "abcdefghijklmnop"));
-  TextLayout layout(measurer, decorations);
+  TextLayout layout(measurer, text_styles);
   layout.loadDocument(document);
 
   Size viewport{120.0f, 80.0f};
@@ -322,9 +322,9 @@ TEST_CASE("EditorInteraction keeps transient scrollbar fully visible after quick
 
 TEST_CASE("EditorInteraction clears transient scrollbar state when animation becomes ineligible") {
   SharedPtr<TextMeasurer> measurer = makeShared<FixedWidthTextMeasurer>(10.0f);
-  SharedPtr<DecorationManager> decorations = makeShared<DecorationManager>();
+  TextStyleRegistry text_styles;
   SharedPtr<Document> long_document = makeShared<LineArrayDocument>(makeRepeatedLines(120, "abcdefghijklmnop"));
-  TextLayout layout(measurer, decorations);
+  TextLayout layout(measurer, text_styles);
   layout.loadDocument(long_document);
 
   Size viewport{120.0f, 80.0f};

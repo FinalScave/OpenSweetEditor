@@ -6,41 +6,32 @@
 #include <sweeteditor/decoration.h>
 
 namespace NS_SWEETEDITOR {
-  const Vector<StyleSpan> DecorationManager::kEmptySpans;
-  const Vector<InlayHint> DecorationManager::kEmptyInlayHints;
-  const Vector<PhantomText> DecorationManager::kEmptyPhantomTexts;
-  const Vector<GutterIcon> DecorationManager::kEmptyGutterIcons;
-  const Vector<Diagnostic> DecorationManager::kEmptyDiagnostics;
-  const Vector<DocumentHighlight> DecorationManager::kEmptyDocumentHighlights;
-  const Vector<CodeLensItem> DecorationManager::kEmptyCodeLensItems;
-  const Vector<LinkSpan> DecorationManager::kEmptyLinks;
+  const TextStyle TextStyleRegistry::kDefaultStyle;
+  const Vector<StyleSpan> Decorations::kEmptySpans;
+  const Vector<InlayHint> Decorations::kEmptyInlayHints;
+  const Vector<PhantomText> Decorations::kEmptyPhantomTexts;
+  const Vector<GutterIcon> Decorations::kEmptyGutterIcons;
+  const Vector<Diagnostic> Decorations::kEmptyDiagnostics;
+  const Vector<DocumentHighlight> Decorations::kEmptyDocumentHighlights;
+  const Vector<CodeLensItem> Decorations::kEmptyCodeLensItems;
+  const Vector<LinkSpan> Decorations::kEmptyLinks;
 
 #pragma region[Class: TextStyleRegistry]
   void TextStyleRegistry::registerTextStyle(uint32_t style_id, TextStyle&& style) {
     style_map_.insert_or_assign(style_id, std::move(style));
   }
 
-  TextStyle& TextStyleRegistry::getStyle(uint32_t style_id) {
+  const TextStyle& TextStyleRegistry::getStyle(uint32_t style_id) const {
     auto it = style_map_.find(style_id);
     if (it != style_map_.end()) {
       return it->second;
     }
-    // If not found, return the default style (auto-register one)
-    style_map_.insert_or_assign(style_id, TextStyle{0, 0, FONT_STYLE_NORMAL});
-    return style_map_[style_id];
+    return kDefaultStyle;
   }
 #pragma endregion
 
-#pragma region[Class: DecorationManager]
-  DecorationManager::DecorationManager() {
-    m_text_style_reg_ = makeShared<TextStyleRegistry>();
-  }
-
-  SharedPtr<TextStyleRegistry> DecorationManager::getTextStyleRegistry() {
-    return m_text_style_reg_;
-  }
-
-  LineLayoutDecorations DecorationManager::getLineLayoutDecorations(size_t line) const {
+#pragma region[Class: Decorations]
+  LineLayoutDecorations Decorations::getLineLayoutDecorations(size_t line) const {
     LineLayoutDecorations decorations;
     decorations.spans = getMergedLineSpans(line);
     decorations.inlay_hints = getLineInlayHints(line);
@@ -49,7 +40,7 @@ namespace NS_SWEETEDITOR {
     return decorations;
   }
 
-  void DecorationManager::setLineSpans(size_t line, SpanLayer layer, Vector<StyleSpan>&& spans) {
+  void Decorations::setLineSpans(size_t line, SpanLayer layer, Vector<StyleSpan>&& spans) {
     size_t idx = static_cast<size_t>(layer);
     if (idx >= kSpanLayerCount) return;
     auto& storage = m_layer_spans_[idx];
@@ -59,17 +50,17 @@ namespace NS_SWEETEDITOR {
     storage[line] = std::move(spans);
   }
 
-  void DecorationManager::setLineInlayHints(size_t line, Vector<InlayHint>&& hints) {
+  void Decorations::setLineInlayHints(size_t line, Vector<InlayHint>&& hints) {
     ensureLineCapacity_(line + 1);
     m_inlay_hints_[line] = std::move(hints);
   }
 
-  void DecorationManager::setLinePhantomTexts(size_t line, Vector<PhantomText>&& phantoms) {
+  void Decorations::setLinePhantomTexts(size_t line, Vector<PhantomText>&& phantoms) {
     ensureLineCapacity_(line + 1);
     m_phantom_texts_[line] = std::move(phantoms);
   }
 
-  void DecorationManager::setLineGutterIcons(size_t line, Vector<GutterIcon>&& icons) {
+  void Decorations::setLineGutterIcons(size_t line, Vector<GutterIcon>&& icons) {
     if (icons.empty()) {
       m_gutter_icons_.erase(line);
     } else {
@@ -77,7 +68,7 @@ namespace NS_SWEETEDITOR {
     }
   }
 
-  const Vector<StyleSpan>& DecorationManager::getLineSpans(size_t line, SpanLayer layer) const {
+  const Vector<StyleSpan>& Decorations::getLineSpans(size_t line, SpanLayer layer) const {
     size_t idx = static_cast<size_t>(layer);
     if (idx >= kSpanLayerCount) return kEmptySpans;
     const auto& storage = m_layer_spans_[idx];
@@ -85,7 +76,7 @@ namespace NS_SWEETEDITOR {
     return storage[line];
   }
 
-  Vector<StyleSpan> DecorationManager::getMergedLineSpans(size_t line) const {
+  Vector<StyleSpan> Decorations::getMergedLineSpans(size_t line) const {
     // Collect all non-empty layers
     Vector<const Vector<StyleSpan>*> layers;
     for (size_t i = 0; i < kSpanLayerCount; ++i) {
@@ -145,17 +136,17 @@ namespace NS_SWEETEDITOR {
     return result;
   }
 
-  const Vector<InlayHint>& DecorationManager::getLineInlayHints(size_t line) const {
+  const Vector<InlayHint>& Decorations::getLineInlayHints(size_t line) const {
     if (line >= m_inlay_hints_.size()) return kEmptyInlayHints;
     return m_inlay_hints_[line];
   }
 
-  const Vector<PhantomText>& DecorationManager::getLinePhantomTexts(size_t line) const {
+  const Vector<PhantomText>& Decorations::getLinePhantomTexts(size_t line) const {
     if (line >= m_phantom_texts_.size()) return kEmptyPhantomTexts;
     return m_phantom_texts_[line];
   }
 
-  const Vector<GutterIcon>& DecorationManager::getLineGutterIcons(size_t line) const {
+  const Vector<GutterIcon>& Decorations::getLineGutterIcons(size_t line) const {
     auto it = m_gutter_icons_.find(line);
     if (it != m_gutter_icons_.end()) {
       return it->second;
@@ -163,7 +154,7 @@ namespace NS_SWEETEDITOR {
     return kEmptyGutterIcons;
   }
 
-  void DecorationManager::setLineCodeLens(size_t line, Vector<CodeLensItem>&& items) {
+  void Decorations::setLineCodeLens(size_t line, Vector<CodeLensItem>&& items) {
     if (items.empty()) {
       m_codelens_items_.erase(line);
     } else {
@@ -171,7 +162,7 @@ namespace NS_SWEETEDITOR {
     }
   }
 
-  const Vector<CodeLensItem>& DecorationManager::getLineCodeLens(size_t line) const {
+  const Vector<CodeLensItem>& Decorations::getLineCodeLens(size_t line) const {
     auto it = m_codelens_items_.find(line);
     if (it != m_codelens_items_.end()) {
       return it->second;
@@ -179,11 +170,11 @@ namespace NS_SWEETEDITOR {
     return kEmptyCodeLensItems;
   }
 
-  void DecorationManager::clearCodeLens() {
+  void Decorations::clearCodeLens() {
     m_codelens_items_.clear();
   }
 
-  void DecorationManager::setLineLinks(size_t line, Vector<LinkSpan>&& links) {
+  void Decorations::setLineLinks(size_t line, Vector<LinkSpan>&& links) {
     if (links.empty()) {
       m_links_.erase(line);
     } else {
@@ -191,7 +182,7 @@ namespace NS_SWEETEDITOR {
     }
   }
 
-  const Vector<LinkSpan>& DecorationManager::getLineLinks(size_t line) const {
+  const Vector<LinkSpan>& Decorations::getLineLinks(size_t line) const {
     auto it = m_links_.find(line);
     if (it != m_links_.end()) {
       return it->second;
@@ -199,11 +190,11 @@ namespace NS_SWEETEDITOR {
     return kEmptyLinks;
   }
 
-  void DecorationManager::clearLinks() {
+  void Decorations::clearLinks() {
     m_links_.clear();
   }
 
-  const LinkSpan* DecorationManager::findLinkAt(size_t line, size_t column) const {
+  const LinkSpan* Decorations::findLinkAt(size_t line, size_t column) const {
     auto it = m_links_.find(line);
     if (it == m_links_.end()) {
       return nullptr;
@@ -218,39 +209,39 @@ namespace NS_SWEETEDITOR {
     return nullptr;
   }
 
-  void DecorationManager::setLineDiagnostics(size_t line, Vector<Diagnostic>&& diagnostics) {
+  void Decorations::setLineDiagnostics(size_t line, Vector<Diagnostic>&& diagnostics) {
     if (m_diagnostics_.size() <= line) {
       m_diagnostics_.resize(line + 1);
     }
     m_diagnostics_[line] = std::move(diagnostics);
   }
 
-  const Vector<Diagnostic>& DecorationManager::getLineDiagnostics(size_t line) const {
+  const Vector<Diagnostic>& Decorations::getLineDiagnostics(size_t line) const {
     if (line >= m_diagnostics_.size()) return kEmptyDiagnostics;
     return m_diagnostics_[line];
   }
 
-  void DecorationManager::clearDiagnostics() {
+  void Decorations::clearDiagnostics() {
     m_diagnostics_.clear();
   }
 
-  void DecorationManager::setLineDocumentHighlights(size_t line, Vector<DocumentHighlight>&& highlights) {
+  void Decorations::setLineDocumentHighlights(size_t line, Vector<DocumentHighlight>&& highlights) {
     if (m_document_highlights_.size() <= line) {
       m_document_highlights_.resize(line + 1);
     }
     m_document_highlights_[line] = std::move(highlights);
   }
 
-  const Vector<DocumentHighlight>& DecorationManager::getLineDocumentHighlights(size_t line) const {
+  const Vector<DocumentHighlight>& Decorations::getLineDocumentHighlights(size_t line) const {
     if (line >= m_document_highlights_.size()) return kEmptyDocumentHighlights;
     return m_document_highlights_[line];
   }
 
-  void DecorationManager::clearDocumentHighlights() {
+  void Decorations::clearDocumentHighlights() {
     m_document_highlights_.clear();
   }
 
-  void DecorationManager::clearLine(size_t line) {
+  void Decorations::clearLine(size_t line) {
     for (size_t i = 0; i < kSpanLayerCount; ++i) {
       if (line < m_layer_spans_[i].size()) m_layer_spans_[i][line].clear();
     }
@@ -263,31 +254,31 @@ namespace NS_SWEETEDITOR {
     m_links_.erase(line);
   }
 
-  void DecorationManager::clearHighlights(SpanLayer layer) {
+  void Decorations::clearHighlights(SpanLayer layer) {
     size_t idx = static_cast<size_t>(layer);
     if (idx >= kSpanLayerCount) return;
     m_layer_spans_[idx].clear();
   }
 
-  void DecorationManager::clearHighlights() {
+  void Decorations::clearHighlights() {
     for (size_t i = 0; i < kSpanLayerCount; ++i) {
       m_layer_spans_[i].clear();
     }
   }
 
-  void DecorationManager::clearInlayHints() {
+  void Decorations::clearInlayHints() {
     m_inlay_hints_.clear();
   }
 
-  void DecorationManager::clearPhantomTexts() {
+  void Decorations::clearPhantomTexts() {
     m_phantom_texts_.clear();
   }
 
-  void DecorationManager::clearGutterIcons() {
+  void Decorations::clearGutterIcons() {
     m_gutter_icons_.clear();
   }
 
-  void DecorationManager::clearAll() {
+  void Decorations::clearAll() {
     for (size_t i = 0; i < kSpanLayerCount; ++i) {
       m_layer_spans_[i].clear();
     }
@@ -307,23 +298,23 @@ namespace NS_SWEETEDITOR {
 
 #pragma region Guide (Code Structure Lines)
 
-  void DecorationManager::setIndentGuides(Vector<IndentGuide>&& guides) {
+  void Decorations::setIndentGuides(Vector<IndentGuide>&& guides) {
     m_indent_guides_ = std::move(guides);
   }
 
-  void DecorationManager::setBracketGuides(Vector<BracketGuide>&& guides) {
+  void Decorations::setBracketGuides(Vector<BracketGuide>&& guides) {
     m_bracket_guides_ = std::move(guides);
   }
 
-  void DecorationManager::setFlowGuides(Vector<FlowGuide>&& guides) {
+  void Decorations::setFlowGuides(Vector<FlowGuide>&& guides) {
     m_flow_guides_ = std::move(guides);
   }
 
-  void DecorationManager::setSeparatorGuides(Vector<SeparatorGuide>&& guides) {
+  void Decorations::setSeparatorGuides(Vector<SeparatorGuide>&& guides) {
     m_separator_guides_ = std::move(guides);
   }
 
-  void DecorationManager::clearGuides() {
+  void Decorations::clearGuides() {
     m_indent_guides_.clear();
     m_bracket_guides_.clear();
     m_flow_guides_.clear();
@@ -334,7 +325,7 @@ namespace NS_SWEETEDITOR {
 
 #pragma region Fold (Code Folding)
 
-  void DecorationManager::setFoldRegions(Vector<FoldRegion>&& regions) {
+  void Decorations::setFoldRegions(Vector<FoldRegion>&& regions) {
     Vector<FoldRegion> old_regions = std::move(m_fold_regions_);
     Vector<FoldRegion> normalized;
     normalized.reserve(regions.size());
@@ -386,7 +377,7 @@ namespace NS_SWEETEDITOR {
     }
   }
 
-  bool DecorationManager::foldAt(size_t line) {
+  bool Decorations::foldAt(size_t line) {
     // Prefer exact start_line match (fold header), supports nested folding
     for (auto& region : m_fold_regions_) {
       if (region.start_line == line) {
@@ -413,7 +404,7 @@ namespace NS_SWEETEDITOR {
     return false;
   }
 
-  bool DecorationManager::unfoldAt(size_t line) {
+  bool Decorations::unfoldAt(size_t line) {
     // Prefer exact start_line match (fold header), supports nested folding
     for (auto& region : m_fold_regions_) {
       if (region.start_line == line) {
@@ -440,7 +431,7 @@ namespace NS_SWEETEDITOR {
     return false;
   }
 
-  bool DecorationManager::toggleFoldAt(size_t line) {
+  bool Decorations::toggleFoldAt(size_t line) {
     // Prefer exact start_line match (fold header), supports nested folding
     for (auto& region : m_fold_regions_) {
       if (region.start_line == line) {
@@ -464,19 +455,19 @@ namespace NS_SWEETEDITOR {
     return false;
   }
 
-  void DecorationManager::foldAll() {
+  void Decorations::foldAll() {
     for (auto& region : m_fold_regions_) {
       region.collapsed = true;
     }
   }
 
-  void DecorationManager::unfoldAll() {
+  void Decorations::unfoldAll() {
     for (auto& region : m_fold_regions_) {
       region.collapsed = false;
     }
   }
 
-  bool DecorationManager::isLineHidden(size_t line) const {
+  bool Decorations::isLineHidden(size_t line) const {
     for (const auto& region : m_fold_regions_) {
       if (region.collapsed && line > region.start_line && line <= region.end_line) {
         return true;
@@ -485,7 +476,7 @@ namespace NS_SWEETEDITOR {
     return false;
   }
 
-  int DecorationManager::getFoldStateForLine(size_t line) const {
+  int Decorations::getFoldStateForLine(size_t line) const {
     // 0=NONE, 1=EXPANDED, 2=COLLAPSED
     for (const auto& region : m_fold_regions_) {
       if (region.start_line == line) {
@@ -495,7 +486,7 @@ namespace NS_SWEETEDITOR {
     return 0;
   }
 
-  const FoldRegion* DecorationManager::getFoldRegionForLine(size_t line) const {
+  const FoldRegion* Decorations::getFoldRegionForLine(size_t line) const {
     for (const auto& region : m_fold_regions_) {
       if (line >= region.start_line && line <= region.end_line) {
         return &region;
@@ -504,7 +495,7 @@ namespace NS_SWEETEDITOR {
     return nullptr;
   }
 
-  void DecorationManager::clearFoldRegions() {
+  void Decorations::clearFoldRegions() {
     m_fold_regions_.clear();
   }
 
@@ -776,7 +767,7 @@ namespace NS_SWEETEDITOR {
     }
   }
 
-  void DecorationManager::adjustForEdit(const TextRange& old_range, const TextPosition& new_end) {
+  void Decorations::adjustForEdit(const TextRange& old_range, const TextPosition& new_end) {
     EditParams p;
     p.old_start_line = old_range.start.line;
     p.old_start_col = old_range.start.column;
@@ -972,7 +963,7 @@ namespace NS_SWEETEDITOR {
     }
   }
 
-  void DecorationManager::ensureLineCapacity_(size_t line_count) {
+  void Decorations::ensureLineCapacity_(size_t line_count) {
     if (m_inlay_hints_.size() < line_count) {
       m_inlay_hints_.resize(line_count);
     }

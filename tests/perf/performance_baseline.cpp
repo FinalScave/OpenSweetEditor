@@ -17,16 +17,6 @@ namespace {
     return editor;
   }
 
-  TextLayout makeLayout(const U8String& text, const Size& viewport, WrapMode wrap_mode = WrapMode::NONE) {
-    SharedPtr<TextMeasurer> measurer = makeShared<FixedWidthTextMeasurer>(10.0f);
-    SharedPtr<DecorationManager> decorations = makeShared<DecorationManager>();
-    TextLayout layout(measurer, decorations);
-    layout.loadDocument(makeShared<LineArrayDocument>(text));
-    layout.setViewport(viewport);
-    layout.setViewState({1.0f, 0.0f, 0.0f});
-    layout.setWrapMode(wrap_mode);
-    return layout;
-  }
 }
 
 TEST_CASE("Performance baseline: scroll metrics on many short lines") {
@@ -55,8 +45,14 @@ TEST_CASE("Performance baseline: build render model on wrapped long lines") {
 }
 
 TEST_CASE("Performance baseline: hitTest mapping on large wrapped layout") {
-  TextLayout layout =
-      makeLayout(makeRepeatedLines(2000, "abcdefghijklmnopqrstuvwxyz0123456789"), {120, 240}, WrapMode::CHAR_BREAK);
+  SharedPtr<TextMeasurer> measurer = makeShared<FixedWidthTextMeasurer>(10.0f);
+  TextStyleRegistry text_styles;
+  TextLayout layout(measurer, text_styles);
+  layout.loadDocument(
+      makeShared<LineArrayDocument>(makeRepeatedLines(2000, "abcdefghijklmnopqrstuvwxyz0123456789")));
+  layout.setViewport({120, 240});
+  layout.setViewState({1.0f, 0.0f, 0.0f});
+  layout.setWrapMode(WrapMode::CHAR_BREAK);
 
   EditorRenderModel model;
   layout.layoutVisibleLines(model);
