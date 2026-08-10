@@ -4,7 +4,7 @@
 #include <sweeteditor/linked_editing.h>
 #include <utf8/utf8.h>
 #include <algorithm>
-#include "text_edit_utils.hpp"
+#include "internal/text_edit_utils.hpp"
 
 namespace NS_SWEETEDITOR {
 #pragma region[Class: SnippetParser]

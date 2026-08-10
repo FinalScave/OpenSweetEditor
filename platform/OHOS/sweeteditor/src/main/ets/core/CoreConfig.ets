@@ -155,6 +155,10 @@ export class EditorRenderColors {
   activeLinkForeground: number = 0;
   codelensForeground: number = 0;
   activeCodelensForeground: number = 0;
+  diffAddedLineBackground: number = 0;
+  diffRemovedLineBackground: number = 0;
+  diffAddedGutterBackground: number = 0;
+  diffRemovedGutterBackground: number = 0;
 }
 
 export class HandleConfig {

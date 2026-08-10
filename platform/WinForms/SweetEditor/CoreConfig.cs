@@ -88,6 +88,10 @@ namespace SweetEditor {
         public int ActiveLinkForeground { get; set; } = 0;
         public int CodelensForeground { get; set; } = 0;
         public int ActiveCodelensForeground { get; set; } = 0;
+        public int DiffAddedLineBackground { get; set; } = 0;
+        public int DiffRemovedLineBackground { get; set; } = 0;
+        public int DiffAddedGutterBackground { get; set; } = 0;
+        public int DiffRemovedGutterBackground { get; set; } = 0;
     }
 
     public sealed partial class HandleConfig {

@@ -194,6 +194,7 @@ namespace SweetEditor {
 								  new AvaloniaRect(0, 0, viewportSize.Width, viewportSize.Height));
 			drawPerf?.Mark(PerfStepRecorder.STEP_CLEAR);
 
+			DrawDiffLineBackgrounds(context, model, 0, viewportSize.Width, false);
 			DrawCurrentLine(context, model, viewportSize.Width);
 			drawPerf?.Mark(PerfStepRecorder.STEP_CURRENT);
 
@@ -1226,6 +1227,7 @@ namespace SweetEditor {
 
 			context.FillRectangle(GetBrush((int)theme.BackgroundColor),
 								  new AvaloniaRect(0, 0, model.SplitX, viewportHeight));
+			DrawDiffLineBackgrounds(context, model, 0, model.SplitX, true);
 			DrawCurrentLine(context, model, model.SplitX);
 			if (model.SplitLineVisible) {
 				DrawSplitLine(context, model, viewportHeight);
@@ -1251,7 +1253,12 @@ namespace SweetEditor {
 			Span<VisualLine> lines = CollectionsMarshal.AsSpan(model.Lines);
 			for (int lineIndex = 0; lineIndex < lines.Length; lineIndex++) {
 				ref readonly VisualLine line = ref lines[lineIndex];
+				if (line.LineNumber < 0) {
+					continue;
+				}
 				if (!line.OwnsGutterSemantics) {
+					DrawLineNumberText(context, line, line.LineNumber, normalLineNumberColor,
+						lineNumberTextSize, lineNumberMetrics);
 					continue;
 				}
 				int logicalLine = line.LogicalLine;
@@ -1270,19 +1277,9 @@ namespace SweetEditor {
 				if (overlayMode && hasIcons) {
 					DrawGutterIconItem(context, gutterIcons![iconStart]);
 				} else {
-					string text = GetLineNumberText(logicalLine + 1);
 					int lineNumberColor = isCurrentLine ? activeLineNumberColor : normalLineNumberColor;
-					float drawX = Snap(line.LineNumberPosition.X);
-					float baselineY = Snap(line.LineNumberPosition.Y);
-					if (TryCreateGlyphRun(text, 0, text.Length, regularTypeface, lineNumberTextSize,
-										  new Point(drawX, baselineY), out GlyphRun glyphRun, out _)) {
-						context.DrawGlyphRun(GetBrush(lineNumberColor), glyphRun);
-					} else {
-						FormattedText formatted = GetFormattedText(text, regularTypeface, 0, lineNumberTextSize,
-																   lineNumberColor, inlay: false);
-						float topY = Snap(line.LineNumberPosition.Y - lineNumberMetrics.Baseline);
-						context.DrawText(formatted, new Point(drawX, topY));
-					}
+					DrawLineNumberText(context, line, line.LineNumber, lineNumberColor,
+						lineNumberTextSize, lineNumberMetrics);
 
 					if (hasIcons && !overlayMode) {
 						for (int i = iconStart; i < iconEnd; i++) {
@@ -1305,6 +1302,35 @@ namespace SweetEditor {
 					DrawFoldMarkerItem(context, foldMarker,
 									   isCurrentLine ? activeLineNumberColor : normalLineNumberColor);
 				}
+			}
+		}
+
+		private void DrawLineNumberText(DrawingContext context, VisualLine line, int lineNumber,
+			int color, float textSize, LayoutMetrics metrics) {
+			string text = GetLineNumberText(lineNumber);
+			float drawX = Snap(line.LineNumberPosition.X);
+			float baselineY = Snap(line.LineNumberPosition.Y);
+			if (TryCreateGlyphRun(text, 0, text.Length, regularTypeface, textSize,
+				new Point(drawX, baselineY), out GlyphRun glyphRun, out _)) {
+				context.DrawGlyphRun(GetBrush(color), glyphRun);
+				return;
+			}
+			FormattedText formatted = GetFormattedText(text, regularTypeface, 0, textSize, color, inlay: false);
+			context.DrawText(formatted, new Point(drawX, Snap(line.LineNumberPosition.Y - metrics.Baseline)));
+		}
+
+		private void DrawDiffLineBackgrounds(DrawingContext context, EditorRenderModel model,
+			double left, double width, bool gutter) {
+			if (width <= 0 || model.Lines == null) return;
+			float textSize = EffectiveTextSize;
+			LayoutMetrics metrics = GetLayoutMetrics(regularTypeface, 0, textSize, inlay: false);
+			double lineHeight = model.Cursor.Height > 0 ? model.Cursor.Height : Math.Max(1f, textSize);
+			double topPadding = (lineHeight - metrics.Height) * 0.5;
+			foreach (VisualLine line in model.Lines) {
+				int color = gutter ? line.GutterBackgroundColor : line.LineBackgroundColor;
+				if (color == 0) continue;
+				double top = line.LineNumberPosition.Y - metrics.Baseline - topPadding;
+				context.FillRectangle(GetBrush(color), new AvaloniaRect(left, Snap(top), width, Snap(lineHeight)));
 			}
 		}
 

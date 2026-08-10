@@ -332,6 +332,10 @@ external ffi.Pointer<ffi.Uint8> editor_set_scrollbar_config(
 /// i32 active_link_foreground
 /// i32 codelens_foreground
 /// i32 active_codelens_foreground
+/// i32 diff_added_line_background
+/// i32 diff_removed_line_background
+/// i32 diff_added_gutter_background
+/// i32 diff_removed_gutter_background
 /// @param size payload byte length
 /// @param out_size Output: payload byte length (bytes, excluding extra '\0' terminator)
 /// @return EditorActionResult binary payload encoded by CoreProtocol
@@ -395,7 +399,7 @@ external ffi.Pointer<ffi.Uint8> editor_set_editor_range_effect_styles(
 /// bool_i32 gutter_sticky
 /// bool_i32 gutter_visible
 /// enum_i32 pointer_cursor_type
-/// VisualLine is i32 logical_line, i32 wrap_index, PointF line_number_position, List<VisualRun> runs, enum_i32 kind, bool_i32 owns_gutter_semantics, enum_i32 fold_state
+/// VisualLine is i32 logical_line, i32 wrap_index, PointF line_number_position, List<VisualRun> runs, enum_i32 kind, bool_i32 owns_gutter_semantics, enum_i32 fold_state, i32 line_number, i32 line_background_color, i32 gutter_background_color
 /// VisualRun is enum_i32 type, f32 x, f32 y, U8String text, TextStyle style, i32 icon_id, i32 color_value, f32 width, f32 padding, f32 margin, bool_i32 active
 /// TextStyle is i32 color, i32 background_color, i32 font_style
 /// Cursor is TextPosition text_position, PointF position, f32 height, bool_i32 visible, bool_i32 show_dragger
@@ -1129,6 +1133,64 @@ external ffi.Pointer<ffi.Uint8> editor_set_backspace_unindent(
 external ffi.Pointer<ffi.Uint8> editor_set_insert_spaces(
   int editor_handle,
   int enabled,
+  ffi.Pointer<ffi.Size> out_size,
+);
+
+/// Set an externally computed line-level diff.
+/// @param data SetDiffChangesPayload binary payload encoded by CoreProtocol
+@ffi.Native<
+  ffi.Pointer<ffi.Uint8> Function(
+    ffi.IntPtr,
+    ffi.Pointer<ffi.Uint8>,
+    ffi.Size,
+    ffi.Pointer<ffi.Size>,
+  )
+>(assetId: _sweeteditorAssetId)
+external ffi.Pointer<ffi.Uint8> editor_set_diff_changes(
+  int editor_handle,
+  ffi.Pointer<ffi.Uint8> data,
+  int size,
+  ffi.Pointer<ffi.Size> out_size,
+);
+
+/// Compute a line-level diff against original UTF-8 text.
+/// @param original_text Null-terminated original document text
+@ffi.Native<
+  ffi.Pointer<ffi.Uint8> Function(
+    ffi.IntPtr,
+    ffi.Pointer<ffi.Char>,
+    ffi.Pointer<ffi.Size>,
+  )
+>(assetId: _sweeteditorAssetId)
+external ffi.Pointer<ffi.Uint8> editor_compute_diff(
+  int editor_handle,
+  ffi.Pointer<ffi.Char> original_text,
+  ffi.Pointer<ffi.Size> out_size,
+);
+
+/// Set layered style spans for removed original lines.
+/// @param data SetBatchDiffLineSpansPayload binary payload encoded by CoreProtocol
+@ffi.Native<
+  ffi.Pointer<ffi.Uint8> Function(
+    ffi.IntPtr,
+    ffi.Pointer<ffi.Uint8>,
+    ffi.Size,
+    ffi.Pointer<ffi.Size>,
+  )
+>(assetId: _sweeteditorAssetId)
+external ffi.Pointer<ffi.Uint8> editor_set_batch_diff_line_spans(
+  int editor_handle,
+  ffi.Pointer<ffi.Uint8> data,
+  int size,
+  ffi.Pointer<ffi.Size> out_size,
+);
+
+/// Clear all diff state.
+@ffi.Native<ffi.Pointer<ffi.Uint8> Function(ffi.IntPtr, ffi.Pointer<ffi.Size>)>(
+  assetId: _sweeteditorAssetId,
+)
+external ffi.Pointer<ffi.Uint8> editor_clear_diff(
+  int editor_handle,
   ffi.Pointer<ffi.Size> out_size,
 );
 

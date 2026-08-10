@@ -118,6 +118,7 @@ export enum VisualLineKind {
   CONTENT = 0,
   PHANTOM = 1,
   CODELENS = 2,
+  REMOVED = 3,
 }
 
 export function visualLineKindFromValue(value: number): VisualLineKind {
@@ -125,6 +126,7 @@ export function visualLineKindFromValue(value: number): VisualLineKind {
     case 0: return VisualLineKind.CONTENT;
     case 1: return VisualLineKind.PHANTOM;
     case 2: return VisualLineKind.CODELENS;
+    case 3: return VisualLineKind.REMOVED;
     default: throw new Error('Unknown VisualLineKind value: ' + value);
   }
 }
@@ -274,6 +276,9 @@ export interface VisualLine {
   kind: VisualLineKind;
   ownsGutterSemantics: boolean;
   foldState: FoldState;
+  lineNumber: number;
+  lineBackgroundColor: number;
+  gutterBackgroundColor: number;
 }
 
 export interface VisualRun {

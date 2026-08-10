@@ -367,6 +367,21 @@ enum CoreProtocol {
         return size
     }
 
+    static func writeDiffChangeList(_ writer: inout BinaryWriter, _ values: [DiffChange]) {
+        writer.writeInt32(Int32(values.count))
+        for value in values {
+            writeDiffChange(&writer, value)
+        }
+    }
+
+    static func sizeOfDiffChangeList(_ values: [DiffChange]) -> Int {
+        var size = 4
+        for value in values {
+            size += sizeOfDiffChange(value)
+        }
+        return size
+    }
+
     static func writeDocumentHighlightList(_ writer: inout BinaryWriter, _ values: [DocumentHighlight]) {
         writer.writeInt32(Int32(values.count))
         for value in values {
@@ -758,6 +773,32 @@ enum CoreProtocol {
         return size
     }
 
+    static func readU8StringList(_ reader: inout BinaryReader) -> [String]? {
+        guard let countValue = reader.readInt32(), countValue >= 0, Int(countValue) <= reader.remaining else { return nil }
+        var values: [String] = []
+        values.reserveCapacity(Int(countValue))
+        for _ in 0..<Int(countValue) {
+            guard let value = reader.readUtf8String() else { return nil }
+            values.append(value)
+        }
+        return values
+    }
+
+    static func writeU8StringList(_ writer: inout BinaryWriter, _ values: [String]) {
+        writer.writeInt32(Int32(values.count))
+        for value in values {
+            writer.writeUtf8String(value)
+        }
+    }
+
+    static func sizeOfU8StringList(_ values: [String]) -> Int {
+        var size = 4
+        for value in values {
+            size += sizeOfUtf8String(value)
+        }
+        return size
+    }
+
     static func readVisualLineList(_ reader: inout BinaryReader) -> [VisualLine]? {
         guard let countValue = reader.readInt32(), countValue >= 0, Int(countValue) <= reader.remaining else { return nil }
         var values: [VisualLine] = []
@@ -860,6 +901,17 @@ enum CoreProtocol {
 
     static func sizeOfDiagnostic(_ value: Diagnostic) -> Int {
         4 + 4 + 4
+    }
+
+    static func writeDiffChange(_ writer: inout BinaryWriter, _ value: DiffChange) {
+        writer.writeInt32(value.current_start_line)
+        writer.writeInt32(value.current_line_count)
+        writer.writeInt32(value.original_start_line)
+        writeU8StringList(&writer, value.removed_lines)
+    }
+
+    static func sizeOfDiffChange(_ value: DiffChange) -> Int {
+        4 + 4 + 4 + sizeOfU8StringList(value.removed_lines)
     }
 
     static func writeDocumentHighlight(_ writer: inout BinaryWriter, _ value: DocumentHighlight) {
@@ -1048,10 +1100,14 @@ enum CoreProtocol {
         writer.writeInt32(value.active_link_foreground)
         writer.writeInt32(value.codelens_foreground)
         writer.writeInt32(value.active_codelens_foreground)
+        writer.writeInt32(value.diff_added_line_background)
+        writer.writeInt32(value.diff_removed_line_background)
+        writer.writeInt32(value.diff_added_gutter_background)
+        writer.writeInt32(value.diff_removed_gutter_background)
     }
 
     static func sizeOfEditorRenderColors(_ value: EditorRenderColors) -> Int {
-        4 + 4 + 4 + 4 + 4
+        4 + 4 + 4 + 4 + 4 + 4 + 4 + 4 + 4
     }
 
     static func writeHandleConfig(_ writer: inout BinaryWriter, _ value: HandleConfig) {
@@ -1907,7 +1963,10 @@ enum CoreProtocol {
         guard let kind = readVisualLineKind(&reader) else { return nil }
         guard let owns_gutter_semantics = reader.readBoolI32() else { return nil }
         guard let fold_state = readFoldState(&reader) else { return nil }
-        return VisualLine(logical_line: logical_line, wrap_index: wrap_index, line_number_position: line_number_position, runs: runs, kind: kind, owns_gutter_semantics: owns_gutter_semantics, fold_state: fold_state)
+        guard let line_number = reader.readInt32() else { return nil }
+        guard let line_background_color = reader.readInt32() else { return nil }
+        guard let gutter_background_color = reader.readInt32() else { return nil }
+        return VisualLine(logical_line: logical_line, wrap_index: wrap_index, line_number_position: line_number_position, runs: runs, kind: kind, owns_gutter_semantics: owns_gutter_semantics, fold_state: fold_state, line_number: line_number, line_background_color: line_background_color, gutter_background_color: gutter_background_color)
     }
 
     static func decodeVisualLine(_ data: Data) -> VisualLine? {
@@ -1962,6 +2021,12 @@ enum CoreProtocol {
     static func encodeDiagnostic(_ value: Diagnostic) -> Data {
         var writer = BinaryWriter()
         writeDiagnostic(&writer, value)
+        return writer.data()
+    }
+
+    static func encodeDiffChange(_ value: DiffChange) -> Data {
+        var writer = BinaryWriter()
+        writeDiffChange(&writer, value)
         return writer.data()
     }
 
@@ -2042,6 +2107,34 @@ enum CoreProtocol {
     static func encodeSeparatorGuide(_ value: SeparatorGuide) -> Data {
         var writer = BinaryWriter()
         writeSeparatorGuide(&writer, value)
+        return writer.data()
+    }
+
+    static func writeSetBatchDiffLineSpansPayloadWire(_ writer: inout BinaryWriter, layer: SpanLayer, spansByOriginalLine: [Int32: [StyleSpan]]) {
+        writer.writeInt32(layer.rawValue)
+        writer.writeInt32(Int32(spansByOriginalLine.count))
+        for key in spansByOriginalLine.keys.sorted() {
+            writer.writeInt32(key)
+            let value = spansByOriginalLine[key]!
+            writeStyleSpanList(&writer, value)
+        }
+    }
+
+    static func sizeOfSetBatchDiffLineSpansPayloadWire(layer: SpanLayer, spansByOriginalLine: [Int32: [StyleSpan]]) -> Int {
+        var size = 0
+        size += 4
+        size += 4
+        for key in spansByOriginalLine.keys.sorted() {
+            size += 4
+            let value = spansByOriginalLine[key]!
+            size += sizeOfStyleSpanList(value)
+        }
+        return size
+    }
+
+    static func encodeSetBatchDiffLineSpansPayload(layer: SpanLayer, spansByOriginalLine: [Int32: [StyleSpan]]) -> Data {
+        var writer = BinaryWriter()
+        writeSetBatchDiffLineSpansPayloadWire(&writer, layer: layer, spansByOriginalLine: spansByOriginalLine)
         return writer.data()
     }
 
@@ -2268,6 +2361,22 @@ enum CoreProtocol {
     static func encodeSetBracketGuidesPayload(guides: [BracketGuide]) -> Data {
         var writer = BinaryWriter()
         writeSetBracketGuidesPayloadWire(&writer, guides: guides)
+        return writer.data()
+    }
+
+    static func writeSetDiffChangesPayloadWire(_ writer: inout BinaryWriter, changes: [DiffChange]) {
+        writeDiffChangeList(&writer, changes)
+    }
+
+    static func sizeOfSetDiffChangesPayloadWire(changes: [DiffChange]) -> Int {
+        var size = 0
+        size += sizeOfDiffChangeList(changes)
+        return size
+    }
+
+    static func encodeSetDiffChangesPayload(changes: [DiffChange]) -> Data {
+        var writer = BinaryWriter()
+        writeSetDiffChangesPayloadWire(&writer, changes: changes)
         return writer.data()
     }
 

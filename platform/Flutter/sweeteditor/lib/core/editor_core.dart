@@ -1564,6 +1564,53 @@ class EditorCore {
     return bindings.editor_is_line_visible(_handle, line) != 0;
   }
 
+  EditorActionResult setDiffChanges(List<DiffChange> changes) {
+    _ensureOpen();
+    final payload = CoreProtocol.encodeSetDiffChangesPayload(changes);
+    return _callWithBinaryActionData(
+      payload,
+      (data, size, outSize) =>
+          bindings.editor_set_diff_changes(_handle, data, size, outSize),
+    );
+  }
+
+  EditorActionResult computeDiff(String originalText) {
+    _ensureOpen();
+    return using((arena) {
+      final text = _toNativeUtf8(originalText, arena);
+      return _callAndParseAction(
+        (outSize) => bindings.editor_compute_diff(_handle, text, outSize),
+      );
+    });
+  }
+
+  EditorActionResult setBatchDiffLineSpans(
+    SpanLayer layer,
+    Map<int, List<StyleSpan>> spansByOriginalLine,
+  ) {
+    _ensureOpen();
+    final payload = CoreProtocol.encodeSetBatchDiffLineSpansPayload(
+      layer,
+      spansByOriginalLine,
+    );
+    return _callWithBinaryActionData(
+      payload,
+      (data, size, outSize) => bindings.editor_set_batch_diff_line_spans(
+        _handle,
+        data,
+        size,
+        outSize,
+      ),
+    );
+  }
+
+  EditorActionResult clearDiff() {
+    _ensureOpen();
+    return _callAndParseAction(
+      (outSize) => bindings.editor_clear_diff(_handle, outSize),
+    );
+  }
+
   EditorActionResult insertSnippet(String snippetTemplate) {
     _ensureOpen();
     return using((arena) {

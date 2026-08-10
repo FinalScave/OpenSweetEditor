@@ -1,7 +1,8 @@
 #include <algorithm>
 #include <sweeteditor/interaction.h>
-#include "render_composer.hpp"
-#include "render_style_util.hpp"
+#include "internal/render_composer.hpp"
+#include "internal/render_style_util.hpp"
+#include "internal/visual_line_semantics.hpp"
 
 namespace NS_SWEETEDITOR {
 
@@ -477,7 +478,7 @@ namespace NS_SWEETEDITOR {
 
     HashSet<size_t> emitted_lines;
     for (const auto& vl : model.lines) {
-      if (getVisualLineSemantics(vl.kind).text_semantics != TextSemanticsPolicy::PARTICIPATES) continue;
+      if (!getVisualLineSemantics(vl.kind).participates_in_document_text) continue;
       const size_t editing_line = vl.logical_line;
       if (!emitted_lines.insert(editing_line).second) continue;
       for (const Diagnostic& diagnostic : decorations.getLineDiagnostics(editing_line)) {

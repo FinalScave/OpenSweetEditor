@@ -73,6 +73,15 @@ package struct EditorRenderer {
         context.fill(rect)
 
         let lineHeight = CGFloat(model.cursor.height)
+        drawDiffLineBackgrounds(
+            context: context,
+            model: model,
+            left: 0,
+            right: CGFloat(model.viewport_size.width),
+            lineHeight: lineHeight,
+            font: core.regularFont,
+            gutter: false
+        )
         drawCurrentLineDecoration(
             context: context,
             model: model,
@@ -105,6 +114,15 @@ package struct EditorRenderer {
         if splitX > 0 {
             context.setFillColor(t.backgroundColor)
             context.fill(CGRect(x: 0, y: 0, width: splitX, height: CGFloat(model.viewport_size.height)))
+            drawDiffLineBackgrounds(
+                context: context,
+                model: model,
+                left: 0,
+                right: splitX,
+                lineHeight: lineHeight,
+                font: core.regularFont,
+                gutter: true
+            )
             drawCurrentLineDecoration(
                 context: context,
                 model: model,
@@ -124,13 +142,13 @@ package struct EditorRenderer {
             let overlayIconLines: Set<Int32> = model.max_gutter_icons == 0 && iconProvider != nil
                 ? Set(model.gutter_icons.map(\.logical_line))
                 : []
-            for line in model.lines where line.owns_gutter_semantics {
-                if !overlayIconLines.contains(line.logical_line) {
+            for line in model.lines where line.line_number >= 0 {
+                if !line.owns_gutter_semantics || !overlayIconLines.contains(line.logical_line) {
                     drawLineNumber(
                         context: context,
                         line: line,
                         font: core.regularFont,
-                        color: line.logical_line == activeLogicalLine
+                        color: line.owns_gutter_semantics && line.logical_line == activeLogicalLine
                             ? theme.currentLineNumberColor
                             : theme.lineNumberColor
                     )
@@ -198,7 +216,7 @@ package struct EditorRenderer {
                                line: VisualLine,
                                font: CTFont,
                                color: CGColor) {
-        let text = "\(line.logical_line + 1)"
+        let text = "\(line.line_number)"
         let attrStr = CFAttributedStringCreateMutable(nil, 0)!
         CFAttributedStringReplaceString(attrStr, CFRange(location: 0, length: 0), text as CFString)
         let range = CFRange(location: 0, length: text.utf16.count)
@@ -207,6 +225,27 @@ package struct EditorRenderer {
         let textLine = CTLineCreateWithAttributedString(attrStr)
         context.textPosition = CGPoint(x: CGFloat(line.line_number_position.x), y: CGFloat(line.line_number_position.y))
         CTLineDraw(textLine, context)
+    }
+
+    private static func drawDiffLineBackgrounds(
+        context: CGContext,
+        model: EditorRenderModel,
+        left: CGFloat,
+        right: CGFloat,
+        lineHeight: CGFloat,
+        font: CTFont,
+        gutter: Bool
+    ) {
+        guard right > left, lineHeight > 0 else { return }
+        let fontHeight = CTFontGetAscent(font) + CTFontGetDescent(font)
+        let topPadding = (lineHeight - fontHeight) * 0.5
+        for line in model.lines {
+            let argb = gutter ? line.gutter_background_color : line.line_background_color
+            guard argb != 0 else { continue }
+            let top = CGFloat(line.line_number_position.y) - CTFontGetAscent(font) - topPadding
+            context.setFillColor(cgColorFromARGB(argb))
+            context.fill(CGRect(x: left, y: top, width: right - left, height: lineHeight))
+        }
     }
 
     private static func drawGutterIconItem(context: CGContext,
@@ -842,7 +881,11 @@ package struct EditorRenderer {
             link_foreground: argbFromCGColor(linkForeground),
             active_link_foreground: argbFromCGColor(activeLinkForeground),
             codelens_foreground: argbFromCGColor(codeLensForeground),
-            active_codelens_foreground: argbFromCGColor(activeCodeLensForeground)
+            active_codelens_foreground: argbFromCGColor(activeCodeLensForeground),
+            diff_added_line_background: argbFromCGColor(theme.diffAddedLineBackgroundColor),
+            diff_removed_line_background: argbFromCGColor(theme.diffRemovedLineBackgroundColor),
+            diff_added_gutter_background: argbFromCGColor(theme.diffAddedGutterBackgroundColor),
+            diff_removed_gutter_background: argbFromCGColor(theme.diffRemovedGutterBackgroundColor)
         )
     }
 

@@ -1,4 +1,4 @@
-#include "text_edit_utils.hpp"
+#include "internal/text_edit_utils.hpp"
 #include <utf8/utf8.h>
 
 namespace NS_SWEETEDITOR::TextEditUtils {

@@ -6,7 +6,8 @@ from ..ir import *
 def swift_type(field, schema_types, schema_enums):
     inner = vector_inner(field["cpp_type"])
     if inner is not None:
-        return f"[{inner}]"
+        inner_type = "String" if infer_wire_type(inner) == "utf8_string" else inner
+        return f"[{inner_type}]"
     wire = field["wire"]
     if wire == "enum_i32" and field["cpp_type"] in schema_enums:
         return field["cpp_type"]
@@ -451,15 +452,19 @@ def generate_swift_codec(schema, target=None):
         ])
     list_inners = list_inner_names(schema)
     for inner in list_inners:
+        inner_type = "String" if infer_wire_type(inner) == "utf8_string" else inner
+        read_value = "reader.readUtf8String()" if inner_type == "String" else f"read{inner}(&reader)"
+        write_value = "writer.writeUtf8String(value)" if inner_type == "String" else f"write{inner}(&writer, value)"
+        size_value = "sizeOfUtf8String(value)" if inner_type == "String" else f"sizeOf{inner}(value)"
         if inner_needs_reader(schema, inner):
             lines.extend([
                 "",
-                f"    static func read{inner}List(_ reader: inout BinaryReader) -> [{inner}]? {{",
+                f"    static func read{inner}List(_ reader: inout BinaryReader) -> [{inner_type}]? {{",
                 "        guard let countValue = reader.readInt32(), countValue >= 0, Int(countValue) <= reader.remaining else { return nil }",
-                f"        var values: [{inner}] = []",
+                f"        var values: [{inner_type}] = []",
                 "        values.reserveCapacity(Int(countValue))",
                 "        for _ in 0..<Int(countValue) {",
-                f"            guard let value = read{inner}(&reader) else {{ return nil }}",
+                f"            guard let value = {read_value} else {{ return nil }}",
                 "            values.append(value)",
                 "        }",
                 "        return values",
@@ -468,17 +473,17 @@ def generate_swift_codec(schema, target=None):
         if inner_needs_writer(schema, inner):
             lines.extend([
                 "",
-                f"    static func write{inner}List(_ writer: inout BinaryWriter, _ values: [{inner}]) {{",
+                f"    static func write{inner}List(_ writer: inout BinaryWriter, _ values: [{inner_type}]) {{",
                 "        writer.writeInt32(Int32(values.count))",
                 "        for value in values {",
-                f"            write{inner}(&writer, value)",
+                f"            {write_value}",
                 "        }",
                 "    }",
                 "",
-                f"    static func sizeOf{inner}List(_ values: [{inner}]) -> Int {{",
+                f"    static func sizeOf{inner}List(_ values: [{inner_type}]) -> Int {{",
                 "        var size = 4",
                 "        for value in values {",
-                f"            size += sizeOf{inner}(value)",
+                f"            size += {size_value}",
                 "        }",
                 "        return size",
                 "    }",

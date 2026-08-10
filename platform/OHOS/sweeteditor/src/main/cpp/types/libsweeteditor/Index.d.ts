@@ -190,6 +190,12 @@ export const editorGetVisibleLineRange: (handle: number) => number[];
 // Clear all
 export const editorClearAllDecorations: (handle: number) => ArrayBuffer | undefined;
 
+// Diff
+export const editorSetDiffChanges: (handle: number, data: ArrayBuffer, size: number) => ArrayBuffer | undefined;
+export const editorComputeDiff: (handle: number, originalText: string) => ArrayBuffer | undefined;
+export const editorSetBatchDiffLineSpans: (handle: number, data: ArrayBuffer, size: number) => ArrayBuffer | undefined;
+export const editorClearDiff: (handle: number) => ArrayBuffer | undefined;
+
 // Linked editing
 export const editorInsertSnippet: (handle: number, snippetTemplate: string) => ArrayBuffer | undefined;
 export const editorStartLinkedEditing: (handle: number, data: ArrayBuffer, size: number) => ArrayBuffer | undefined;

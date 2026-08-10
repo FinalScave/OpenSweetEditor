@@ -197,6 +197,12 @@ static napi_value Init(napi_env env, napi_value exports)
         // Clear all
         NAPI_METHOD("editorClearAllDecorations", EditorCoreNapi::clearAllDecorations),
 
+        // Diff
+        NAPI_METHOD("editorSetDiffChanges", EditorCoreNapi::setDiffChanges),
+        NAPI_METHOD("editorComputeDiff", EditorCoreNapi::computeDiff),
+        NAPI_METHOD("editorSetBatchDiffLineSpans", EditorCoreNapi::setBatchDiffLineSpans),
+        NAPI_METHOD("editorClearDiff", EditorCoreNapi::clearDiff),
+
         // Linked editing
         NAPI_METHOD("editorInsertSnippet", EditorCoreNapi::insertSnippet),
         NAPI_METHOD("editorStartLinkedEditing", EditorCoreNapi::startLinkedEditing),

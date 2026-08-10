@@ -23,6 +23,7 @@ export enum EditorActionSource {
   FOLDING = 8,
   SEARCH = 9,
   LINKED_EDITING = 10,
+  DIFF = 11,
 }
 
 export function editorActionSourceFromValue(value: number): EditorActionSource {
@@ -38,6 +39,7 @@ export function editorActionSourceFromValue(value: number): EditorActionSource {
     case 8: return EditorActionSource.FOLDING;
     case 9: return EditorActionSource.SEARCH;
     case 10: return EditorActionSource.LINKED_EDITING;
+    case 11: return EditorActionSource.DIFF;
     default: throw new Error('Unknown EditorActionSource value: ' + value);
   }
 }

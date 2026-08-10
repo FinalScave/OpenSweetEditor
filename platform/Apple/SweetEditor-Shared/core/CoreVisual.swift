@@ -116,12 +116,14 @@ public enum VisualLineKind: Int32 {
     case CONTENT = 0
     case PHANTOM = 1
     case CODELENS = 2
+    case REMOVED = 3
 
     public static func fromValue(_ value: Int32) -> VisualLineKind? {
         switch value {
         case 0: return .CONTENT
         case 1: return .PHANTOM
         case 2: return .CODELENS
+        case 3: return .REMOVED
         default: return nil
         }
     }
@@ -382,8 +384,11 @@ public struct VisualLine {
     public var kind: VisualLineKind = .CONTENT
     public var owns_gutter_semantics: Bool = false
     public var fold_state: FoldState = .NONE
+    public var line_number: Int32 = -1
+    public var line_background_color: Int32 = 0
+    public var gutter_background_color: Int32 = 0
 
-    public init(logical_line: Int32 = 0, wrap_index: Int32 = 0, line_number_position: PointF = PointF(), runs: [VisualRun] = [], kind: VisualLineKind = .CONTENT, owns_gutter_semantics: Bool = false, fold_state: FoldState = .NONE) {
+    public init(logical_line: Int32 = 0, wrap_index: Int32 = 0, line_number_position: PointF = PointF(), runs: [VisualRun] = [], kind: VisualLineKind = .CONTENT, owns_gutter_semantics: Bool = false, fold_state: FoldState = .NONE, line_number: Int32 = -1, line_background_color: Int32 = 0, gutter_background_color: Int32 = 0) {
         self.logical_line = logical_line
         self.wrap_index = wrap_index
         self.line_number_position = line_number_position
@@ -391,6 +396,9 @@ public struct VisualLine {
         self.kind = kind
         self.owns_gutter_semantics = owns_gutter_semantics
         self.fold_state = fold_state
+        self.line_number = line_number
+        self.line_background_color = line_background_color
+        self.gutter_background_color = gutter_background_color
     }
 }
 

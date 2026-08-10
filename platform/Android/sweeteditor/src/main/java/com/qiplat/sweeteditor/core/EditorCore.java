@@ -11,6 +11,7 @@ import androidx.annotation.Nullable;
 
 import com.qiplat.sweeteditor.core.adornment.CodeLensItem;
 import com.qiplat.sweeteditor.core.adornment.Diagnostic;
+import com.qiplat.sweeteditor.core.adornment.DiffChange;
 import com.qiplat.sweeteditor.core.adornment.DocumentHighlight;
 import com.qiplat.sweeteditor.core.adornment.FoldRegion;
 import com.qiplat.sweeteditor.core.adornment.GutterIcon;
@@ -1892,6 +1893,35 @@ public class EditorCore {
         return decodeAction(nativeClearAllDecorations(mNativeHandle));
     }
 
+    // Diff
+
+    @NonNull
+    public EditorActionResult setDiffChanges(@Nullable List<? extends DiffChange> changes) {
+        if (mNativeHandle == 0) return new EditorActionResult();
+        ByteBuffer payload = CoreProtocol.encodeSetDiffChangesPayload(changes);
+        return decodeAction(nativeSetDiffChanges(mNativeHandle, payload, payload.remaining()));
+    }
+
+    @NonNull
+    public EditorActionResult computeDiff(@NonNull String originalText) {
+        if (mNativeHandle == 0) return new EditorActionResult();
+        return decodeAction(nativeComputeDiff(mNativeHandle, originalText));
+    }
+
+    @NonNull
+    public EditorActionResult setBatchDiffLineSpans(@NonNull SpanLayer layer,
+            @Nullable Map<Integer, ? extends List<? extends StyleSpan>> spansByOriginalLine) {
+        if (mNativeHandle == 0) return new EditorActionResult();
+        ByteBuffer payload = CoreProtocol.encodeSetBatchDiffLineSpansPayload(layer, spansByOriginalLine);
+        return decodeAction(nativeSetBatchDiffLineSpans(mNativeHandle, payload, payload.remaining()));
+    }
+
+    @NonNull
+    public EditorActionResult clearDiff() {
+        if (mNativeHandle == 0) return new EditorActionResult();
+        return decodeAction(nativeClearDiff(mNativeHandle));
+    }
+
     // ==================== Private Helpers/Internal Implementation ====================
 
     private static int getEventTypeInt(MotionEvent event) {
@@ -2317,6 +2347,18 @@ public class EditorCore {
 
     @FastNative
     private static native ByteBuffer nativeClearAllDecorations(long handle);
+
+    @FastNative
+    private static native ByteBuffer nativeSetDiffChanges(long handle, ByteBuffer data, int size);
+
+    @FastNative
+    private static native ByteBuffer nativeComputeDiff(long handle, String originalText);
+
+    @FastNative
+    private static native ByteBuffer nativeSetBatchDiffLineSpans(long handle, ByteBuffer data, int size);
+
+    @FastNative
+    private static native ByteBuffer nativeClearDiff(long handle);
 
     @FastNative
     private static native ByteBuffer nativeInsertSnippet(long handle, String snippetTemplate);

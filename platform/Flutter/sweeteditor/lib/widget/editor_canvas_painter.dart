@@ -98,6 +98,7 @@ class EditorCanvasPainter extends ChangeNotifier implements CustomPainter {
       Paint()..color = Color(_theme.backgroundColor),
     );
 
+    _drawDiffLineBackgrounds(canvas, m, 0, size.width, gutter: false);
     _drawCurrentLineHighlight(canvas, m, 0, size.width);
 
     _drawRangeEffectBackgrounds(canvas, m);
@@ -128,6 +129,7 @@ class EditorCanvasPainter extends ChangeNotifier implements CustomPainter {
           Rect.fromLTWH(0, 0, splitScreenX, size.height),
           Paint()..color = Color(_theme.backgroundColor),
         );
+        _drawDiffLineBackgrounds(canvas, m, 0, splitScreenX, gutter: true);
         _drawCurrentLineHighlight(canvas, m, 0, splitScreenX);
         if (m.splitLineVisible) {
           canvas.drawLine(
@@ -758,8 +760,9 @@ class EditorCanvasPainter extends ChangeNotifier implements CustomPainter {
     final activeLogicalLine = m.cursor.textPosition.line;
 
     for (final line in m.lines) {
-      if (!line.ownsGutterSemantics) continue;
-      final isCurrentLine = line.logicalLine == activeLogicalLine;
+      if (line.lineNumber < 0) continue;
+      final isCurrentLine =
+          line.ownsGutterSemantics && line.logicalLine == activeLogicalLine;
       final color = isCurrentLine
           ? _theme.currentLineNumberColor
           : _theme.lineNumberColor;
@@ -768,7 +771,7 @@ class EditorCanvasPainter extends ChangeNotifier implements CustomPainter {
       final baselineY = pos.y;
       final fontMetrics = _measurer.getFontMetrics();
       final painter = _getTextPainter(
-        '${line.logicalLine + 1}',
+        '${line.lineNumber}',
         TextStyle(
           fontFamily: _measurer.fontFamily,
           fontSize: _measurer.fontSize,
@@ -782,6 +785,32 @@ class EditorCanvasPainter extends ChangeNotifier implements CustomPainter {
         numX,
         baselineY,
         fontMetrics.ascent,
+      );
+    }
+  }
+
+  void _drawDiffLineBackgrounds(
+    Canvas canvas,
+    core.EditorRenderModel model,
+    double left,
+    double right, {
+    required bool gutter,
+  }) {
+    if (right <= left) return;
+    final metrics = _measurer.getFontMetrics();
+    final lineHeight = model.cursor.height > 0
+        ? model.cursor.height
+        : metrics.lineHeight;
+    final topPadding = (lineHeight - metrics.lineHeight) / 2;
+    for (final line in model.lines) {
+      final color = gutter
+          ? line.gutterBackgroundColor
+          : line.lineBackgroundColor;
+      if (color == 0) continue;
+      final top = line.lineNumberPosition.y - metrics.ascent - topPadding;
+      canvas.drawRect(
+        Rect.fromLTWH(left, top, right - left, lineHeight),
+        Paint()..color = Color(color),
       );
     }
   }

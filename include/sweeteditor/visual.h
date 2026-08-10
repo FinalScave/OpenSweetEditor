@@ -14,6 +14,7 @@
 
 namespace NS_SWEETEDITOR {
   inline constexpr size_t kVisualRunOwnerLine = std::numeric_limits<size_t>::max();
+  inline constexpr size_t kVisualRunNoDocumentLine = std::numeric_limits<size_t>::max() - 1;
 
   /// Enum for visual render run types
   enum class SE_PROTOCOL_ENUM(visual, TEXT) VisualRunType {
@@ -105,6 +106,8 @@ namespace NS_SWEETEDITOR {
     PHANTOM = 1,
     /// CodeLens virtual line above a code line
     CODELENS = 2,
+    /// Read-only line removed from the original document
+    REMOVED = 3,
   };
 
   /// Pointer cursor hint for desktop platforms
@@ -134,6 +137,15 @@ namespace NS_SWEETEDITOR {
     /// Fold state (NONE=not fold line, EXPANDED=expandable, COLLAPSED=folded)
     SE_PROTOCOL_WIRE(enum_i32)
     FoldState fold_state{FoldState::NONE};
+    /// Displayed one-based line number, or -1 when this row has no line number.
+    int32_t line_number{-1};
+    /// Full-width background of this visual row.
+    int32_t line_background_color{0};
+    /// Gutter background of this visual row.
+    int32_t gutter_background_color{0};
+    /// Current-document position used when a virtual row receives interaction.
+    SE_PROTOCOL_SKIP
+    TextPosition interaction_position;
 
     U8String dump() const;
   };

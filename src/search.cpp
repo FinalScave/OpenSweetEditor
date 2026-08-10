@@ -6,7 +6,7 @@
 #include <regex>
 #include <sweeteditor/search.h>
 #include <sweeteditor/utility.h>
-#include "text_boundary.hpp"
+#include "internal/text_boundary.hpp"
 
 namespace NS_SWEETEDITOR {
   namespace {

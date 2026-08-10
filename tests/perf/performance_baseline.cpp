@@ -90,3 +90,26 @@ TEST_CASE("Performance baseline: render model with guide and diagnostic decorati
     return model.guide_segments.size() + model.range_effects.size();
   };
 }
+
+TEST_CASE("Performance baseline: render model with many diff hunks") {
+  constexpr size_t line_count = 10000;
+  auto editor_holder = makeEditor(makeRepeatedLines(line_count, "current"), {240, 220});
+  EditorCore& editor = *editor_holder;
+
+  Vector<DiffChange> changes;
+  changes.reserve(line_count / 2);
+  for (size_t line = 0; line < line_count; line += 2) {
+    changes.push_back({line, 1, line, {"original"}});
+  }
+  REQUIRE(editor.setDiffChanges(std::move(changes)).handled);
+  editor.setScroll(0.0f, 50000.0f);
+
+  EditorRenderModel warmup;
+  editor.buildRenderModel(warmup);
+
+  BENCHMARK("BuildRenderModel_ManyDiffHunks") {
+    EditorRenderModel model;
+    editor.buildRenderModel(model);
+    return model.lines.size();
+  };
+}

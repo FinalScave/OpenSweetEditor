@@ -249,7 +249,11 @@ public class SweetEditor extends JPanel {
                 linkForeground,
                 activeLinkForeground,
                 codeLensForeground,
-                activeCodeLensForeground);
+                activeCodeLensForeground,
+                colorToArgb(theme.diffAddedLineBackgroundColor),
+                colorToArgb(theme.diffRemovedLineBackgroundColor),
+                colorToArgb(theme.diffAddedGutterBackgroundColor),
+                colorToArgb(theme.diffRemovedGutterBackgroundColor));
     }
 
     private EditorRangeEffectStyles buildEditorRangeEffectStyles(EditorTheme theme) {
@@ -812,6 +816,29 @@ public class SweetEditor extends JPanel {
     public void clearAllDecorations() {
         EditorActionResult result = editorCore.clearAllDecorations();
         dispatchEditorActionResult(result);
+    }
+
+    // Diff
+
+    /** Install an externally computed line-level diff. */
+    public void setDiffChanges(List<? extends DiffChange> changes) {
+        dispatchEditorActionResult(editorCore.setDiffChanges(changes));
+    }
+
+    /** Compute a line-level diff against the supplied original document text. */
+    public void computeDiff(String originalText) {
+        dispatchEditorActionResult(editorCore.computeDiff(originalText));
+    }
+
+    /** Set layered style spans for removed original lines. */
+    public void setBatchDiffLineSpans(SpanLayer layer,
+                                      Map<Integer, ? extends List<? extends StyleSpan>> spansByOriginalLine) {
+        dispatchEditorActionResult(editorCore.setBatchDiffLineSpans(layer, spansByOriginalLine));
+    }
+
+    /** Clear the current diff snapshot. */
+    public void clearDiff() {
+        dispatchEditorActionResult(editorCore.clearDiff());
     }
 
     /**

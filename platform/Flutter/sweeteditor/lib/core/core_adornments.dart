@@ -128,6 +128,20 @@ class Diagnostic {
   final DiagnosticSeverity severity;
 }
 
+class DiffChange {
+  const DiffChange({
+    this.currentStartLine = 0,
+    this.currentLineCount = 0,
+    this.originalStartLine = 0,
+    this.removedLines = const [],
+  });
+
+  final int currentStartLine;
+  final int currentLineCount;
+  final int originalStartLine;
+  final List<String> removedLines;
+}
+
 class DocumentHighlight {
   const DocumentHighlight({
     this.column = 0,

@@ -1036,7 +1036,11 @@ namespace SweetEditor {
 				LinkForeground = (int)linkColor,
 				ActiveLinkForeground = (int)activeLinkColor,
 				CodelensForeground = (int)codeLensColor,
-				ActiveCodelensForeground = (int)activeCodeLensColor
+				ActiveCodelensForeground = (int)activeCodeLensColor,
+				DiffAddedLineBackground = (int)theme.DiffAddedLineBackgroundColor,
+				DiffRemovedLineBackground = (int)theme.DiffRemovedLineBackgroundColor,
+				DiffAddedGutterBackground = (int)theme.DiffAddedGutterBackgroundColor,
+				DiffRemovedGutterBackground = (int)theme.DiffRemovedGutterBackgroundColor
 			};
 		}
 
@@ -1562,6 +1566,22 @@ namespace SweetEditor {
 		public void ClearAllDecorations() {
 			DispatchEditorActionResult(editorCore.ClearAllDecorations());
 		}
+
+		/// <summary>Installs an externally computed line-level diff.</summary>
+		public void SetDiffChanges(IReadOnlyList<DiffChange> changes) =>
+			DispatchEditorActionResult(editorCore.SetDiffChanges(changes));
+
+		/// <summary>Computes a line-level diff against the supplied original document text.</summary>
+		public void ComputeDiff(string originalText) =>
+			DispatchEditorActionResult(editorCore.ComputeDiff(originalText));
+
+		/// <summary>Sets layered style spans for removed original lines.</summary>
+		public void SetBatchDiffLineSpans(SpanLayer layer,
+			IReadOnlyDictionary<int, IReadOnlyList<StyleSpan>> spansByOriginalLine) =>
+			DispatchEditorActionResult(editorCore.SetBatchDiffLineSpans(layer, spansByOriginalLine));
+
+		/// <summary>Clears the current diff snapshot.</summary>
+		public void ClearDiff() => DispatchEditorActionResult(editorCore.ClearDiff());
 
 		public void SetMatchedBrackets(int openLine, int openColumn, int closeLine, int closeColumn) {
 			DispatchEditorActionResult(editorCore.SetMatchedBrackets(openLine, openColumn, closeLine, closeColumn));

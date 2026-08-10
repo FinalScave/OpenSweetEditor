@@ -33,7 +33,8 @@ def dart_part_of(target):
 def dart_type(field, schema_types, schema_enums):
     inner = vector_inner(field["cpp_type"])
     if inner is not None:
-        return f"List<{inner}>"
+        inner_type = "String" if infer_wire_type(inner) == "utf8_string" else inner
+        return f"List<{inner_type}>"
     wire = field["wire"]
     if wire == "enum_i32" and field["cpp_type"] in schema_enums:
         return field["cpp_type"]
@@ -493,17 +494,21 @@ def generate_dart_codec(schema, target=None):
         "}",
     ])
     for inner in list_inner_names(schema):
+        inner_type = "String" if infer_wire_type(inner) == "utf8_string" else inner
+        read_value = "_readUtf8String(reader)" if inner_type == "String" else f"_read{inner}(reader)"
+        write_value = "_writeUtf8String(writer, values![i]);" if inner_type == "String" else f"_write{inner}(writer, values![i]);"
+        size_value = "_sizeOfUtf8String(value)" if inner_type == "String" else f"_sizeOf{inner}(value)"
         if inner_needs_reader(schema, inner):
             lines.extend([
                 "",
-                f"List<{inner}> _read{inner}List(_BinaryReader reader) {{",
+                f"List<{inner_type}> _read{inner}List(_BinaryReader reader) {{",
                 "  final count = reader.readInt32();",
                 "  if (count < 0 || count > reader.remaining) {",
                 "    throw RangeError('Invalid protocol length.');",
                 "  }",
-                f"  final values = <{inner}>[];",
+                f"  final values = <{inner_type}>[];",
                 "  for (var i = 0; i < count; i++) {",
-                f"    values.add(_read{inner}(reader));",
+                f"    values.add({read_value});",
                 "  }",
                 "  return values;",
                 "}",
@@ -511,19 +516,19 @@ def generate_dart_codec(schema, target=None):
         if inner_needs_writer(schema, inner):
             lines.extend([
                 "",
-                f"void _write{inner}List(_BinaryWriter writer, List<{inner}>? values) {{",
+                f"void _write{inner}List(_BinaryWriter writer, List<{inner_type}>? values) {{",
                 "  final count = values == null ? 0 : values.length;",
                 "  writer.writeInt32(count);",
                 "  for (var i = 0; i < count; i++) {",
-                f"    _write{inner}(writer, values![i]);",
+                f"    {write_value}",
                 "  }",
                 "}",
                 "",
-                f"int _sizeOf{inner}List(List<{inner}>? values) {{",
+                f"int _sizeOf{inner}List(List<{inner_type}>? values) {{",
                 "  var size = 4;",
                 "  if (values != null) {",
                 "    for (final value in values) {",
-                f"      size += _sizeOf{inner}(value);",
+                f"      size += {size_value};",
                 "    }",
                 "  }",
                 "  return size;",

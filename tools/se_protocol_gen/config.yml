@@ -9,6 +9,7 @@ schema:
     - include/sweeteditor/search.h
     - include/sweeteditor/editor_core.h
     - include/sweeteditor/decoration.h
+    - include/sweeteditor/diff.h
     - include/sweeteditor/visual.h
     - include/sweeteditor/protocol.h
   generated: tools/se_protocol_gen/generated/schema.json

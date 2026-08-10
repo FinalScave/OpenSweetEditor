@@ -5,7 +5,7 @@
 #include <cmath>
 #include <sweeteditor/gesture.h>
 #include <sweeteditor/utility.h>
-#include "logging.h"
+#include "internal/logging.hpp"
 
 namespace NS_SWEETEDITOR {
 

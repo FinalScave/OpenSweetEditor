@@ -1,6 +1,6 @@
 import util from '@ohos.util';
 import { AnimationFlag, EditorActionResult, EditorActionSource, InteractionFlag, ScrollBehavior, TextChangeKind, editorActionSourceFromValue, scrollBehaviorFromValue, textChangeKindFromValue } from './CoreAction';
-import { BracketGuide, CodeLensItem, Diagnostic, DiagnosticSeverity, DocumentHighlight, DocumentHighlightKind, FlowGuide, FoldRegion, GutterIcon, IndentGuide, InlayHint, InlayType, LinkSpan, PhantomText, SeparatorGuide, SeparatorStyle, SpanLayer, StyleSpan, TextStyle, diagnosticSeverityFromValue, documentHighlightKindFromValue, inlayTypeFromValue, separatorStyleFromValue, spanLayerFromValue } from './CoreAdornments';
+import { BracketGuide, CodeLensItem, Diagnostic, DiagnosticSeverity, DiffChange, DocumentHighlight, DocumentHighlightKind, FlowGuide, FoldRegion, GutterIcon, IndentGuide, InlayHint, InlayType, LinkSpan, PhantomText, SeparatorGuide, SeparatorStyle, SpanLayer, StyleSpan, TextStyle, diagnosticSeverityFromValue, documentHighlightKindFromValue, inlayTypeFromValue, separatorStyleFromValue, spanLayerFromValue } from './CoreAdornments';
 import { AutoIndentMode, CurrentLineRenderMode, EditorOptions, EditorRangeEffectStyles, EditorRenderColors, FoldArrowMode, HandleConfig, HandleHitArea, RangeEffectStyle, RangeEffectUnderlineStyle, ScrollbarConfig, ScrollbarMode, ScrollbarTrackTapMode, WhitespaceRenderMode, WrapMode, autoIndentModeFromValue, currentLineRenderModeFromValue, foldArrowModeFromValue, rangeEffectUnderlineStyleFromValue, scrollbarModeFromValue, scrollbarTrackTapModeFromValue, whitespaceRenderModeFromValue, wrapModeFromValue } from './CoreConfig';
 import { CaretAffinity, IntRange, PointF, Rect, Size, TabStopGroup, TextChange, TextEdit, TextPosition, TextRange, caretAffinityFromValue } from './CoreFoundation';
 import { ImeCommand, ImeCommandBatch, ImeCommandKind, ImeCoordinateSpace, ImeHostAction, ImeMutationModel, ImeOffsetRange, ImeResultCode, ImeSelection, ImeState, ImeTextContext, ImeTextSource, ImeTextUnit, ImeTextUpdateBatch, ImeTextUpdateStep, imeCommandKindFromValue, imeCoordinateSpaceFromValue, imeHostActionFromValue, imeMutationModelFromValue, imeResultCodeFromValue, imeTextSourceFromValue, imeTextUnitFromValue } from './CoreIme';
@@ -205,6 +205,24 @@ export class CoreProtocol {
     if (values) {
       for (const value of values) {
         size += CoreProtocol.sizeOfDiagnostic(value);
+      }
+    }
+    return size;
+  }
+
+  private static writeDiffChangeList(writer: BinaryWriter, values: DiffChange[]): void {
+    const count = values ? values.length : 0;
+    writer.writeInt32(count);
+    for (let i = 0; i < count; i++) {
+      CoreProtocol.writeDiffChange(writer, values[i]);
+    }
+  }
+
+  private static sizeOfDiffChangeList(values: DiffChange[]): number {
+    let size = 4;
+    if (values) {
+      for (const value of values) {
+        size += CoreProtocol.sizeOfDiffChange(value);
       }
     }
     return size;
@@ -666,6 +684,36 @@ export class CoreProtocol {
     return size;
   }
 
+  private static readU8StringList(reader: BinaryReader): string[] {
+    const count = reader.readInt32();
+    if (count < 0 || count > reader.remaining) {
+      throw new Error('Invalid protocol length.');
+    }
+    const values: string[] = [];
+    for (let i = 0; i < count; i++) {
+      values.push(reader.readUtf8String());
+    }
+    return values;
+  }
+
+  private static writeU8StringList(writer: BinaryWriter, values: string[]): void {
+    const count = values ? values.length : 0;
+    writer.writeInt32(count);
+    for (let i = 0; i < count; i++) {
+      writer.writeUtf8String(values[i]);
+    }
+  }
+
+  private static sizeOfU8StringList(values: string[]): number {
+    let size = 4;
+    if (values) {
+      for (const value of values) {
+        size += CoreProtocol.sizeOfUtf8String(value);
+      }
+    }
+    return size;
+  }
+
   private static readVisualLineList(reader: BinaryReader): VisualLine[] {
     const count = reader.readInt32();
     if (count < 0 || count > reader.remaining) {
@@ -775,6 +823,22 @@ export class CoreProtocol {
     size += 4;
     size += 4;
     size += 4;
+    return size;
+  }
+
+  static writeDiffChange(writer: BinaryWriter, value: DiffChange): void {
+    writer.writeInt32(value.currentStartLine);
+    writer.writeInt32(value.currentLineCount);
+    writer.writeInt32(value.originalStartLine);
+    CoreProtocol.writeU8StringList(writer, value.removedLines);
+  }
+
+  static sizeOfDiffChange(value: DiffChange): number {
+    let size = 0;
+    size += 4;
+    size += 4;
+    size += 4;
+    size += CoreProtocol.sizeOfU8StringList(value.removedLines);
     return size;
   }
 
@@ -1018,10 +1082,18 @@ export class CoreProtocol {
     writer.writeInt32(value.activeLinkForeground);
     writer.writeInt32(value.codelensForeground);
     writer.writeInt32(value.activeCodelensForeground);
+    writer.writeInt32(value.diffAddedLineBackground);
+    writer.writeInt32(value.diffRemovedLineBackground);
+    writer.writeInt32(value.diffAddedGutterBackground);
+    writer.writeInt32(value.diffRemovedGutterBackground);
   }
 
   static sizeOfEditorRenderColors(value: EditorRenderColors): number {
     let size = 0;
+    size += 4;
+    size += 4;
+    size += 4;
+    size += 4;
     size += 4;
     size += 4;
     size += 4;
@@ -1809,7 +1881,10 @@ export class CoreProtocol {
       runs: CoreProtocol.readVisualRunList(reader),
       kind: visualLineKindFromValue(reader.readInt32()),
       ownsGutterSemantics: reader.readInt32() !== 0,
-      foldState: foldStateFromValue(reader.readInt32())
+      foldState: foldStateFromValue(reader.readInt32()),
+      lineNumber: reader.readInt32(),
+      lineBackgroundColor: reader.readInt32(),
+      gutterBackgroundColor: reader.readInt32()
     };
   }
 
@@ -1852,6 +1927,12 @@ export class CoreProtocol {
   static encodeDiagnostic(value: Diagnostic): ArrayBuffer {
     const writer = new BinaryWriter(CoreProtocol.sizeOfDiagnostic(value));
     CoreProtocol.writeDiagnostic(writer, value);
+    return writer.getBuffer();
+  }
+
+  static encodeDiffChange(value: DiffChange): ArrayBuffer {
+    const writer = new BinaryWriter(CoreProtocol.sizeOfDiffChange(value));
+    CoreProtocol.writeDiffChange(writer, value);
     return writer.getBuffer();
   }
 
@@ -1934,6 +2015,36 @@ export class CoreProtocol {
   static encodeSeparatorGuide(value: SeparatorGuide): ArrayBuffer {
     const writer = new BinaryWriter(CoreProtocol.sizeOfSeparatorGuide(value));
     CoreProtocol.writeSeparatorGuide(writer, value);
+    return writer.getBuffer();
+  }
+
+  private static writeSetBatchDiffLineSpansPayloadWire(writer: BinaryWriter, layer: SpanLayer, spansByOriginalLine: Map<number, StyleSpan[]>): void {
+    writer.writeInt32(layer as number);
+    const spansByOriginalLineKeys = spansByOriginalLine ? Array.from(spansByOriginalLine.keys()).sort((a, b) => a - b) : [];
+    writer.writeInt32(spansByOriginalLineKeys.length);
+    for (const key of spansByOriginalLineKeys) {
+      writer.writeInt32(key);
+      const value = spansByOriginalLine.get(key)!;
+      CoreProtocol.writeStyleSpanList(writer, value);
+    }
+  }
+
+  private static sizeOfSetBatchDiffLineSpansPayloadWire(layer: SpanLayer, spansByOriginalLine: Map<number, StyleSpan[]>): number {
+    let size = 0;
+    size += 4;
+    size += 4;
+    const spansByOriginalLineKeys = spansByOriginalLine ? Array.from(spansByOriginalLine.keys()).sort((a, b) => a - b) : [];
+    for (const key of spansByOriginalLineKeys) {
+      size += 4;
+      const value = spansByOriginalLine.get(key)!;
+      size += CoreProtocol.sizeOfStyleSpanList(value);
+    }
+    return size;
+  }
+
+  static encodeSetBatchDiffLineSpansPayload(layer: SpanLayer, spansByOriginalLine: Map<number, StyleSpan[]>): ArrayBuffer {
+    const writer = new BinaryWriter(CoreProtocol.sizeOfSetBatchDiffLineSpansPayloadWire(layer, spansByOriginalLine));
+    CoreProtocol.writeSetBatchDiffLineSpansPayloadWire(writer, layer, spansByOriginalLine);
     return writer.getBuffer();
   }
 
@@ -2176,6 +2287,22 @@ export class CoreProtocol {
   static encodeSetBracketGuidesPayload(guides: BracketGuide[]): ArrayBuffer {
     const writer = new BinaryWriter(CoreProtocol.sizeOfSetBracketGuidesPayloadWire(guides));
     CoreProtocol.writeSetBracketGuidesPayloadWire(writer, guides);
+    return writer.getBuffer();
+  }
+
+  private static writeSetDiffChangesPayloadWire(writer: BinaryWriter, changes: DiffChange[]): void {
+    CoreProtocol.writeDiffChangeList(writer, changes);
+  }
+
+  private static sizeOfSetDiffChangesPayloadWire(changes: DiffChange[]): number {
+    let size = 0;
+    size += CoreProtocol.sizeOfDiffChangeList(changes);
+    return size;
+  }
+
+  static encodeSetDiffChangesPayload(changes: DiffChange[]): ArrayBuffer {
+    const writer = new BinaryWriter(CoreProtocol.sizeOfSetDiffChangesPayloadWire(changes));
+    CoreProtocol.writeSetDiffChangesPayloadWire(writer, changes);
     return writer.getBuffer();
   }
 

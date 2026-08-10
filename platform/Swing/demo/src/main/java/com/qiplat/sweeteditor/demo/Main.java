@@ -46,6 +46,8 @@ import java.util.Locale;
 
 public class Main extends JFrame {
     private static final String FALLBACK_FILE_NAME = "example.cpp";
+    private static final String DIFF_SAMPLE_LABEL = "diff: example.java";
+    private static final String DIFF_SAMPLE_FILE_NAME = "example.java";
     private static final String FALLBACK_SAMPLE_CODE =
             "// SweetEditor Demo\n" +
             "int main() {\n" +
@@ -64,6 +66,7 @@ public class Main extends JFrame {
     private final JToggleButton wholeWordButton;
     private final JToggleButton regexButton;
     private final List<Path> demoFiles = new ArrayList<>();
+    private Path diffSamplePath;
 
     private boolean isDarkTheme = true;
     private WrapMode wrapModePreset = WrapMode.NONE;
@@ -116,6 +119,10 @@ public class Main extends JFrame {
                 return;
             }
             int selectedIndex = fileComboBox.getSelectedIndex();
+            if (selectedIndex == demoFiles.size() && diffSamplePath != null) {
+                loadDiffSample();
+                return;
+            }
             if (selectedIndex < 0 || selectedIndex >= demoFiles.size()) {
                 return;
             }
@@ -220,6 +227,13 @@ public class Main extends JFrame {
         for (Path file : demoFiles) {
             model.addElement(file.getFileName().toString());
         }
+        diffSamplePath = demoFiles.stream()
+                .filter(file -> DIFF_SAMPLE_FILE_NAME.equals(file.getFileName().toString()))
+                .findFirst()
+                .orElse(null);
+        if (diffSamplePath != null) {
+            model.addElement(DIFF_SAMPLE_LABEL);
+        }
 
         suppressFileSelection = true;
         fileComboBox.setModel(model);
@@ -240,6 +254,24 @@ public class Main extends JFrame {
         } catch (IOException e) {
             loadDemoText(filePath.getFileName().toString(), FALLBACK_SAMPLE_CODE);
         }
+    }
+
+    private void loadDiffSample() {
+        try {
+            String originalText = normalizeNewlines(Files.readString(diffSamplePath, StandardCharsets.UTF_8));
+            loadDemoText(DIFF_SAMPLE_FILE_NAME, createDiffSample(originalText));
+            editor.computeDiff(originalText);
+            updateStatus("Loaded: " + DIFF_SAMPLE_LABEL);
+        } catch (IOException e) {
+            updateStatus("Failed to load: " + DIFF_SAMPLE_LABEL);
+        }
+    }
+
+    private static String createDiffSample(String originalText) {
+        return originalText
+                .replace("import java.util.Map;", "import java.util.Map;\nimport java.util.Set;")
+                .replace("import java.io.*;\n", "")
+                .replace("private static final int MAX_SIZE = 100;", "private static final int MAX_SIZE = 256;");
     }
 
     private void loadDemoText(String fileName, String text) {

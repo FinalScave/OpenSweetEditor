@@ -4,6 +4,7 @@
 #include <algorithm>
 #include <cstring>
 #include <sweeteditor/decoration.h>
+#include "internal/style_span_util.hpp"
 
 namespace NS_SWEETEDITOR {
   const TextStyle TextStyleRegistry::kDefaultStyle;
@@ -77,63 +78,14 @@ namespace NS_SWEETEDITOR {
   }
 
   Vector<StyleSpan> Decorations::getMergedLineSpans(size_t line) const {
-    // Collect all non-empty layers
-    Vector<const Vector<StyleSpan>*> layers;
+    std::array<const Vector<StyleSpan>*, kSpanLayerCount> layers{};
     for (size_t i = 0; i < kSpanLayerCount; ++i) {
       const auto& storage = m_layer_spans_[i];
       if (line < storage.size() && !storage[line].empty()) {
-        layers.push_back(&storage[line]);
+        layers[i] = &storage[line];
       }
     }
-    if (layers.empty()) return {};
-    if (layers.size() == 1) return *layers[0];
-
-    // Merge multiple layers: higher layers override lower ones (zip-aligned by split points)
-    // Collect all split points
-    HashSet<uint32_t> split_set;
-    for (const auto* layer : layers) {
-      for (const auto& span : *layer) {
-        split_set.insert(span.column);
-        split_set.insert(span.column + span.length);
-      }
-    }
-    Vector<uint32_t> splits(split_set.begin(), split_set.end());
-    std::sort(splits.begin(), splits.end());
-
-    // For each interval [splits[i], splits[i+1]), find the first covering span from top layer down
-    Vector<StyleSpan> result;
-    for (size_t i = 0; i + 1 < splits.size(); ++i) {
-      uint32_t seg_start = splits[i];
-      uint32_t seg_end = splits[i + 1];
-      if (seg_start >= seg_end) continue;
-
-      uint32_t found_style_id = 0;
-      bool found = false;
-      // Traverse from top layer to bottom layer
-      for (int layer_idx = static_cast<int>(kSpanLayerCount) - 1; layer_idx >= 0; --layer_idx) {
-        const auto& storage = m_layer_spans_[layer_idx];
-        if (line >= storage.size()) continue;
-        const auto& spans = storage[line];
-        for (const auto& span : spans) {
-          if (seg_start >= span.column && seg_start < span.column + span.length) {
-            found_style_id = span.style_id;
-            found = true;
-            break;
-          }
-        }
-        if (found) break;
-      }
-      if (!found) continue;
-
-      // Try to merge with previous span (adjacent and same style_id)
-      if (!result.empty() && result.back().style_id == found_style_id
-          && result.back().column + result.back().length == seg_start) {
-        result.back().length += (seg_end - seg_start);
-      } else {
-        result.push_back({seg_start, seg_end - seg_start, found_style_id});
-      }
-    }
-    return result;
+    return detail::mergeStyleSpanLayers(layers);
   }
 
   const Vector<InlayHint>& Decorations::getLineInlayHints(size_t line) const {

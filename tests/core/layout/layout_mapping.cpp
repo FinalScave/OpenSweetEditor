@@ -231,7 +231,9 @@ TEST_CASE("TextLayout hitTestTextBoundary maps CodeLens virtual line to previous
   const float probe_y = line_start.y - layout.getLineHeight() * 0.5f;
   const float probe_x = layout.getLayoutMetrics().textAreaX() + 20.0f;
 
-  CHECK(layout.hitTestPointer({probe_x, probe_y}).position == (TextPosition{1, 0}));
+  const CaretHit pointer = layout.hitTestPointer({probe_x, probe_y});
+  CHECK_FALSE(pointer.hits_document_text);
+  CHECK(pointer.position == (TextPosition{1, 0}));
   CHECK(layout.hitTestTextBoundary({probe_x, probe_y}).position == (TextPosition{0, 5}));
 }
 

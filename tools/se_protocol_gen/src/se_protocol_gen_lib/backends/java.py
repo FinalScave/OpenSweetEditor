@@ -23,7 +23,8 @@ def java_uses_memory_segment_codec(target):
 def java_type(field, schema_types, schema_enums):
     inner = vector_inner(field["cpp_type"])
     if inner is not None:
-        return f"java.util.List<{inner}>"
+        inner_type = "String" if infer_wire_type(inner) == "utf8_string" else inner
+        return f"java.util.List<{inner_type}>"
     wire = field["wire"]
     if wire == "enum_i32" and field["cpp_type"] in schema_enums:
         return field["cpp_type"]
@@ -1029,17 +1030,25 @@ def generate_java_codec(schema, target):
     ])
     list_inners = list_inner_names(schema)
     for inner in list_inners:
+        inner_type = "String" if infer_wire_type(inner) == "utf8_string" else inner
+        read_value = "readUtf8String(data)" if inner_type == "String" else f"read{inner}(data)"
+        write_value = ("writeUtf8String(data, values.get(i));"
+                       if inner_type == "String"
+                       else f"write{inner}Fields(data, values.get(i));")
+        size_value = ("sizeOfUtf8String(values.get(i))"
+                      if inner_type == "String"
+                      else f"sizeOf{inner}(values.get(i))")
         if inner_needs_reader(schema, inner):
             lines.extend([
                 "",
-                f"    private static ArrayList<{inner}> read{inner}List(ByteBuffer data) {{",
+                f"    private static ArrayList<{inner_type}> read{inner}List(ByteBuffer data) {{",
                 "        int count = data.getInt();",
                 "        if (count < 0 || count > data.remaining()) {",
                 "            throw new IllegalArgumentException(\"Invalid protocol length.\");",
                 "        }",
-                f"        ArrayList<{inner}> values = new ArrayList<>(count);",
+                f"        ArrayList<{inner_type}> values = new ArrayList<>(count);",
                 "        for (int i = 0; i < count; i++) {",
-                f"            values.add(read{inner}(data));",
+                f"            values.add({read_value});",
                 "        }",
                 "        return values;",
                 "    }",
@@ -1047,19 +1056,19 @@ def generate_java_codec(schema, target):
         if inner_needs_writer(schema, inner):
             lines.extend([
                 "",
-                f"    private static void write{inner}List(ByteBuffer data, java.util.List<? extends {inner}> values) {{",
+                f"    private static void write{inner}List(ByteBuffer data, java.util.List<? extends {inner_type}> values) {{",
                 "        int count = values == null ? 0 : values.size();",
                 "        data.putInt(count);",
                 "        for (int i = 0; i < count; i++) {",
-                f"            write{inner}Fields(data, values.get(i));",
+                f"            {write_value}",
                 "        }",
                 "    }",
                 "",
-                f"    private static int sizeOf{inner}List(java.util.List<? extends {inner}> values) {{",
+                f"    private static int sizeOf{inner}List(java.util.List<? extends {inner_type}> values) {{",
                 "        int size = 4;",
                 "        if (values != null) {",
                 "            for (int i = 0; i < values.size(); i++) {",
-                f"                size += sizeOf{inner}(values.get(i));",
+                f"                size += {size_value};",
                 "            }",
                 "        }",
                 "        return size;",
@@ -1290,17 +1299,25 @@ def generate_java_segment_codec(schema, target):
     ])
     list_inners = list_inner_names(schema)
     for inner in list_inners:
+        inner_type = "String" if infer_wire_type(inner) == "utf8_string" else inner
+        read_value = "reader.readUtf8String()" if inner_type == "String" else f"read{inner}(reader)"
+        write_value = ("writer.writeUtf8String(values.get(i));"
+                       if inner_type == "String"
+                       else f"write{inner}(writer, values.get(i));")
+        size_value = ("sizeOfUtf8String(values.get(i))"
+                      if inner_type == "String"
+                      else f"sizeOf{inner}(values.get(i))")
         if inner_needs_reader(schema, inner):
             lines.extend([
                 "",
-                f"    private static ArrayList<{inner}> read{inner}List(BinaryReader reader) {{",
+                f"    private static ArrayList<{inner_type}> read{inner}List(BinaryReader reader) {{",
                 "        int count = reader.readInt32();",
                 "        if (count < 0 || count > reader.remaining()) {",
                 "            throw new IllegalArgumentException(\"Invalid protocol length.\");",
                 "        }",
-                f"        ArrayList<{inner}> values = new ArrayList<>(count);",
+                f"        ArrayList<{inner_type}> values = new ArrayList<>(count);",
                 "        for (int i = 0; i < count; i++) {",
-                f"            values.add(read{inner}(reader));",
+                f"            values.add({read_value});",
                 "        }",
                 "        return values;",
                 "    }",
@@ -1308,19 +1325,19 @@ def generate_java_segment_codec(schema, target):
         if inner_needs_writer(schema, inner):
             lines.extend([
                 "",
-                f"    private static void write{inner}List(BinaryWriter writer, java.util.List<? extends {inner}> values) {{",
+                f"    private static void write{inner}List(BinaryWriter writer, java.util.List<? extends {inner_type}> values) {{",
                 "        int count = values == null ? 0 : values.size();",
                 "        writer.writeInt32(count);",
                 "        for (int i = 0; i < count; i++) {",
-                f"            write{inner}(writer, values.get(i));",
+                f"            {write_value}",
                 "        }",
                 "    }",
                 "",
-                f"    private static int sizeOf{inner}List(java.util.List<? extends {inner}> values) {{",
+                f"    private static int sizeOf{inner}List(java.util.List<? extends {inner_type}> values) {{",
                 "        int size = 4;",
                 "        if (values != null) {",
                 "            for (int i = 0; i < values.size(); i++) {",
-                f"                size += sizeOf{inner}(values.get(i));",
+                f"                size += {size_value};",
                 "            }",
                 "        }",
                 "        return size;",

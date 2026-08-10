@@ -14,6 +14,7 @@
 #include <sweeteditor/undo.h>
 #include <sweeteditor/linked_editing.h>
 #include <sweeteditor/search.h>
+#include <sweeteditor/diff.h>
 #include <atomic>
 
 namespace NS_SWEETEDITOR {
@@ -684,6 +685,23 @@ namespace NS_SWEETEDITOR {
 
 #pragma endregion
 
+#pragma region[Diff]
+
+    /// Install an externally computed line-level diff.
+    EditorActionResult setDiffChanges(Vector<DiffChange>&& changes);
+
+    /// Compute a line-level diff against original UTF-8 text.
+    EditorActionResult computeDiff(const U8String& original_text);
+
+    /// Set layered style spans for removed original lines.
+    EditorActionResult setBatchDiffLineSpans(
+        SpanLayer layer, Vector<std::pair<size_t, Vector<StyleSpan>>>&& entries);
+
+    /// Clear the current diff snapshot.
+    EditorActionResult clearDiff();
+
+#pragma endregion
+
   private:
     struct PointerProbeResult {
       HitTarget hot_target;
@@ -709,6 +727,7 @@ namespace NS_SWEETEDITOR {
     EditorOptions m_options_;
     EditorSettings m_settings_;
     TextStyleRegistry m_text_styles_;
+    Diff m_diff_;
     SharedPtr<Document> m_document_;
     UniquePtr<TextLayout> m_text_layout_;
     UniquePtr<EditorInteraction> m_interaction_;
@@ -728,6 +747,7 @@ namespace NS_SWEETEDITOR {
 
     std::optional<ImeSessionState> m_ime_session_;
     uint64_t m_next_ime_session_id_{1};
+    bool m_diff_snapshot_stale_during_composition_{false};
 
     /// Linked editing session (nullptr means not in linked editing mode)
     UniquePtr<LinkedEditingSession> m_linked_editing_session_;
@@ -774,6 +794,9 @@ namespace NS_SWEETEDITOR {
     /// Mark all logical lines as layout dirty
     void markAllLinesDirty(bool reset_heights = false);
     void normalizeScrollState();
+    void invalidateDiffLayout();
+    void setDiffPresentationVisible(bool visible);
+    bool clearDiffState();
 
 #pragma endregion
 

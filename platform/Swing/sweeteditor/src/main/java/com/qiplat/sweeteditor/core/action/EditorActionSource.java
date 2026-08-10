@@ -11,7 +11,8 @@ public enum EditorActionSource {
     DECORATION(7),
     FOLDING(8),
     SEARCH(9),
-    LINKED_EDITING(10);
+    LINKED_EDITING(10),
+    DIFF(11);
 
     public final int value;
 
@@ -32,6 +33,7 @@ public enum EditorActionSource {
             case 8: return FOLDING;
             case 9: return SEARCH;
             case 10: return LINKED_EDITING;
+            case 11: return DIFF;
             default: throw new IllegalArgumentException("Unknown EditorActionSource value: " + value);
         }
     }

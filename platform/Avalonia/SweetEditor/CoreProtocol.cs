@@ -202,6 +202,24 @@ namespace SweetEditor {
             return size;
         }
 
+        private static void WriteDiffChangeList(BinaryWriter writer, IReadOnlyList<DiffChange>? values) {
+            var count = values == null ? 0 : values.Count;
+            writer.WriteInt32(count);
+            for (var i = 0; i < count; i++) {
+                WriteDiffChange(writer, values![i]);
+            }
+        }
+
+        private static int SizeOfDiffChangeList(IReadOnlyList<DiffChange>? values) {
+            var size = 4;
+            if (values != null) {
+                for (var i = 0; i < values.Count; i++) {
+                    size += SizeOfDiffChange(values[i]);
+                }
+            }
+            return size;
+        }
+
         private static void WriteDocumentHighlightList(BinaryWriter writer, IReadOnlyList<DocumentHighlight>? values) {
             var count = values == null ? 0 : values.Count;
             writer.WriteInt32(count);
@@ -636,6 +654,34 @@ namespace SweetEditor {
             return size;
         }
 
+        private static List<string> ReadU8StringList(ref BinaryReader reader) {
+            var count = reader.ReadInt32();
+            if (count < 0 || count > reader.Remaining) throw new InvalidOperationException("Invalid protocol length.");
+            var values = new List<string>(count);
+            for (var i = 0; i < count; i++) {
+                values.Add(ReadUtf8String(ref reader));
+            }
+            return values;
+        }
+
+        private static void WriteU8StringList(BinaryWriter writer, IReadOnlyList<string>? values) {
+            var count = values == null ? 0 : values.Count;
+            writer.WriteInt32(count);
+            for (var i = 0; i < count; i++) {
+                WriteUtf8String(writer, values![i]);
+            }
+        }
+
+        private static int SizeOfU8StringList(IReadOnlyList<string>? values) {
+            var size = 4;
+            if (values != null) {
+                for (var i = 0; i < values.Count; i++) {
+                    size += SizeOfUtf8String(values[i]);
+                }
+            }
+            return size;
+        }
+
         private static List<VisualLine> ReadVisualLineList(ref BinaryReader reader) {
             var count = reader.ReadInt32();
             if (count < 0 || count > reader.Remaining) throw new InvalidOperationException("Invalid protocol length.");
@@ -742,6 +788,22 @@ namespace SweetEditor {
             size += 4;
             size += 4;
             size += 4;
+            return size;
+        }
+
+        private static void WriteDiffChange(BinaryWriter writer, DiffChange value) {
+            writer.WriteInt32(value.CurrentStartLine);
+            writer.WriteInt32(value.CurrentLineCount);
+            writer.WriteInt32(value.OriginalStartLine);
+            WriteU8StringList(writer, value.RemovedLines);
+        }
+
+        private static int SizeOfDiffChange(DiffChange value) {
+            var size = 0;
+            size += 4;
+            size += 4;
+            size += 4;
+            size += SizeOfU8StringList(value.RemovedLines);
             return size;
         }
 
@@ -987,10 +1049,18 @@ namespace SweetEditor {
             writer.WriteInt32(value.ActiveLinkForeground);
             writer.WriteInt32(value.CodelensForeground);
             writer.WriteInt32(value.ActiveCodelensForeground);
+            writer.WriteInt32(value.DiffAddedLineBackground);
+            writer.WriteInt32(value.DiffRemovedLineBackground);
+            writer.WriteInt32(value.DiffAddedGutterBackground);
+            writer.WriteInt32(value.DiffRemovedGutterBackground);
         }
 
         private static int SizeOfEditorRenderColors(EditorRenderColors value) {
             var size = 0;
+            size += 4;
+            size += 4;
+            size += 4;
+            size += 4;
             size += 4;
             size += 4;
             size += 4;
@@ -1809,6 +1879,9 @@ namespace SweetEditor {
                 Kind = ReadEnum<VisualLineKind>(ref reader),
                 OwnsGutterSemantics = reader.ReadBoolI32(),
                 FoldState = ReadEnum<FoldState>(ref reader),
+                LineNumber = reader.ReadInt32(),
+                LineBackgroundColor = reader.ReadInt32(),
+                GutterBackgroundColor = reader.ReadInt32(),
             };
         }
 
@@ -1853,6 +1926,12 @@ namespace SweetEditor {
         public static byte[] EncodeDiagnostic(Diagnostic value) {
             var writer = new BinaryWriter(SizeOfDiagnostic(value));
             WriteDiagnostic(writer, value);
+            return writer.ToArray();
+        }
+
+        public static byte[] EncodeDiffChange(DiffChange value) {
+            var writer = new BinaryWriter(SizeOfDiffChange(value));
+            WriteDiffChange(writer, value);
             return writer.ToArray();
         }
 
@@ -1939,6 +2018,40 @@ namespace SweetEditor {
         public static byte[] EncodeSeparatorGuide(SeparatorGuide value) {
             var writer = new BinaryWriter(SizeOfSeparatorGuide(value));
             WriteSeparatorGuide(writer, value);
+            return writer.ToArray();
+        }
+
+        private static void WriteSetBatchDiffLineSpansPayloadWire(BinaryWriter writer, SpanLayer layer, IReadOnlyDictionary<int, IReadOnlyList<StyleSpan>>? spansByOriginalLine) {
+            writer.WriteInt32((int)layer);
+            var sortedSpansByOriginalLine = new SortedDictionary<int, IReadOnlyList<StyleSpan>>();
+            if (spansByOriginalLine != null) {
+                foreach (var entry in spansByOriginalLine) {
+                    sortedSpansByOriginalLine[entry.Key] = entry.Value;
+                }
+            }
+            writer.WriteInt32(sortedSpansByOriginalLine.Count);
+            foreach (var entry in sortedSpansByOriginalLine) {
+                writer.WriteInt32(entry.Key);
+                WriteStyleSpanList(writer, entry.Value);
+            }
+        }
+
+        private static int SizeOfSetBatchDiffLineSpansPayloadWire(SpanLayer layer, IReadOnlyDictionary<int, IReadOnlyList<StyleSpan>>? spansByOriginalLine) {
+            var size = 0;
+            size += 4;
+            size += 4;
+            if (spansByOriginalLine != null) {
+                foreach (var entry in spansByOriginalLine) {
+                    size += 4;
+                    size += SizeOfStyleSpanList(entry.Value);
+                }
+            }
+            return size;
+        }
+
+        public static byte[] EncodeSetBatchDiffLineSpansPayload(SpanLayer layer, IReadOnlyDictionary<int, IReadOnlyList<StyleSpan>>? spansByOriginalLine) {
+            var writer = new BinaryWriter(SizeOfSetBatchDiffLineSpansPayloadWire(layer, spansByOriginalLine));
+            WriteSetBatchDiffLineSpansPayloadWire(writer, layer, spansByOriginalLine);
             return writer.ToArray();
         }
 
@@ -2213,6 +2326,22 @@ namespace SweetEditor {
         public static byte[] EncodeSetBracketGuidesPayload(IReadOnlyList<BracketGuide>? guides) {
             var writer = new BinaryWriter(SizeOfSetBracketGuidesPayloadWire(guides));
             WriteSetBracketGuidesPayloadWire(writer, guides);
+            return writer.ToArray();
+        }
+
+        private static void WriteSetDiffChangesPayloadWire(BinaryWriter writer, IReadOnlyList<DiffChange>? changes) {
+            WriteDiffChangeList(writer, changes);
+        }
+
+        private static int SizeOfSetDiffChangesPayloadWire(IReadOnlyList<DiffChange>? changes) {
+            var size = 0;
+            size += SizeOfDiffChangeList(changes);
+            return size;
+        }
+
+        public static byte[] EncodeSetDiffChangesPayload(IReadOnlyList<DiffChange>? changes) {
+            var writer = new BinaryWriter(SizeOfSetDiffChangesPayloadWire(changes));
+            WriteSetDiffChangesPayloadWire(writer, changes);
             return writer.ToArray();
         }
 

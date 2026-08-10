@@ -23,7 +23,8 @@ namespace SweetEditor {
         DECORATION = 7,
         FOLDING = 8,
         SEARCH = 9,
-        LINKED_EDITING = 10
+        LINKED_EDITING = 10,
+        DIFF = 11
     }
 
     [Flags]

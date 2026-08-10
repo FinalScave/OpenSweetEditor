@@ -37,3 +37,29 @@ TEST_CASE("TextLayout hitTest/getPositionScreenCoord stay consistent with inlay 
   CHECK((x2 - x1) > 10.0f);
   CHECK((x3 - x2) > 10.0f);
 }
+
+TEST_CASE("TextLayout maps phantom continuation rows to document boundaries") {
+  SharedPtr<TextMeasurer> measurer = makeShared<FixedWidthTextMeasurer>(10.0f);
+  TextStyleRegistry text_styles;
+  TextLayout layout(measurer, text_styles);
+
+  SharedPtr<Document> document = makeShared<LineArrayDocument>("abcd");
+  layout.loadDocument(document);
+  layout.setViewport({400, 200});
+  layout.setViewState({1.0f, 0.0f, 0.0f});
+  layout.setWrapMode(WrapMode::NONE);
+  document->getDecorations().setLinePhantomTexts(0, {PhantomText{2, "first\nsecond"}});
+
+  EditorRenderModel model;
+  layout.layoutVisibleLines(model);
+  const auto phantom = std::find_if(model.lines.begin(), model.lines.end(), [](const VisualLine& line) {
+    return line.kind == VisualLineKind::PHANTOM;
+  });
+  REQUIRE(phantom != model.lines.end());
+  const PointF point{phantom->runs.front().x + 1.0f, phantom->line_number_position.y};
+
+  const CaretHit pointer = layout.hitTestPointer(point);
+  CHECK_FALSE(pointer.hits_document_text);
+  CHECK(pointer.position == (TextPosition{0, 4}));
+  CHECK(layout.hitTestTextBoundary(point).position == (TextPosition{0, 4}));
+}

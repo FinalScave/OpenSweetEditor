@@ -111,6 +111,20 @@ public struct Diagnostic {
     }
 }
 
+public struct DiffChange {
+    public var current_start_line: Int32 = 0
+    public var current_line_count: Int32 = 0
+    public var original_start_line: Int32 = 0
+    public var removed_lines: [String] = []
+
+    public init(current_start_line: Int32 = 0, current_line_count: Int32 = 0, original_start_line: Int32 = 0, removed_lines: [String] = []) {
+        self.current_start_line = current_start_line
+        self.current_line_count = current_line_count
+        self.original_start_line = original_start_line
+        self.removed_lines = removed_lines
+    }
+}
+
 public struct DocumentHighlight {
     public var column: Int32 = 0
     public var length: Int32 = 0

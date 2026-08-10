@@ -508,6 +508,29 @@ public class SweetEditorView: UIView, UIKeyInput, UITextInput, UITextInputTraits
         dispatchEditorActionResult(editorCore.clearDocumentHighlights())
     }
 
+    /// Installs an externally computed line-level diff.
+    public func setDiffChanges(_ changes: [DiffChange]) {
+        dispatchEditorActionResult(editorCore.setDiffChanges(changes))
+    }
+
+    /// Computes a line-level diff against the supplied original document text.
+    public func computeDiff(originalText: String) {
+        dispatchEditorActionResult(editorCore.computeDiff(originalText: originalText))
+    }
+
+    /// Sets layered style spans for removed original lines.
+    public func setBatchDiffLineSpans(layer: SpanLayer, spansByOriginalLine: [Int: [StyleSpan]]) {
+        dispatchEditorActionResult(editorCore.setBatchDiffLineSpans(
+            layer: layer,
+            spansByOriginalLine: spansByOriginalLine
+        ))
+    }
+
+    /// Clears the current diff snapshot.
+    public func clearDiff() {
+        dispatchEditorActionResult(editorCore.clearDiff())
+    }
+
     public func attachDecorationProvider(_ provider: DecorationProvider) {
         decorationProviderManager?.addProvider(provider)
     }

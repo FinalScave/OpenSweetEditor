@@ -692,6 +692,32 @@ class SweetEditorController {
     _runEditorCoreAction((editorCore) => editorCore.clearAllDecorations());
   }
 
+  /// Installs an externally computed line-level diff.
+  void setDiffChanges(List<core.DiffChange> changes) {
+    _runEditorCoreAction((editorCore) => editorCore.setDiffChanges(changes));
+  }
+
+  /// Computes a line-level diff against the supplied original document text.
+  void computeDiff(String originalText) {
+    _runEditorCoreAction((editorCore) => editorCore.computeDiff(originalText));
+  }
+
+  /// Sets layered style spans for removed original lines.
+  void setBatchDiffLineSpans(
+    core.SpanLayer layer,
+    Map<int, List<core.StyleSpan>> spansByOriginalLine,
+  ) {
+    _runEditorCoreAction(
+      (editorCore) =>
+          editorCore.setBatchDiffLineSpans(layer, spansByOriginalLine),
+    );
+  }
+
+  /// Clears the current diff snapshot.
+  void clearDiff() {
+    _runEditorCoreAction((editorCore) => editorCore.clearDiff());
+  }
+
   void flush() => _state?._flush();
 
   core.TextPosition _resolveTextPositionArgument(

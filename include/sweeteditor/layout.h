@@ -9,6 +9,7 @@
 #include <sweeteditor/decoration.h>
 #include <sweeteditor/visual.h>
 #include <sweeteditor/gesture.h>
+#include <sweeteditor/diff.h>
 #include <functional>
 #include <optional>
 
@@ -68,47 +69,6 @@ namespace NS_SWEETEDITOR {
     HashMap<size_t, Vector<TextRunStyleOverride>> style_overrides_by_line;
   };
 
-  enum class PointerHitPolicy : uint8_t {
-    CONTENT = 0,
-    OWNER_LINE_START = 1,
-  };
-
-  enum class TextBoundaryPolicy : uint8_t {
-    CONTENT = 0,
-    PREVIOUS_VISIBLE_LINE_END = 1,
-    OWNER_LINE_END = 2,
-  };
-
-  enum class TextSemanticsPolicy : uint8_t {
-    PARTICIPATES = 0,
-    SKIP = 1,
-  };
-
-  struct VisualLineSemantics {
-    PointerHitPolicy pointer_hit{PointerHitPolicy::CONTENT};
-    TextBoundaryPolicy text_boundary{TextBoundaryPolicy::CONTENT};
-    TextSemanticsPolicy text_semantics{TextSemanticsPolicy::PARTICIPATES};
-  };
-
-  inline const VisualLineSemantics& getVisualLineSemantics(VisualLineKind kind) {
-    static const VisualLineSemantics content{PointerHitPolicy::CONTENT, TextBoundaryPolicy::CONTENT,
-                                             TextSemanticsPolicy::PARTICIPATES};
-    static const VisualLineSemantics phantom{PointerHitPolicy::CONTENT, TextBoundaryPolicy::OWNER_LINE_END,
-                                             TextSemanticsPolicy::SKIP};
-    static const VisualLineSemantics codelens{PointerHitPolicy::OWNER_LINE_START,
-                                              TextBoundaryPolicy::PREVIOUS_VISIBLE_LINE_END, TextSemanticsPolicy::SKIP};
-
-    switch (kind) {
-    case VisualLineKind::PHANTOM:
-      return phantom;
-    case VisualLineKind::CODELENS:
-      return codelens;
-    case VisualLineKind::CONTENT:
-    default:
-      return content;
-    }
-  }
-
   /// Text width measurement interface implemented by each platform
   class TextMeasurer {
   public:
@@ -133,8 +93,15 @@ namespace NS_SWEETEDITOR {
   class TextLayout {
   public:
     TextLayout(const SharedPtr<TextMeasurer>& measurer, const TextStyleRegistry& text_styles);
+    TextLayout(const SharedPtr<TextMeasurer>& measurer, const TextStyleRegistry& text_styles, const Diff& diff);
 
     void loadDocument(const SharedPtr<Document>& document);
+
+    void setDiffPresentationVisible(bool visible);
+    bool isDiffPresentationVisible() const;
+
+    /// Invalidate owner lines affected by removed-line style changes.
+    void invalidateDiffLineSpans(const Vector<size_t>& original_lines);
 
     void setViewport(const Size& viewport);
 
@@ -165,6 +132,9 @@ namespace NS_SWEETEDITOR {
     /// Clickable inline runs such as Link still map to their own logical text range.
     /// @param screen_point Screen point (relative to editor view top-left)
     CaretHit hitTestTextBoundary(const PointF& screen_point);
+
+    /// Hit-test a vertical caret move while skipping rows without document text semantics.
+    CaretHit hitTestVerticalNavigation(const PointF& screen_point, bool downward);
 
     /// Screen hit test: detect hit on InlayHint, GutterIcon, fold marker, and other decorations
     /// @param screen_point Screen point (relative to editor view top-left)
@@ -238,6 +208,9 @@ namespace NS_SWEETEDITOR {
     SharedPtr<TextMeasurer> m_measurer_;
     SharedPtr<Document> m_document_;
     const TextStyleRegistry& m_text_styles_;
+    const Diff& m_diff_;
+    static const Diff kEmptyDiff;
+    bool m_diff_presentation_visible_{true};
     Size m_viewport_;
     ViewState m_view_state_;
     WrapMode m_wrap_mode_{WrapMode::NONE};
@@ -300,6 +273,8 @@ namespace NS_SWEETEDITOR {
     /// Layout one line of text into full VisualLine list (including highlights, inlay hints, cross-line phantom text expansion, auto wrap)
     void layoutLineIntoVisualLines(size_t line_index, const U16String& line_text, float start_y,
                                    Vector<VisualLine>& out_visual_lines);
+    void appendRemovedVisualLines(size_t owner_line, const DiffChange& change, float start_y,
+                                  Vector<VisualLine>& out_visual_lines);
     /// Zip-align one line with highlight spans, inlay hints, and phantom texts to build VisualRuns
     void buildLineRuns(size_t line_index, const U16String& line_text, const LineLayoutDecorations& decorations,
                        Vector<VisualRun>& runs);
@@ -309,6 +284,8 @@ namespace NS_SWEETEDITOR {
     /// Auto-wrap: split one line's runs into multiple VisualLines by available width
     void wrapLineRuns(size_t line_index, float start_y, float line_height, Vector<VisualRun>& runs,
                       Vector<VisualLine>& out_lines, size_t wrap_index_offset = 0);
+    float estimateLogicalLineHeight(size_t line_index) const;
+    size_t resolveEofDiffOwnerLine() const;
     /// Append fold placeholder and tail-line runs to collapsed first line (first line + placeholder + tail content)
     void appendFoldTailRuns(size_t index, const U16String& line_text, LogicalLine& logical_line);
     void appendLineBreakRun(size_t owner_line, LogicalLine& logical_line);
@@ -320,12 +297,6 @@ namespace NS_SWEETEDITOR {
     size_t findHitWrapIndex(const LogicalLine& ll, float abs_y, float line_height) const;
     /// Shared implementation behind pointer/text-boundary hit testing.
     CaretHit hitTestInternal(const PointF& screen_point, bool text_boundary);
-    /// Resolve the logical position before soft-wrap affinity is attached.
-    TextPosition hitTestPositionInternal(const PointF& screen_point, bool text_boundary);
-    /// Resolve a virtual visual line under pointer-hit semantics.
-    TextPosition mapVisualLineToPointerTarget(size_t logical_line, const VisualLine& visual_line) const;
-    /// Resolve a virtual visual line under text-boundary semantics.
-    TextPosition mapVisualLineToTextBoundary(size_t logical_line, const VisualLine& visual_line) const;
     /// Find the previous visible logical line and return its end position.
     TextPosition previousVisibleLineEnd(size_t logical_line) const;
     /// Build fold-tail projection metadata from one collapsed region.

@@ -93,6 +93,13 @@ export class Diagnostic {
   severity: DiagnosticSeverity = DiagnosticSeverity.DIAG_ERROR;
 }
 
+export class DiffChange {
+  currentStartLine: number = 0;
+  currentLineCount: number = 0;
+  originalStartLine: number = 0;
+  removedLines: string[] = [];
+}
+
 export class DocumentHighlight {
   column: number = 0;
   length: number = 0;

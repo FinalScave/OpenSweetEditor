@@ -162,6 +162,7 @@ export class EditorRenderer {
     ctx.fillRect(0, 0, viewWidth, viewHeight);
     perf.mark(PerfStepRecorder.STEP_CLEAR);
 
+    this.drawDiffLineBackgrounds(ctx, model, 0, viewWidth, false);
     this.drawCurrentLineDecoration(ctx, model, 0, viewWidth);
     perf.mark(PerfStepRecorder.STEP_CURRENT);
     this.drawRangeEffectBackgrounds(ctx, model.rangeEffects);
@@ -178,6 +179,7 @@ export class EditorRenderer {
     if (model.splitX > 0) {
       ctx.fillStyle = argbToCssColor(this.theme.backgroundColor);
       ctx.fillRect(0, 0, model.splitX, viewHeight);
+      this.drawDiffLineBackgrounds(ctx, model, 0, model.splitX, true);
       this.drawCurrentLineDecoration(ctx, model, 0, model.splitX);
       if (model.splitLineVisible) {
         ctx.strokeStyle = argbToCssColor(this.theme.splitLineColor);
@@ -459,7 +461,17 @@ export class EditorRenderer {
     const activeColor = this.getActiveLineNumberColor();
 
     for (const line of model.lines) {
-      if (line.ownsGutterSemantics && line.lineNumberPosition) {
+      if (line.lineNumber < 0) {
+        continue;
+      }
+      if (!line.ownsGutterSemantics) {
+        this.setCanvasFont(ctx, 0, lineNumSize, this.fontFamily);
+        ctx.fillStyle = argbToCssColor(normalColor);
+        ctx.fillText(String(line.lineNumber), line.lineNumberPosition.x,
+          line.lineNumberPosition.y + lineNumBaselineOffset);
+        continue;
+      }
+      if (line.lineNumberPosition) {
         const logicalLine = line.logicalLine;
         const isCurrentLine = logicalLine === activeLogicalLine;
 
@@ -479,7 +491,7 @@ export class EditorRenderer {
           this.setCanvasFont(ctx, 0, lineNumSize, this.fontFamily);
           ctx.fillStyle = argbToCssColor(isCurrentLine ? activeColor : normalColor);
           ctx.fillText(
-            String(line.logicalLine + 1),
+            String(line.lineNumber),
             line.lineNumberPosition.x,
             line.lineNumberPosition.y + lineNumBaselineOffset
           );
@@ -577,6 +589,27 @@ export class EditorRenderer {
 
     ctx.fillStyle = argbToCssColor(this.theme.currentLineColor);
     ctx.fillRect(left, top, right - left, bottom - top);
+  }
+
+  private drawDiffLineBackgrounds(ctx: CanvasRenderingContext2D, model: EditorRenderModel,
+    left: number, right: number, gutter: boolean): void {
+    if (!model.lines || right <= left) {
+      return;
+    }
+    const scaledTextSize = this.textSize * this.scale;
+    const metrics = this.getFontMetrics(ctx, 0, scaledTextSize, this.fontFamily);
+    const fontHeight = metrics.ascent + metrics.descent;
+    const lineHeight = model.cursor && model.cursor.height > 0 ? model.cursor.height : fontHeight;
+    const topPadding = (lineHeight - fontHeight) * 0.5;
+    for (const line of model.lines) {
+      const color = gutter ? line.gutterBackgroundColor : line.lineBackgroundColor;
+      if (color === 0) {
+        continue;
+      }
+      const top = line.lineNumberPosition.y - metrics.ascent - topPadding;
+      ctx.fillStyle = argbToCssColor(color);
+      ctx.fillRect(left, top, right - left, lineHeight);
+    }
   }
 
   private drawCursor(ctx: CanvasRenderingContext2D, cursor: Cursor | null,

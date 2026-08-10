@@ -7,8 +7,9 @@
 #include <utf8/utf8.h>
 #include <sweeteditor/layout.h>
 #include <sweeteditor/utility.h>
-#include "logging.h"
-#include "text_boundary.hpp"
+#include "internal/logging.hpp"
+#include "internal/text_boundary.hpp"
+#include "internal/visual_line_semantics.hpp"
 
 namespace NS_SWEETEDITOR {
   namespace {
@@ -22,9 +23,17 @@ namespace NS_SWEETEDITOR {
   }
 
 #pragma region[Class: TextLayout]
+  const Diff TextLayout::kEmptyDiff;
+
   TextLayout::TextLayout(const SharedPtr<TextMeasurer>& measurer, const TextStyleRegistry& text_styles)
+      : TextLayout(measurer, text_styles, kEmptyDiff) {
+  }
+
+  TextLayout::TextLayout(const SharedPtr<TextMeasurer>& measurer, const TextStyleRegistry& text_styles,
+                         const Diff& diff)
       : m_measurer_(measurer),
-        m_text_styles_(text_styles) {
+        m_text_styles_(text_styles),
+        m_diff_(diff) {
     resetMeasurer();
   }
 
@@ -33,6 +42,35 @@ namespace NS_SWEETEDITOR {
     m_content_metrics_dirty_ = true;
     m_prefix_dirty_from_ = 0;
     m_line_prefix_y_.clear();
+  }
+
+  void TextLayout::setDiffPresentationVisible(bool visible) {
+    m_diff_presentation_visible_ = visible;
+  }
+
+  bool TextLayout::isDiffPresentationVisible() const {
+    return m_diff_presentation_visible_;
+  }
+
+  void TextLayout::invalidateDiffLineSpans(const Vector<size_t>& original_lines) {
+    if (!m_diff_presentation_visible_ || m_document_ == nullptr || original_lines.empty()) return;
+
+    Vector<LogicalLine>& logical_lines = m_document_->getLogicalLines();
+    if (logical_lines.empty()) return;
+
+    size_t first_owner = logical_lines.size();
+    const size_t line_count = m_document_->getLineCount();
+    for (size_t original_line : original_lines) {
+      const DiffChange* change = m_diff_.getChangeForOriginalLine(original_line);
+      if (change == nullptr) continue;
+      const size_t owner = change->current_start_line < line_count
+                               ? change->current_start_line
+                               : resolveEofDiffOwnerLine();
+      if (owner >= logical_lines.size()) continue;
+      logical_lines[owner].is_layout_dirty = true;
+      first_owner = std::min(first_owner, owner);
+    }
+    if (first_owner < logical_lines.size()) invalidateContentMetrics(first_owner);
   }
 
   void TextLayout::setViewport(const Size& viewport) {
@@ -109,8 +147,15 @@ namespace NS_SWEETEDITOR {
       // Even if relayout is not needed, still update line number and y in visual_lines
       // (insert/delete in previous lines may change current line index and y)
       float line_height = getLineHeight();
+      bool assigned_current_line_number = false;
       for (VisualLine& vl : logical_line.visual_lines) {
         vl.logical_line = index;
+        if (vl.kind == VisualLineKind::CONTENT && !assigned_current_line_number) {
+          vl.line_number = static_cast<int32_t>(index + 1);
+          assigned_current_line_number = true;
+        } else if (vl.kind != VisualLineKind::REMOVED) {
+          vl.line_number = -1;
+        }
         float vl_y = logical_line.start_y + vl.wrap_index * line_height;
         vl.line_number_position.y = vl_y;
         for (VisualRun& run : vl.runs) {
@@ -125,13 +170,58 @@ namespace NS_SWEETEDITOR {
 
     layoutLineIntoVisualLines(index, line_text, logical_line.start_y, logical_line.visual_lines);
 
-    // Collapsed first line: append fold placeholder + tail-line content
+    // Fold projection belongs to the current content row and must be completed before EOF removed rows are appended.
     if (m_document_->getDecorations().getFoldStateForLine(index) == 2 && !logical_line.visual_lines.empty()) {
       appendFoldTailRuns(index, line_text, logical_line);
     }
 
     if (m_render_line_breaks_) {
       appendLineBreakRun(index, logical_line);
+    }
+
+    const DiffChange* removed_before = nullptr;
+    const DiffChange* removed_after = nullptr;
+    if (m_diff_presentation_visible_) {
+      removed_before = m_diff_.getChangeAtBoundary(index);
+      const size_t line_count = m_document_->getLineCount();
+      const DiffChange* eof_change = m_diff_.getChangeAtBoundary(line_count);
+      const Vector<LogicalLine>& lines = m_document_->getLogicalLines();
+      const bool may_own_eof = index + 1 >= lines.size() || lines[index + 1].is_fold_hidden;
+      if (eof_change != nullptr && !eof_change->removed_lines.empty() && may_own_eof
+          && index == resolveEofDiffOwnerLine()) {
+        removed_after = eof_change;
+      }
+    }
+
+    if (removed_before != nullptr && !removed_before->removed_lines.empty()) {
+      Vector<VisualLine> removed_lines;
+      appendRemovedVisualLines(index, *removed_before, logical_line.start_y, removed_lines);
+      removed_lines.insert(removed_lines.end(),
+                           std::make_move_iterator(logical_line.visual_lines.begin()),
+                           std::make_move_iterator(logical_line.visual_lines.end()));
+      logical_line.visual_lines = std::move(removed_lines);
+    }
+    if (removed_after != nullptr) {
+      appendRemovedVisualLines(index, *removed_after, logical_line.start_y, logical_line.visual_lines);
+    }
+
+    // wrap_index is the owner-local visual row ordinal, including every virtual row.
+    for (size_t visual_index = 0; visual_index < logical_line.visual_lines.size(); ++visual_index) {
+      VisualLine& visual_line = logical_line.visual_lines[visual_index];
+      visual_line.wrap_index = visual_index;
+      const float visual_y = logical_line.start_y + visual_index * single_line_height;
+      visual_line.line_number_position.y = visual_y;
+      for (VisualRun& run : visual_line.runs) run.y = visual_y;
+    }
+
+    bool assigned_current_line_number = false;
+    for (VisualLine& visual_line : logical_line.visual_lines) {
+      if (visual_line.kind == VisualLineKind::CONTENT && !assigned_current_line_number) {
+        visual_line.line_number = static_cast<int32_t>(index + 1);
+        assigned_current_line_number = true;
+      } else if (visual_line.kind != VisualLineKind::REMOVED) {
+        visual_line.line_number = -1;
+      }
     }
 
     float new_height = single_line_height * logical_line.visual_lines.size();
@@ -171,10 +261,13 @@ namespace NS_SWEETEDITOR {
       LogicalLine& logical_line = logical_lines[i];
       // Crop recomposed VisualLine by horizontal viewport, then map to screen coords
       for (const VisualLine& src_line : logical_line.visual_lines) {
+        const float abs_y = src_line.line_number_position.y;
+        float screen_y = abs_y - scroll_y;
+        // One visible logical owner can contain a large virtual block; emit only rows the platform can draw.
+        if (screen_y + line_height <= 0.0f || screen_y >= m_viewport_.height) continue;
+
         VisualLine visual_line = src_line;
         // Convert absolute coords to screen coords (wrapLineRuns already sets each subline y)
-        float abs_y = visual_line.line_number_position.y;
-        float screen_y = abs_y - scroll_y;
         // Text draw y should be baseline (line top + top_padding + font_ascent)
         float baseline_y = screen_y + top_padding + m_layout_metrics_.font_ascent;
         visual_line.line_number_position.x += gutter_offset;
@@ -215,6 +308,15 @@ namespace NS_SWEETEDITOR {
 
   void TextLayout::finalizeVisualRuns(EditorRenderModel& model, const VisualRunInput& input) {
     for (VisualLine& visual_line : model.lines) {
+      if (visual_line.kind == VisualLineKind::REMOVED) {
+        visual_line.line_background_color = input.colors.diff_removed_line_background;
+        visual_line.gutter_background_color = input.colors.diff_removed_gutter_background;
+      } else if (visual_line.kind == VisualLineKind::CONTENT
+                 && m_diff_presentation_visible_
+                 && m_diff_.getChangeForCurrentLine(visual_line.logical_line) != nullptr) {
+        visual_line.line_background_color = input.colors.diff_added_line_background;
+        visual_line.gutter_background_color = input.colors.diff_added_gutter_background;
+      }
       finalizeVisualLineRuns(visual_line, input);
     }
   }
@@ -227,56 +329,56 @@ namespace NS_SWEETEDITOR {
     return hitTestInternal(screen_point, true);
   }
 
-  CaretHit TextLayout::hitTestInternal(const PointF& screen_point, bool text_boundary) {
-    CaretHit hit;
-    hit.position = hitTestPositionInternal(screen_point, text_boundary);
-    if (m_document_ == nullptr || m_wrap_mode_ == WrapMode::NONE) {
-      return hit;
-    }
+  CaretHit TextLayout::hitTestVerticalNavigation(const PointF& screen_point, bool downward) {
+    CaretHit hit = hitTestPointer(screen_point);
+    if (hit.hits_document_text || m_document_ == nullptr) return hit;
 
-    Vector<LogicalLine>& logical_lines = m_document_->getLogicalLines();
-    if (logical_lines.empty()) {
-      return hit;
-    }
-    const float abs_y = screen_point.y + m_view_state_.scroll_y;
-    const size_t hit_line = findHitLine(abs_y);
-    if (hit_line >= logical_lines.size()) {
-      return hit;
-    }
-    LogicalLine& logical_line = logical_lines[hit_line];
-    layoutLine(hit_line, logical_line);
-    if (logical_line.visual_lines.empty()) {
-      return hit;
-    }
-    const size_t wrap_index = findHitWrapIndex(logical_line, abs_y, getLineHeight());
-    if (wrap_index >= logical_line.visual_lines.size()) {
-      return hit;
-    }
+    Vector<LogicalLine>& lines = m_document_->getLogicalLines();
+    if (lines.empty()) return hit;
+    const float absolute_y = screen_point.y + m_view_state_.scroll_y;
+    size_t owner = findHitLine(absolute_y);
+    layoutLine(owner, lines[owner]);
+    size_t visual_index = findHitWrapIndex(lines[owner], absolute_y, getLineHeight());
 
-    size_t column_min = SIZE_MAX;
-    size_t column_max = 0;
-    float width = 0;
-    if (!getVisualLineTextColumnExtent(logical_line.visual_lines[wrap_index], hit.position.line, column_min, column_max,
-                                       width)) {
-      return hit;
+    while (true) {
+      if (downward) {
+        while (++visual_index < lines[owner].visual_lines.size()) {
+          if (getVisualLineSemantics(lines[owner].visual_lines[visual_index].kind)
+                  .participates_in_document_text) {
+            const float screen_y = lines[owner].visual_lines[visual_index].line_number_position.y
+                                   - m_view_state_.scroll_y + getLineHeight() * 0.5f;
+            return hitTestPointer({screen_point.x, screen_y});
+          }
+        }
+        if (++owner >= lines.size()) return hit;
+        layoutLine(owner, lines[owner]);
+        visual_index = static_cast<size_t>(-1);
+      } else {
+        while (visual_index > 0) {
+          --visual_index;
+          if (getVisualLineSemantics(lines[owner].visual_lines[visual_index].kind)
+                  .participates_in_document_text) {
+            const float screen_y = lines[owner].visual_lines[visual_index].line_number_position.y
+                                   - m_view_state_.scroll_y + getLineHeight() * 0.5f;
+            return hitTestPointer({screen_point.x, screen_y});
+          }
+        }
+        if (owner == 0) return hit;
+        --owner;
+        layoutLine(owner, lines[owner]);
+        visual_index = lines[owner].visual_lines.size();
+      }
     }
-    // A wrap boundary has one logical position but two visual caret locations.
-    if (wrap_index > 0 && hit.position.column == column_min) {
-      hit.affinity = CaretAffinity::DOWNSTREAM;
-    } else if (wrap_index + 1 < logical_line.visual_lines.size() && hit.position.column == column_max) {
-      hit.affinity = CaretAffinity::UPSTREAM;
-    }
-    return hit;
   }
 
-  TextPosition TextLayout::hitTestPositionInternal(const PointF& screen_point, bool text_boundary) {
+  CaretHit TextLayout::hitTestInternal(const PointF& screen_point, bool text_boundary) {
     PERF_TIMER("hitTest");
     if (m_document_ == nullptr) {
-      return {0, 0};
+      return {};
     }
     Vector<LogicalLine>& logical_lines = m_document_->getLogicalLines();
     if (logical_lines.empty()) {
-      return {0, 0};
+      return {};
     }
 
     const float scroll_x = m_view_state_.scroll_x;
@@ -289,26 +391,53 @@ namespace NS_SWEETEDITOR {
     const float abs_x = screen_point.x - text_area_x + scroll_x;
     const float abs_y = screen_point.y + scroll_y;
 
-    // Find hit logical line (skip fold-hidden lines)
-    size_t hit_line = findHitLine(abs_y);
+    const size_t hit_line = findHitLine(abs_y);
 
     const LogicalLine& ll = logical_lines[hit_line];
     const U16String& line_text = ll.cached_u16_text;
-
-    // In wrap mode, find the exact VisualLine (subline)
-    size_t target_wrap = findHitWrapIndex(ll, abs_y, line_height);
-
+    const size_t target_wrap = findHitWrapIndex(ll, abs_y, line_height);
     const VisualLine& vl = ll.visual_lines[target_wrap];
+    const VisualLineSemantics semantics = getVisualLineSemantics(vl.kind);
 
-    const auto& semantics = getVisualLineSemantics(vl.kind);
-    if (text_boundary && semantics.text_boundary != TextBoundaryPolicy::CONTENT) {
-      return mapVisualLineToTextBoundary(hit_line, vl);
+    auto finish_hit = [&](const TextPosition& position) {
+      CaretHit hit;
+      hit.position = position;
+      hit.hits_document_text = semantics.participates_in_document_text;
+      if (m_wrap_mode_ == WrapMode::NONE || !hit.hits_document_text) return hit;
+
+      size_t column_min = SIZE_MAX;
+      size_t column_max = 0;
+      float width = 0;
+      if (!getVisualLineTextColumnExtent(vl, position.line, column_min, column_max, width)) return hit;
+
+      // A wrap boundary has one logical position but two visual caret locations.
+      if (target_wrap > 0 && position.column == column_min) {
+        hit.affinity = CaretAffinity::DOWNSTREAM;
+      } else if (target_wrap + 1 < ll.visual_lines.size() && position.column == column_max) {
+        hit.affinity = CaretAffinity::UPSTREAM;
+      }
+      return hit;
+    };
+
+    const VisualLinePositionPolicy position_policy =
+        text_boundary ? semantics.text_boundary_position : semantics.pointer_position;
+    switch (position_policy) {
+    case VisualLinePositionPolicy::OWNER_LINE_START:
+      return finish_hit({hit_line, 0});
+    case VisualLinePositionPolicy::OWNER_LINE_END:
+      return finish_hit({hit_line, m_document_->getLineColumns(hit_line)});
+    case VisualLinePositionPolicy::PREVIOUS_VISIBLE_LINE_END:
+      return finish_hit(previousVisibleLineEnd(hit_line));
+    case VisualLinePositionPolicy::INTERACTION_POSITION:
+      return finish_hit(vl.interaction_position);
+    case VisualLinePositionPolicy::CONTENT:
+      break;
     }
 
     // Click on the left of text area (line number area): go to line start
     const bool in_line_number_area = (screen_point.x < split_x);
     if (in_line_number_area) {
-      return {hit_line, 0};
+      return finish_hit({hit_line, 0});
     }
 
     // In both wrap and non-wrap modes, run.x is relative to the line
@@ -325,18 +454,14 @@ namespace NS_SWEETEDITOR {
       if (!vl.runs.empty()) {
         for (const VisualRun& run : vl.runs) {
           if (isSourceTextRun(run)) {
-            return {runSourceLine(vl, run), run.column};
+            return finish_hit({runSourceLine(vl, run), run.column});
           }
           if (run.type == VisualRunType::PHANTOM_TEXT) {
-            return {hit_line, run.column};
+            return finish_hit({hit_line, run.column});
           }
         }
       }
-      return {hit_line, 0};
-    }
-
-    if (semantics.pointer_hit != PointerHitPolicy::CONTENT) {
-      return mapVisualLineToPointerTarget(hit_line, vl);
+      return finish_hit({hit_line, 0});
     }
 
     // Iterate runs to find the hit character
@@ -353,9 +478,9 @@ namespace NS_SWEETEDITOR {
       if (run.type == VisualRunType::TAB) {
         const size_t source_line = runSourceLine(vl, run);
         if (click_x < run_x + run.width * 0.5f) {
-          return {source_line, run.column};
+          return finish_hit({source_line, run.column});
         } else if (click_x < run_right) {
-          return {source_line, run.column + 1};
+          return finish_hit({source_line, run.column + 1});
         }
         run_x = run_right;
         continue;
@@ -364,7 +489,7 @@ namespace NS_SWEETEDITOR {
       if (run.type == VisualRunType::NEWLINE) {
         const size_t source_line = runSourceLine(vl, run);
         if (click_x < run_right) {
-          return {source_line, run.column};
+          return finish_hit({source_line, run.column});
         }
         run_x = run_right;
         continue;
@@ -390,13 +515,13 @@ namespace NS_SWEETEDITOR {
 
           // If click is left of cluster center, place on this cluster; else next cluster boundary.
           if (click_x < char_x + char_width * 0.5f) {
-            return {source_line, run.column + cluster_start};
+            return finish_hit({source_line, run.column + cluster_start});
           }
           char_x += char_width;
           cluster_start = cluster_end;
         }
         // Click after run end
-        return {source_line, run.column + cluster_start};
+        return finish_hit({source_line, run.column + cluster_start});
       }
       run_x = run_right;
     }
@@ -404,10 +529,10 @@ namespace NS_SWEETEDITOR {
     // Click after line end
     for (auto it = vl.runs.rbegin(); it != vl.runs.rend(); ++it) {
       if (isSourceTextRun(*it)) {
-        return {runSourceLine(vl, *it), it->column + it->length};
+        return finish_hit({runSourceLine(vl, *it), it->column + it->length});
       }
     }
-    return {hit_line, line_text.length()};
+    return finish_hit({hit_line, line_text.length()});
   }
 
   HitTarget TextLayout::hitTestDecoration(const PointF& screen_point) {
@@ -434,6 +559,10 @@ namespace NS_SWEETEDITOR {
     size_t hit_line = findHitLine(abs_y);
 
     const LogicalLine& ll = logical_lines[hit_line];
+
+    const size_t target_wrap = findHitWrapIndex(ll, abs_y, line_height);
+    const VisualLine& vl = ll.visual_lines[target_wrap];
+    if (vl.kind == VisualLineKind::REMOVED) return {};
 
     // Detect click in gutter area (line number area)
     if (screen_point.x < split_x) {
@@ -490,10 +619,6 @@ namespace NS_SWEETEDITOR {
     }
 
     // Find hit VisualLine (wrapped subline)
-    size_t target_wrap = findHitWrapIndex(ll, abs_y, line_height);
-
-    const VisualLine& vl = ll.visual_lines[target_wrap];
-
     // Compute relative click x inside the line
     float click_x;
     if (m_wrap_mode_ != WrapMode::NONE) {
@@ -775,7 +900,7 @@ namespace NS_SWEETEDITOR {
     PERF_BEGIN(prefix);
     ensurePrefixIndexUpTo(last_idx);
     PERF_END(prefix, "estimateContentMetrics_::ensurePrefixIndexUpTo");
-    float last_h = (lines[last_idx].height >= 0) ? lines[last_idx].height : getLineHeight();
+    float last_h = estimateLogicalLineHeight(last_idx);
     metrics.content_height = m_line_prefix_y_[last_idx] + last_h;
 
     // max_line_width: scan already-laid-out lines (non-empty visual_lines) for max width,
@@ -1095,14 +1220,7 @@ namespace NS_SWEETEDITOR {
         run_height = 0.0f;
         run_count = 0;
       } else {
-        const LogicalLine& prev = lines[i - 1];
-        float h;
-        if (prev.height >= 0) {
-          h = prev.height;
-        } else {
-          bool has_codelens = !m_document_->getDecorations().getLineCodeLens(i - 1).empty();
-          h = has_codelens ? default_height * 2 : default_height;
-        }
+        float h = estimateLogicalLineHeight(i - 1);
         if (h == run_height && run_count > 0) {
           // Same height as current run: extend and use multiplication
           run_count++;
@@ -1167,7 +1285,7 @@ namespace NS_SWEETEDITOR {
       size_t lo = 0, hi = size;
       while (lo < hi) {
         size_t mid = lo + (hi - lo) / 2;
-        float h = (logical_lines[mid].height >= 0) ? logical_lines[mid].height : default_height;
+        float h = estimateLogicalLineHeight(mid);
         float line_bottom = m_line_prefix_y_[mid] + h;
         if (line_bottom <= scroll_y) {
           lo = mid + 1;
@@ -1372,6 +1490,50 @@ namespace NS_SWEETEDITOR {
             out_visual_lines.push_back(std::move(wl));
           }
         }
+      }
+    }
+  }
+
+  void TextLayout::appendRemovedVisualLines(size_t owner_line, const DiffChange& change, float start_y,
+                                            Vector<VisualLine>& out_visual_lines) {
+    const float line_height = getLineHeight();
+    TextPosition interaction_position{owner_line, 0};
+    if (change.current_start_line >= m_document_->getLineCount()) {
+      interaction_position.column = m_document_->getLineColumns(owner_line);
+    }
+
+    for (size_t removed_index = 0; removed_index < change.removed_lines.size(); ++removed_index) {
+      U16String line_text;
+      StrUtil::convertUTF8ToUTF16(change.removed_lines[removed_index], line_text);
+      LineLayoutDecorations decorations;
+      decorations.spans = m_diff_.getMergedLineSpans(change.original_start_line + removed_index);
+      Vector<VisualRun> runs;
+      buildLineRuns(owner_line, line_text, decorations, runs);
+      for (VisualRun& run : runs) run.source_line = kVisualRunNoDocumentLine;
+
+      Vector<VisualLine> wrapped;
+      const float line_y = start_y + out_visual_lines.size() * line_height;
+      if (m_wrap_mode_ == WrapMode::NONE) {
+        VisualLine visual_line{owner_line, out_visual_lines.size()};
+        visual_line.line_number_position = {m_layout_metrics_.line_number_margin, line_y};
+        visual_line.runs = std::move(runs);
+        wrapped.push_back(std::move(visual_line));
+      } else {
+        wrapLineRuns(owner_line, line_y, line_height, runs, wrapped, out_visual_lines.size());
+      }
+
+      bool first_wrap = true;
+      for (VisualLine& visual_line : wrapped) {
+        visual_line.kind = VisualLineKind::REMOVED;
+        visual_line.owns_gutter_semantics = false;
+        visual_line.fold_state = FoldState::NONE;
+        visual_line.line_number = first_wrap
+                                      ? static_cast<int32_t>(change.original_start_line + removed_index + 1)
+                                      : -1;
+        visual_line.interaction_position = interaction_position;
+        for (VisualRun& run : visual_line.runs) run.source_line = kVisualRunNoDocumentLine;
+        first_wrap = false;
+        out_visual_lines.push_back(std::move(visual_line));
       }
     }
   }
@@ -1721,6 +1883,17 @@ namespace NS_SWEETEDITOR {
 
   void TextLayout::finalizeVisualLineRuns(VisualLine& visual_line, const VisualRunInput& input) {
     const EditorRenderColors& colors = input.colors;
+
+    if (visual_line.kind == VisualLineKind::REMOVED) {
+      for (VisualRun& run : visual_line.runs) {
+        run.active = false;
+        if (run.style.color == 0 && colors.text_foreground != 0
+            && (run.type == VisualRunType::TEXT || run.type == VisualRunType::TAB)) {
+          run.style.color = colors.text_foreground;
+        }
+      }
+      return;
+    }
 
     Vector<VisualRun> runs;
     bool has_split = false;
@@ -2343,6 +2516,9 @@ namespace NS_SWEETEDITOR {
 
   float TextLayout::computeLineNumberWidth() const {
     size_t line_count = std::max(static_cast<size_t>(1), m_document_->getLogicalLines().size());
+    if (m_diff_presentation_visible_) {
+      line_count = std::max(line_count, m_diff_.getMaxRemovedLineEnd());
+    }
     uint32_t line_number_bits = static_cast<uint32_t>(std::log10(line_count) + 1 + 1e-10);
     if (m_is_monospace_) {
       return m_number_width_ * line_number_bits;
@@ -2441,7 +2617,7 @@ namespace NS_SWEETEDITOR {
       size_t lo = 0, hi = size;
       while (lo < hi) {
         size_t mid = lo + (hi - lo) / 2;
-        float h = (logical_lines[mid].height >= 0) ? logical_lines[mid].height : default_height;
+        float h = estimateLogicalLineHeight(mid);
         float line_bottom = m_line_prefix_y_[mid] + h;
         if (line_bottom <= abs_y) {
           lo = mid + 1;
@@ -2477,33 +2653,6 @@ namespace NS_SWEETEDITOR {
       }
     }
     return target_wrap;
-  }
-
-  TextPosition TextLayout::mapVisualLineToPointerTarget(size_t logical_line, const VisualLine& visual_line) const {
-    const auto& semantics = getVisualLineSemantics(visual_line.kind);
-    switch (semantics.pointer_hit) {
-    case PointerHitPolicy::OWNER_LINE_START:
-      return {logical_line, 0};
-    case PointerHitPolicy::CONTENT:
-    default:
-      return {logical_line, 0};
-    }
-  }
-
-  TextPosition TextLayout::mapVisualLineToTextBoundary(size_t logical_line, const VisualLine& visual_line) const {
-    if (m_document_ == nullptr) {
-      return {0, 0};
-    }
-    const auto& semantics = getVisualLineSemantics(visual_line.kind);
-    switch (semantics.text_boundary) {
-    case TextBoundaryPolicy::PREVIOUS_VISIBLE_LINE_END:
-      return previousVisibleLineEnd(logical_line);
-    case TextBoundaryPolicy::OWNER_LINE_END:
-      return {logical_line, m_document_->getLineColumns(logical_line)};
-    case TextBoundaryPolicy::CONTENT:
-    default:
-      return {logical_line, 0};
-    }
   }
 
   bool TextLayout::getVisualLineTextColumnExtent(const VisualLine& visual_line, size_t source_line, size_t& out_col_min,
@@ -2576,6 +2725,39 @@ namespace NS_SWEETEDITOR {
       }
     }
     return {0, 0};
+  }
+
+  float TextLayout::estimateLogicalLineHeight(size_t line_index) const {
+    if (m_document_ == nullptr) return 0.0f;
+    const Vector<LogicalLine>& lines = m_document_->getLogicalLines();
+    if (line_index >= lines.size()) return 0.0f;
+    const LogicalLine& line = lines[line_index];
+    if (line.is_fold_hidden) return 0.0f;
+    if (line.height >= 0.0f) return line.height;
+
+    size_t row_count = 1;
+    if (!m_document_->getDecorations().getLineCodeLens(line_index).empty()) ++row_count;
+    if (m_diff_presentation_visible_) {
+      const DiffChange* change = m_diff_.getChangeAtBoundary(line_index);
+      if (change != nullptr) row_count += change->removed_lines.size();
+
+      const DiffChange* eof_change = m_diff_.getChangeAtBoundary(m_document_->getLineCount());
+      // Only a visible line followed by EOF or a hidden row can own EOF virtual rows.
+      const bool may_own_eof = line_index + 1 >= lines.size() || lines[line_index + 1].is_fold_hidden;
+      if (eof_change != nullptr && may_own_eof && line_index == resolveEofDiffOwnerLine()) {
+        row_count += eof_change->removed_lines.size();
+      }
+    }
+    return static_cast<float>(row_count) * getLineHeight();
+  }
+
+  size_t TextLayout::resolveEofDiffOwnerLine() const {
+    if (m_document_ == nullptr || m_document_->getLogicalLines().empty()) return 0;
+    const Vector<LogicalLine>& lines = m_document_->getLogicalLines();
+    for (size_t line = lines.size(); line > 0; --line) {
+      if (!lines[line - 1].is_fold_hidden) return line - 1;
+    }
+    return 0;
   }
 #pragma endregion
 }

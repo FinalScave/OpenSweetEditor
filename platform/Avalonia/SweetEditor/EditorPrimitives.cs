@@ -78,6 +78,10 @@ namespace SweetEditor {
 		public uint LineNumberColor { get; set; }
 		public uint CurrentLineNumberColor { get; set; }
 		public uint CurrentLineColor { get; set; }
+		public uint DiffAddedLineBackgroundColor { get; set; }
+		public uint DiffRemovedLineBackgroundColor { get; set; }
+		public uint DiffAddedGutterBackgroundColor { get; set; }
+		public uint DiffRemovedGutterBackgroundColor { get; set; }
 		public uint GuideColor { get; set; }
 		public uint SeparatorLineColor { get; set; }
 		public uint SplitLineColor { get; set; }
@@ -136,6 +140,10 @@ namespace SweetEditor {
 				LineNumberColor = 0xFF5E6778,
 				CurrentLineNumberColor = 0xFF9CB3D6,
 				CurrentLineColor = 0x503A4A66,
+				DiffAddedLineBackgroundColor = 0xFF1B3025,
+				DiffRemovedLineBackgroundColor = 0xFF342126,
+				DiffAddedGutterBackgroundColor = 0xFF1B3025,
+				DiffRemovedGutterBackgroundColor = 0xFF342126,
 				GuideColor = 0x8056617A,
 				SeparatorLineColor = 0xFF4A8F7A,
 				SplitLineColor = 0x3356617A,
@@ -203,6 +211,10 @@ namespace SweetEditor {
 				LineNumberColor = 0xFF8A94A6,
 				CurrentLineNumberColor = 0xFF3A5FA0,
 				CurrentLineColor = 0x1A0D3B66,
+				DiffAddedLineBackgroundColor = 0x1F68B76B,
+				DiffRemovedLineBackgroundColor = 0x1FE5534B,
+				DiffAddedGutterBackgroundColor = 0x2E68B76B,
+				DiffRemovedGutterBackgroundColor = 0x2EE5534B,
 				GuideColor = 0x4029426B,
 				SeparatorLineColor = 0xFF2F855A,
 				SplitLineColor = 0x1F29426B,

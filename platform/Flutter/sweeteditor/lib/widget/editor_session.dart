@@ -731,6 +731,10 @@ class EditorSession {
         activeLinkForeground: activeLinkForeground,
         codelensForeground: codeLensForeground,
         activeCodelensForeground: activeCodeLensForeground,
+        diffAddedLineBackground: _theme.diffAddedLineBackgroundColor,
+        diffRemovedLineBackground: _theme.diffRemovedLineBackgroundColor,
+        diffAddedGutterBackground: _theme.diffAddedGutterBackgroundColor,
+        diffRemovedGutterBackground: _theme.diffRemovedGutterBackgroundColor,
       ),
     );
   }

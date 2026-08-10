@@ -101,6 +101,10 @@ namespace SweetEditor {
 		public Color CurrentLineNumberColor { get; set; }
 		/// <summary>Current line highlight background color (ARGB, typically semi-transparent).</summary>
 		public Color CurrentLineColor { get; set; }
+		public Color DiffAddedLineBackgroundColor { get; set; }
+		public Color DiffRemovedLineBackgroundColor { get; set; }
+		public Color DiffAddedGutterBackgroundColor { get; set; }
+		public Color DiffRemovedGutterBackgroundColor { get; set; }
 
 		/// <summary>Code structure line color (indent/bracket/flow guides, ARGB).</summary>
 		public Color GuideColor { get; set; }
@@ -219,6 +223,10 @@ namespace SweetEditor {
 			LineNumberColor = Color.FromArgb(unchecked((int)0xFF5E6778)),
 			CurrentLineNumberColor = Color.FromArgb(unchecked((int)0xFF9CB3D6)),
 			CurrentLineColor = Color.FromArgb(unchecked((int)0x503A4A66)),
+			DiffAddedLineBackgroundColor = Color.FromArgb(unchecked((int)0xFF1B3025)),
+			DiffRemovedLineBackgroundColor = Color.FromArgb(unchecked((int)0xFF342126)),
+			DiffAddedGutterBackgroundColor = Color.FromArgb(unchecked((int)0xFF1B3025)),
+			DiffRemovedGutterBackgroundColor = Color.FromArgb(unchecked((int)0xFF342126)),
 			GuideColor = Color.FromArgb(unchecked((int)0x8056617A)),
 			SeparatorLineColor = Color.FromArgb(unchecked((int)0xFF4A8F7A)),
 			SplitLineColor = Color.FromArgb(unchecked((int)0x3356617A)),
@@ -284,6 +292,10 @@ namespace SweetEditor {
 			LineNumberColor = Color.FromArgb(unchecked((int)0xFF8A94A6)),
 			CurrentLineNumberColor = Color.FromArgb(unchecked((int)0xFF3A5FA0)),
 			CurrentLineColor = Color.FromArgb(unchecked((int)0x1A0D3B66)),
+			DiffAddedLineBackgroundColor = Color.FromArgb(unchecked((int)0x1F68B76B)),
+			DiffRemovedLineBackgroundColor = Color.FromArgb(unchecked((int)0x1FE5534B)),
+			DiffAddedGutterBackgroundColor = Color.FromArgb(unchecked((int)0x2E68B76B)),
+			DiffRemovedGutterBackgroundColor = Color.FromArgb(unchecked((int)0x2EE5534B)),
 			GuideColor = Color.FromArgb(unchecked((int)0x4029426B)),
 			SeparatorLineColor = Color.FromArgb(unchecked((int)0xFF2F855A)),
 			SplitLineColor = Color.FromArgb(unchecked((int)0x1F29426B)),
@@ -748,7 +760,11 @@ namespace SweetEditor {
 				LinkForeground = linkForeground,
 				ActiveLinkForeground = activeLinkForeground,
 				CodelensForeground = codeLensForeground,
-				ActiveCodelensForeground = activeCodeLensForeground
+				ActiveCodelensForeground = activeCodeLensForeground,
+				DiffAddedLineBackground = ToCoreColor(theme.DiffAddedLineBackgroundColor),
+				DiffRemovedLineBackground = ToCoreColor(theme.DiffRemovedLineBackgroundColor),
+				DiffAddedGutterBackground = ToCoreColor(theme.DiffAddedGutterBackgroundColor),
+				DiffRemovedGutterBackground = ToCoreColor(theme.DiffRemovedGutterBackgroundColor)
 			};
 		}
 
@@ -1428,6 +1444,21 @@ namespace SweetEditor {
 			DispatchEditorActionResult(editorCore.ClearAllDecorations());
 			DispatchEditorActionResult(editorCore.ClearDiagnostics());
 		}
+		/// <summary>Installs an externally computed line-level diff.</summary>
+		public void SetDiffChanges(IReadOnlyList<DiffChange> changes) {
+			DispatchEditorActionResult(editorCore.SetDiffChanges(changes));
+		}
+		/// <summary>Computes a line-level diff against the supplied original document text.</summary>
+		public void ComputeDiff(string originalText) {
+			DispatchEditorActionResult(editorCore.ComputeDiff(originalText));
+		}
+		/// <summary>Sets layered style spans for removed original lines.</summary>
+		public void SetBatchDiffLineSpans(SpanLayer layer,
+			IReadOnlyDictionary<int, IReadOnlyList<StyleSpan>> spansByOriginalLine) {
+			DispatchEditorActionResult(editorCore.SetBatchDiffLineSpans(layer, spansByOriginalLine));
+		}
+		/// <summary>Clears the current diff snapshot.</summary>
+		public void ClearDiff() { DispatchEditorActionResult(editorCore.ClearDiff()); }
 		/// <summary>Clears matched brackets.</summary>
 		public void ClearMatchedBrackets() { DispatchEditorActionResult(editorCore.ClearMatchedBrackets()); }
 

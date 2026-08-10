@@ -844,6 +844,32 @@ public:
     return wrapBinaryPayload(env, payload, out_size);
   }
 
+  static jobject setDiffChanges(JNIEnv* env, jclass clazz, jlong handle, jobject data, jint size) {
+    return wrapBufferAction(env, handle, data, size, editor_set_diff_changes);
+  }
+
+  static jobject computeDiff(JNIEnv* env, jclass clazz, jlong handle, jstring original_text) {
+    if (handle == 0 || original_text == nullptr) return nullptr;
+    const jchar* chars = env->GetStringChars(original_text, nullptr);
+    if (chars == nullptr) return nullptr;
+    const jsize length = env->GetStringLength(original_text);
+    U16String utf16(reinterpret_cast<const char16_t*>(chars), static_cast<size_t>(length));
+    U8String utf8;
+    StrUtil::convertUTF16ToUTF8(utf16, utf8);
+    env->ReleaseStringChars(original_text, chars);
+    size_t out_size = 0;
+    const uint8_t* payload = editor_compute_diff(static_cast<intptr_t>(handle), utf8.c_str(), &out_size);
+    return wrapBinaryPayload(env, payload, out_size);
+  }
+
+  static jobject setBatchDiffLineSpans(JNIEnv* env, jclass clazz, jlong handle, jobject data, jint size) {
+    return wrapBufferAction(env, handle, data, size, editor_set_batch_diff_line_spans);
+  }
+
+  static jobject clearDiff(JNIEnv* env, jclass clazz, jlong handle) {
+    return wrapHandleAction(env, handle, editor_clear_diff);
+  }
+
   static jobject setFoldArrowMode(JNIEnv* env, jclass clazz, jlong handle, jint mode) {
     if (handle == 0) return nullptr;
     size_t out_size = 0;
@@ -1303,6 +1329,10 @@ public:
       {"nativeGetVisibleLineRange", "(J)[I", (void*) getVisibleLineRange},
       {"nativeSetLineGutterIcons", "(JLjava/nio/ByteBuffer;I)Ljava/nio/ByteBuffer;", (void*) setLineGutterIcons},
       {"nativeSetMaxGutterIcons", "(JI)Ljava/nio/ByteBuffer;", (void*) setMaxGutterIcons},
+      {"nativeSetDiffChanges", "(JLjava/nio/ByteBuffer;I)Ljava/nio/ByteBuffer;", (void*) setDiffChanges},
+      {"nativeComputeDiff", "(JLjava/lang/String;)Ljava/nio/ByteBuffer;", (void*) computeDiff},
+      {"nativeSetBatchDiffLineSpans", "(JLjava/nio/ByteBuffer;I)Ljava/nio/ByteBuffer;", (void*) setBatchDiffLineSpans},
+      {"nativeClearDiff", "(J)Ljava/nio/ByteBuffer;", (void*) clearDiff},
       {"nativeSetFoldArrowMode", "(JI)Ljava/nio/ByteBuffer;", (void*) setFoldArrowMode},
       {"nativeSetWrapMode", "(JI)Ljava/nio/ByteBuffer;", (void*) setWrapMode},
       {"nativeSetRenderWhitespace", "(JI)Ljava/nio/ByteBuffer;", (void*) setRenderWhitespace},

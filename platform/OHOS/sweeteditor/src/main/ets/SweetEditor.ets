@@ -49,6 +49,7 @@ import { SearchRequest, SearchState, createEmptySearchState } from './core/CoreS
 import {
   BracketGuide,
   Diagnostic,
+  DiffChange,
   DocumentHighlight,
   FlowGuide,
   FoldRegion,
@@ -721,6 +722,10 @@ export struct SweetEditor {
     colors.activeLinkForeground = activeLinkForeground;
     colors.codelensForeground = codeLensForeground;
     colors.activeCodelensForeground = activeCodeLensForeground;
+    colors.diffAddedLineBackground = theme.diffAddedLineBackgroundColor;
+    colors.diffRemovedLineBackground = theme.diffRemovedLineBackgroundColor;
+    colors.diffAddedGutterBackground = theme.diffAddedGutterBackgroundColor;
+    colors.diffRemovedGutterBackground = theme.diffRemovedGutterBackgroundColor;
     return colors;
   }
 
@@ -1490,6 +1495,34 @@ export struct SweetEditor {
   clearAllDecorations(): void {
     if (this.editorCore) {
       this.dispatchEditorActionResult(this.editorCore.clearAllDecorations());
+    }
+  }
+
+  /** Installs an externally computed line-level diff. */
+  setDiffChanges(changes: DiffChange[]): void {
+    if (this.editorCore) {
+      this.dispatchEditorActionResult(this.editorCore.setDiffChanges(changes));
+    }
+  }
+
+  /** Computes a line-level diff against the supplied original document text. */
+  computeDiff(originalText: string): void {
+    if (this.editorCore) {
+      this.dispatchEditorActionResult(this.editorCore.computeDiff(originalText));
+    }
+  }
+
+  /** Sets layered style spans for removed original lines. */
+  setBatchDiffLineSpans(layer: SpanLayer, spansByOriginalLine: Map<number, StyleSpan[]>): void {
+    if (this.editorCore) {
+      this.dispatchEditorActionResult(this.editorCore.setBatchDiffLineSpans(layer, spansByOriginalLine));
+    }
+  }
+
+  /** Clears the current diff snapshot. */
+  clearDiff(): void {
+    if (this.editorCore) {
+      this.dispatchEditorActionResult(this.editorCore.clearDiff());
     }
   }
 

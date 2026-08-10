@@ -2,7 +2,7 @@
 // Created by Scave on 2025/12/7.
 //
 #include <sweeteditor/visual.h>
-#include "json_serde.hpp"
+#include "internal/json_serde.hpp"
 
 namespace NS_SWEETEDITOR {
 #pragma region[Class: VisualRun]

@@ -12,7 +12,8 @@ def ets_enum_helper(enum_name):
 def ets_type(field, schema_types, schema_enums):
     inner = vector_inner(field["cpp_type"])
     if inner is not None:
-        return f"{inner}[]"
+        inner_type = "string" if infer_wire_type(inner) == "utf8_string" else inner
+        return f"{inner_type}[]"
     wire = field["wire"]
     if wire == "enum_i32" and field["cpp_type"] in schema_enums:
         return field["cpp_type"]
@@ -498,17 +499,21 @@ def generate_ets_codec(schema, target):
     ])
     list_inners = list_inner_names(schema)
     for inner in list_inners:
+        inner_type = "string" if infer_wire_type(inner) == "utf8_string" else inner
+        read_value = "reader.readUtf8String()" if inner_type == "string" else f"{codec_type}.read{inner}(reader)"
+        write_value = "writer.writeUtf8String(values[i]);" if inner_type == "string" else f"{codec_type}.write{inner}(writer, values[i]);"
+        size_value = f"{codec_type}.sizeOfUtf8String(value)" if inner_type == "string" else f"{codec_type}.sizeOf{inner}(value)"
         if inner_needs_reader(schema, inner):
             lines.extend([
                 "",
-                f"  private static read{inner}List(reader: BinaryReader): {inner}[] {{",
+                f"  private static read{inner}List(reader: BinaryReader): {inner_type}[] {{",
                 "    const count = reader.readInt32();",
                 "    if (count < 0 || count > reader.remaining) {",
                 "      throw new Error('Invalid protocol length.');",
                 "    }",
-                f"    const values: {inner}[] = [];",
+                f"    const values: {inner_type}[] = [];",
                 "    for (let i = 0; i < count; i++) {",
-                f"      values.push({codec_type}.read{inner}(reader));",
+                f"      values.push({read_value});",
                 "    }",
                 "    return values;",
                 "  }",
@@ -516,19 +521,19 @@ def generate_ets_codec(schema, target):
         if inner_needs_writer(schema, inner):
             lines.extend([
                 "",
-                f"  private static write{inner}List(writer: BinaryWriter, values: {inner}[]): void {{",
+                f"  private static write{inner}List(writer: BinaryWriter, values: {inner_type}[]): void {{",
                 "    const count = values ? values.length : 0;",
                 "    writer.writeInt32(count);",
                 "    for (let i = 0; i < count; i++) {",
-                f"      {codec_type}.write{inner}(writer, values[i]);",
+                f"      {write_value}",
                 "    }",
                 "  }",
                 "",
-                f"  private static sizeOf{inner}List(values: {inner}[]): number {{",
+                f"  private static sizeOf{inner}List(values: {inner_type}[]): number {{",
                 "    let size = 4;",
                 "    if (values) {",
                 "      for (const value of values) {",
-                f"        size += {codec_type}.sizeOf{inner}(value);",
+                f"        size += {size_value};",
                 "      }",
                 "    }",
                 "    return size;",

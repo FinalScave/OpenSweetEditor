@@ -6,9 +6,9 @@
 #include <algorithm>
 #include <sweeteditor/editor_core.h>
 #include <sweeteditor/utility.h>
-#include "logging.h"
-#include "render_composer.hpp"
-#include "text_boundary.hpp"
+#include "internal/logging.hpp"
+#include "internal/render_composer.hpp"
+#include "internal/text_boundary.hpp"
 
 namespace NS_SWEETEDITOR {
   namespace {
@@ -35,7 +35,7 @@ namespace NS_SWEETEDITOR {
       : m_measurer_(measurer),
         m_options_(options),
         m_key_resolver_(options.key_chord_timeout_ms) {
-    m_text_layout_ = makeUnique<TextLayout>(measurer, m_text_styles_);
+    m_text_layout_ = makeUnique<TextLayout>(measurer, m_text_styles_, m_diff_);
     InteractionContext interaction_context;
     interaction_context.touch_config = options.simpleAsTouchConfig();
     interaction_context.settings = &m_settings_;
@@ -129,6 +129,9 @@ namespace NS_SWEETEDITOR {
     m_search_match_indices_by_line_.clear();
     clearPendingSearchResult();
     publishSearchState(m_search_state_);
+    m_diff_.clear();
+    m_diff_snapshot_stale_during_composition_ = false;
+    m_text_layout_->setDiffPresentationVisible(true);
 
     m_document_ = document;
     m_text_layout_->loadDocument(document);
@@ -1430,8 +1433,10 @@ namespace NS_SWEETEDITOR {
     }
     const float line_height = m_text_layout_->getLineHeight();
     const PointF target_point = {m_preferred_cursor_x_, current_screen.y - line_height * 0.5f};
-    const CaretHit hit = m_text_layout_->hitTestPointer(target_point);
-    moveCursorTo(hit.position, extend_selection, hit.affinity, true);
+    const CaretHit hit = m_text_layout_->hitTestVerticalNavigation(target_point, false);
+    if (hit.hits_document_text) {
+      moveCursorTo(hit.position, extend_selection, hit.affinity, true);
+    }
     return finishAction(before, EditorActionSource::PROGRAMMATIC, true, std::move(resolution));
   }
 
@@ -1449,8 +1454,10 @@ namespace NS_SWEETEDITOR {
     }
     const float line_height = m_text_layout_->getLineHeight();
     const PointF target_point = {m_preferred_cursor_x_, current_screen.y + line_height * 1.5f};
-    const CaretHit hit = m_text_layout_->hitTestPointer(target_point);
-    moveCursorTo(hit.position, extend_selection, hit.affinity, true);
+    const CaretHit hit = m_text_layout_->hitTestVerticalNavigation(target_point, true);
+    if (hit.hits_document_text) {
+      moveCursorTo(hit.position, extend_selection, hit.affinity, true);
+    }
     return finishAction(before, EditorActionSource::PROGRAMMATIC, true, std::move(resolution));
   }
 
@@ -2132,6 +2139,50 @@ namespace NS_SWEETEDITOR {
 
 #pragma endregion
 
+#pragma region[Diff]
+
+  EditorActionResult EditorCore::setDiffChanges(Vector<DiffChange>&& changes) {
+    const ActionSnapshot before = captureActionSnapshot();
+    if (m_document_ == nullptr || hasComposition()
+        || !m_diff_.setChanges(std::move(changes), m_document_->getLineCount())) {
+      return finishAction(before, EditorActionSource::DIFF, false);
+    }
+    invalidateDiffLayout();
+    return finishAction(before, EditorActionSource::DIFF, true, {}, true, true);
+  }
+
+  EditorActionResult EditorCore::computeDiff(const U8String& original_text) {
+    const ActionSnapshot before = captureActionSnapshot();
+    if (m_document_ == nullptr || hasComposition()
+        || !m_diff_.compute(original_text, *m_document_)) {
+      return finishAction(before, EditorActionSource::DIFF, false);
+    }
+    invalidateDiffLayout();
+    return finishAction(before, EditorActionSource::DIFF, true, {}, true, true);
+  }
+
+  EditorActionResult EditorCore::setBatchDiffLineSpans(
+      SpanLayer layer, Vector<std::pair<size_t, Vector<StyleSpan>>>&& entries) {
+    const ActionSnapshot before = captureActionSnapshot();
+    if (entries.empty()) return finishAction(before, EditorActionSource::DIFF, true);
+    Vector<size_t> original_lines;
+    original_lines.reserve(entries.size());
+    for (const auto& entry : entries) original_lines.push_back(entry.first);
+    if (!m_diff_.setBatchLineSpans(layer, std::move(entries))) {
+      return finishAction(before, EditorActionSource::DIFF, false);
+    }
+    m_text_layout_->invalidateDiffLineSpans(original_lines);
+    return finishAction(before, EditorActionSource::DIFF, true, {}, true, true);
+  }
+
+  EditorActionResult EditorCore::clearDiff() {
+    const ActionSnapshot before = captureActionSnapshot();
+    const bool changed = clearDiffState();
+    return finishAction(before, EditorActionSource::DIFF, true, {}, changed, changed);
+  }
+
+#pragma endregion
+
 #pragma region[Setup & View State Internals]
 
   void EditorCore::markAllLinesDirty(bool reset_heights) {
@@ -2286,6 +2337,33 @@ namespace NS_SWEETEDITOR {
     return snapshot;
   }
 
+  void EditorCore::invalidateDiffLayout() {
+    markAllLinesDirty(true);
+    normalizeScrollState();
+  }
+
+  void EditorCore::setDiffPresentationVisible(bool visible) {
+    if (m_text_layout_ == nullptr || m_document_ == nullptr) return;
+    if (m_text_layout_->isDiffPresentationVisible() == visible) return;
+    if (!visible && m_diff_.empty()) return;
+
+    const PointF old_cursor = m_text_layout_->getPositionScreenCoord(m_caret_.active, m_caret_.active_affinity);
+    m_text_layout_->setDiffPresentationVisible(visible);
+    markAllLinesDirty(true);
+    const PointF new_cursor = m_text_layout_->getPositionScreenCoord(m_caret_.active, m_caret_.active_affinity);
+    m_view_state_.scroll_y += new_cursor.y - old_cursor.y;
+    normalizeScrollState();
+  }
+
+  bool EditorCore::clearDiffState() {
+    if (m_diff_.empty() && m_text_layout_->isDiffPresentationVisible()) return false;
+    m_diff_.clear();
+    m_diff_snapshot_stale_during_composition_ = false;
+    m_text_layout_->setDiffPresentationVisible(true);
+    invalidateDiffLayout();
+    return true;
+  }
+
   EditorActionResult EditorCore::finishAction(const ActionSnapshot& before, EditorActionSource source, bool handled,
                                               TextEditResult edit_result, bool force_redraw, bool decoration_changed) {
     EditorActionResult result;
@@ -2294,6 +2372,9 @@ namespace NS_SWEETEDITOR {
     result.text_change_kind = edit_result.contentChanged() ? edit_result.change_kind : TextChangeKind::NONE;
     result.text_changes = std::move(edit_result.changes);
     const bool text_changed = !result.text_changes.empty();
+    if (text_changed && source != EditorActionSource::IME) {
+      clearDiffState();
+    }
 
     result.cursor_before = before.caret.active;
     result.cursor_after = m_caret_.active;
@@ -3772,7 +3853,13 @@ namespace NS_SWEETEDITOR {
 
   void EditorCore::selectWordAt(const PointF& screen_point) {
     if (m_document_ == nullptr) return;
-    TextPosition pos = m_text_layout_->hitTestPointer(screen_point).position;
+    const CaretHit hit = m_text_layout_->hitTestPointer(screen_point);
+    TextPosition pos = hit.position;
+    if (!hit.hits_document_text) {
+      setCursorPositionInternal(pos);
+      m_caret_.clearSelection();
+      return;
+    }
 
     size_t line = pos.line;
     const U16String& line_text = m_document_->getLineU16TextRef(line);

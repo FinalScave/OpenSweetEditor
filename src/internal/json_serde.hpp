@@ -144,8 +144,9 @@ namespace NS_SWEETEDITOR {
     {VisualLineKind::CONTENT, "CONTENT"},
     {VisualLineKind::PHANTOM, "PHANTOM"},
     {VisualLineKind::CODELENS, "CODELENS"},
+    {VisualLineKind::REMOVED, "REMOVED"},
   })
-  NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(VisualLine, logical_line, wrap_index, line_number_position, runs, kind, owns_gutter_semantics, fold_state)
+  NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(VisualLine, logical_line, wrap_index, line_number_position, runs, kind, owns_gutter_semantics, fold_state, line_number, line_background_color, gutter_background_color)
   NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(Cursor, text_position, position, height, visible, show_dragger)
   NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(SelectionHandle, position, height, visible)
   NLOHMANN_JSON_SERIALIZE_ENUM(GuideDirection, {

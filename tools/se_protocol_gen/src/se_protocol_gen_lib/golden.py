@@ -1,7 +1,7 @@
 import json
 import struct
 
-from .ir import enum_map, map_entry_item, type_map, vector_inner
+from .ir import enum_map, infer_wire_type, map_entry_item, type_map, vector_inner
 
 
 def normalize_hex(value):
@@ -61,7 +61,12 @@ def serialize_list(schema, inner, values):
         raise SystemExit(f"Expected list for Vector<{inner}> fixture value")
     result = [pack_i32(len(values))]
     for value in values:
-        result.append(serialize_type(schema, inner, value))
+        wire = infer_wire_type(inner)
+        if wire == "utf8_string":
+            encoded = str(value).encode("utf-8")
+            result.append(pack_i32(len(encoded)) + encoded)
+        else:
+            result.append(serialize_type(schema, inner, value))
     return b"".join(result)
 
 def serialize_map_entries(schema, entry_item, values):

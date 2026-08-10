@@ -45,7 +45,7 @@
 
 - 在 `VisualRunType` 枚举中添加新值。
 - `buildLineRuns()`：获取装饰数据，插入分割点，将受影响的文本段标记为新的 `VisualRunType`。对于行内装饰（如 LinkSpan），这意味着在装饰边界处分割已有的 TEXT run；对于块级装饰（如 CodeLens），这意味着插入占据整个虚拟行的独立 run；对于仅在行号区域显示的装饰（如 GutterIcon），可能完全不需要修改 layout。
-- 更新 `visual.cpp` 的 `dumpEnum()` 和 `json_serde.hpp` 的 JSON 映射。
+- 更新 `visual.cpp` 的 `dumpEnum()` 和 `src/internal/json_serde.hpp` 的 JSON 映射。
 
 **仅当装饰可交互（可点击）时：**
 
@@ -180,7 +180,7 @@ LINK run 在 `getPositionScreenCoord()` / `columnToX()` 中与 TEXT run 同等�
 |----|-----------|
 | C++ 数据 | `decoration.h`、`decoration.cpp` |
 | C++ 核心 | `editor_core.h`、`editor_core.cpp` |
-| C++ 布局 | `visual.h`、`gesture.h`、`layout.h`、`layout.cpp`、`visual.cpp`、`json_serde.hpp` |
+| C++ 布局 | `visual.h`、`gesture.h`、`layout.h`、`layout.cpp`、`visual.cpp`、`src/internal/json_serde.hpp` |
 | C API | `c_api.h`、`c_api.cpp` |
 | JNI 桥接 | `jeditor.hpp`（JNI 包装 + `kJMethods[]` 注册表） |
 | Java Core | `<Type>.java`、`VisualRunType.java`、`HitTargetType`、`EditorCore.java`、`CoreProtocol.java` |

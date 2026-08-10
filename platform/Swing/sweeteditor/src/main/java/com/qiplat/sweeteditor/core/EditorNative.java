@@ -282,6 +282,9 @@ public final class EditorNative {
     private static final MethodHandle INSERT_TEXT = downcall("editor_insert_text",
             FunctionDescriptor.of(ValueLayout.ADDRESS, ValueLayout.JAVA_LONG, ValueLayout.ADDRESS, ValueLayout.ADDRESS));
 
+    private static final MethodHandle COMPUTE_DIFF = downcall("editor_compute_diff",
+            FunctionDescriptor.of(ValueLayout.ADDRESS, ValueLayout.JAVA_LONG, ValueLayout.ADDRESS, ValueLayout.ADDRESS));
+
     private static final MethodHandle DELETE_TEXT = downcall("editor_delete_text",
             FunctionDescriptor.of(ValueLayout.ADDRESS, ValueLayout.JAVA_LONG,
                     ValueLayout.JAVA_LONG, ValueLayout.JAVA_LONG, ValueLayout.JAVA_LONG, ValueLayout.JAVA_LONG, ValueLayout.ADDRESS));
@@ -657,6 +660,8 @@ public final class EditorNative {
     private static final MethodHandle SET_LINE_LINKS = downcall("editor_set_line_links", BINARY_PAYLOAD_DESC);
     private static final MethodHandle SET_BATCH_LINE_LINKS = downcall("editor_set_batch_line_links", BINARY_PAYLOAD_DESC);
     private static final MethodHandle SET_BATCH_LINE_SPANS = downcall("editor_set_batch_line_spans", BINARY_PAYLOAD_DESC);
+    private static final MethodHandle SET_DIFF_CHANGES = downcall("editor_set_diff_changes", BINARY_PAYLOAD_DESC);
+    private static final MethodHandle SET_BATCH_DIFF_LINE_SPANS = downcall("editor_set_batch_diff_line_spans", BINARY_PAYLOAD_DESC);
     private static final MethodHandle REGISTER_BATCH_TEXT_STYLES = downcall("editor_register_batch_text_styles", BINARY_PAYLOAD_DESC);
     private static final MethodHandle SET_BATCH_LINE_DIAGNOSTICS = downcall("editor_set_batch_line_diagnostics", BINARY_PAYLOAD_DESC);
     private static final MethodHandle SET_BATCH_LINE_DOCUMENT_HIGHLIGHTS = downcall("editor_set_batch_line_document_highlights", BINARY_PAYLOAD_DESC);
@@ -668,6 +673,8 @@ public final class EditorNative {
     private static final MethodHandle CLEAR_CODELENS = downcall("editor_clear_codelens",
             FunctionDescriptor.of(ValueLayout.ADDRESS, ValueLayout.JAVA_LONG, ValueLayout.ADDRESS));
     private static final MethodHandle CLEAR_LINKS = downcall("editor_clear_links",
+            FunctionDescriptor.of(ValueLayout.ADDRESS, ValueLayout.JAVA_LONG, ValueLayout.ADDRESS));
+    private static final MethodHandle CLEAR_DIFF = downcall("editor_clear_diff",
             FunctionDescriptor.of(ValueLayout.ADDRESS, ValueLayout.JAVA_LONG, ValueLayout.ADDRESS));
 
     // ===================== Document API =====================
@@ -1420,6 +1427,25 @@ public final class EditorNative {
 
     public static NativeBinaryResult clearAllDecorations(long handle) {
         return invokeBinaryResult(outSize -> (MemorySegment) CLEAR_ALL_DECORATIONS.invokeExact(handle, outSize));
+    }
+
+    public static NativeBinaryResult setDiffChanges(long handle, MemorySegment payload, long size) {
+        return invokeBinaryResult(outSize ->
+                (MemorySegment) SET_DIFF_CHANGES.invokeExact(handle, payload, size, outSize));
+    }
+
+    public static NativeBinaryResult computeDiff(long handle, String originalText, Arena arena) {
+        return invokeBinaryResult(outSize ->
+                (MemorySegment) COMPUTE_DIFF.invokeExact(handle, arena.allocateFrom(originalText), outSize));
+    }
+
+    public static NativeBinaryResult setBatchDiffLineSpans(long handle, MemorySegment payload, long size) {
+        return invokeBinaryResult(outSize ->
+                (MemorySegment) SET_BATCH_DIFF_LINE_SPANS.invokeExact(handle, payload, size, outSize));
+    }
+
+    public static NativeBinaryResult clearDiff(long handle) {
+        return invokeBinaryResult(outSize -> (MemorySegment) CLEAR_DIFF.invokeExact(handle, outSize));
     }
 
     // ===================== Binary Payload Methods =====================

@@ -1015,4 +1015,32 @@ public class EditorCore {
     public EditorActionResult clearMatchedBrackets() { return decodeAction(EditorNative.clearMatchedBrackets(nativeHandle)); }
     public EditorActionResult clearAllDecorations() { return decodeAction(EditorNative.clearAllDecorations(nativeHandle)); }
 
+    // Diff
+
+    public EditorActionResult setDiffChanges(List<? extends DiffChange> changes) {
+        try (Arena tempArena = Arena.ofConfined()) {
+            MemorySegment payload = CoreProtocol.encodeSetDiffChangesPayload(tempArena, changes);
+            return decodeAction(EditorNative.setDiffChanges(nativeHandle, payload, payload.byteSize()));
+        }
+    }
+
+    public EditorActionResult computeDiff(String originalText) {
+        try (Arena tempArena = Arena.ofConfined()) {
+            return decodeAction(EditorNative.computeDiff(nativeHandle, originalText, tempArena));
+        }
+    }
+
+    public EditorActionResult setBatchDiffLineSpans(SpanLayer layer,
+            Map<Integer, ? extends List<? extends StyleSpan>> spansByOriginalLine) {
+        try (Arena tempArena = Arena.ofConfined()) {
+            MemorySegment payload = CoreProtocol.encodeSetBatchDiffLineSpansPayload(
+                    tempArena, layer, spansByOriginalLine);
+            return decodeAction(EditorNative.setBatchDiffLineSpans(nativeHandle, payload, payload.byteSize()));
+        }
+    }
+
+    public EditorActionResult clearDiff() {
+        return decodeAction(EditorNative.clearDiff(nativeHandle));
+    }
+
 }

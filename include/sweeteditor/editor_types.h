@@ -47,6 +47,7 @@ namespace NS_SWEETEDITOR {
     FOLDING = 8,
     SEARCH = 9,
     LINKED_EDITING = 10,
+    DIFF = 11,
   };
 
   /// Semantic kind of document text changes produced by an action.
@@ -112,6 +113,8 @@ namespace NS_SWEETEDITOR {
   struct CaretHit {
     TextPosition position;
     CaretAffinity affinity{CaretAffinity::DOWNSTREAM};
+    /// Whether the hit resolves through editable current-document text.
+    bool hits_document_text{true};
   };
 
   /// Auto-indent modes.
@@ -256,6 +259,10 @@ namespace NS_SWEETEDITOR {
     int32_t active_link_foreground{0};
     int32_t codelens_foreground{0};
     int32_t active_codelens_foreground{0};
+    int32_t diff_added_line_background{0};
+    int32_t diff_removed_line_background{0};
+    int32_t diff_added_gutter_background{0};
+    int32_t diff_removed_gutter_background{0};
 
     bool operator==(const EditorRenderColors& other) const;
     bool operator!=(const EditorRenderColors& other) const;

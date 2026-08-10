@@ -36,6 +36,7 @@ import {
   CodeLensItem,
   LinkSpan,
   Diagnostic,
+  DiffChange,
   DocumentHighlight,
   FlowGuide,
   FoldRegion,
@@ -984,5 +985,28 @@ export class EditorCore {
 
   clearAllDecorations(): EditorActionResult {
     return CoreProtocol.decodeEditorActionResult(native.editorClearAllDecorations(this.handle));
+  }
+
+  // Diff
+
+  setDiffChanges(changes: DiffChange[]): EditorActionResult {
+    const data = CoreProtocol.encodeSetDiffChangesPayload(changes);
+    return CoreProtocol.decodeEditorActionResult(
+      native.editorSetDiffChanges(this.handle, data, data.byteLength));
+  }
+
+  computeDiff(originalText: string): EditorActionResult {
+    return CoreProtocol.decodeEditorActionResult(native.editorComputeDiff(this.handle, originalText));
+  }
+
+  setBatchDiffLineSpans(layer: SpanLayer,
+                        spansByOriginalLine: Map<number, StyleSpan[]>): EditorActionResult {
+    const data = CoreProtocol.encodeSetBatchDiffLineSpansPayload(layer, spansByOriginalLine);
+    return CoreProtocol.decodeEditorActionResult(
+      native.editorSetBatchDiffLineSpans(this.handle, data, data.byteLength));
+  }
+
+  clearDiff(): EditorActionResult {
+    return CoreProtocol.decodeEditorActionResult(native.editorClearDiff(this.handle));
   }
 }

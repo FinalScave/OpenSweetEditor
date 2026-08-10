@@ -7,7 +7,7 @@
 #include <sweeteditor/interaction.h>
 #include <sweeteditor/layout.h>
 #include <sweeteditor/utility.h>
-#include "logging.h"
+#include "internal/logging.hpp"
 
 namespace NS_SWEETEDITOR {
 

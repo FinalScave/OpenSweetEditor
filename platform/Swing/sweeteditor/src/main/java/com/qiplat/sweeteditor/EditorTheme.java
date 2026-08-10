@@ -50,6 +50,14 @@ public class EditorTheme {
     public Color currentLineNumberColor;
     /** Current line highlight background color, recommended to include alpha. */
     public Color currentLineColor;
+    /** Added or modified line background color. */
+    public Color diffAddedLineBackgroundColor;
+    /** Removed line background color. */
+    public Color diffRemovedLineBackgroundColor;
+    /** Added or modified gutter background color. */
+    public Color diffAddedGutterBackgroundColor;
+    /** Removed gutter background color. */
+    public Color diffRemovedGutterBackgroundColor;
 
     /** Code structure line color (indent/bracket/flow guide). */
     public Color guideColor;
@@ -173,6 +181,10 @@ public class EditorTheme {
         t.lineNumberColor           = argb(0xFF5E6778);
         t.currentLineNumberColor    = argb(0xFF9CB3D6);
         t.currentLineColor          = argb(0x503A4A66);
+        t.diffAddedLineBackgroundColor = argb(0xFF1B3025);
+        t.diffRemovedLineBackgroundColor = argb(0xFF342126);
+        t.diffAddedGutterBackgroundColor = argb(0xFF1B3025);
+        t.diffRemovedGutterBackgroundColor = argb(0xFF342126);
         t.guideColor                = argb(0x8056617A);
         t.separatorLineColor        = argb(0xFF4A8F7A);
         t.splitLineColor            = argb(0x3356617A);
@@ -239,6 +251,10 @@ public class EditorTheme {
         t.lineNumberColor           = argb(0xFF8A94A6);
         t.currentLineNumberColor    = argb(0xFF3A5FA0);
         t.currentLineColor          = argb(0x1A0D3B66);
+        t.diffAddedLineBackgroundColor = argb(0x1F68B76B);
+        t.diffRemovedLineBackgroundColor = argb(0x1FE5534B);
+        t.diffAddedGutterBackgroundColor = argb(0x2E68B76B);
+        t.diffRemovedGutterBackgroundColor = argb(0x2EE5534B);
         t.guideColor                = argb(0x4029426B);
         t.separatorLineColor        = argb(0xFF2F855A);
         t.splitLineColor            = argb(0x1F29426B);

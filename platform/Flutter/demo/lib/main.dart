@@ -40,11 +40,14 @@ class EditorDemoPage extends StatefulWidget {
 class _EditorDemoPageState extends State<EditorDemoPage> {
   static const int _styleColor = EditorTheme.styleUserBase + 1;
   static const int _styleUrl = EditorTheme.styleUserBase + 2;
+  static const String _diffSampleLabel = 'diff: example.java';
+  static const String _diffSampleFileName = 'example.java';
   static const List<MapEntry<String, String>> _sampleAssets = [
     MapEntry('example.java', 'assets/demo_shared/files/example.java'),
     MapEntry('example.kt', 'assets/demo_shared/files/example.kt'),
     MapEntry('example.lua', 'assets/demo_shared/files/example.lua'),
     MapEntry('gc.cpp', 'assets/demo_shared/files/gc.cpp'),
+    MapEntry(_diffSampleLabel, 'assets/demo_shared/files/example.java'),
   ];
 
   late final SweetEditorController _controller;
@@ -238,10 +241,25 @@ class _EditorDemoPageState extends State<EditorDemoPage> {
       if (!mounted || requestId != _loadRequestId) {
         return;
       }
+      final diffSample = sample.key == _diffSampleLabel;
+      final originalText = diffSample ? _normalizeNewlines(text) : text;
       setState(() {
-        _editorMetadata = DemoFileMetadata(sample.key);
-        _editorText = text;
+        _editorMetadata = DemoFileMetadata(
+          diffSample ? _diffSampleFileName : sample.key,
+        );
+        _editorText = diffSample
+            ? _createDiffSample(originalText)
+            : originalText;
       });
+      if (diffSample) {
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (mounted &&
+              requestId == _loadRequestId &&
+              _activeSampleIndex == index) {
+            _controller.computeDiff(originalText);
+          }
+        });
+      }
       _updateStatus('Loaded: ${sample.key}');
     } catch (e) {
       if (!mounted || requestId != _loadRequestId) {
@@ -255,6 +273,23 @@ class _EditorDemoPageState extends State<EditorDemoPage> {
         });
       }
     }
+  }
+
+  static String _normalizeNewlines(String text) {
+    return text.replaceAll('\r\n', '\n').replaceAll('\r', '\n');
+  }
+
+  static String _createDiffSample(String originalText) {
+    return originalText
+        .replaceFirst(
+          'import java.util.Map;',
+          'import java.util.Map;\nimport java.util.Set;',
+        )
+        .replaceFirst('import java.io.*;\n', '')
+        .replaceFirst(
+          'private static final int MAX_SIZE = 100;',
+          'private static final int MAX_SIZE = 256;',
+        );
   }
 
   @override

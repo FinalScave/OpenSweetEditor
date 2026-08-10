@@ -19,6 +19,7 @@ public enum EditorActionSource: Int32 {
     case FOLDING = 8
     case SEARCH = 9
     case LINKED_EDITING = 10
+    case DIFF = 11
 
     public static func fromValue(_ value: Int32) -> EditorActionSource? {
         switch value {
@@ -33,6 +34,7 @@ public enum EditorActionSource: Int32 {
         case 8: return .FOLDING
         case 9: return .SEARCH
         case 10: return .LINKED_EDITING
+        case 11: return .DIFF
         default: return nil
         }
     }

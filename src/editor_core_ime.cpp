@@ -8,7 +8,7 @@
 #include <utility>
 #include <sweeteditor/editor_core.h>
 #include <sweeteditor/utility.h>
-#include "text_edit_utils.hpp"
+#include "internal/text_edit_utils.hpp"
 
 namespace NS_SWEETEDITOR {
 
@@ -1564,6 +1564,7 @@ namespace NS_SWEETEDITOR {
     if (m_document_ == nullptr) {
       return result;
     }
+    const bool had_composition = compositionState().has_value();
 
     std::sort(transaction.history_changes.begin(), transaction.history_changes.end(),
               [](const TextChange& lhs, const TextChange& rhs) {
@@ -1587,6 +1588,13 @@ namespace NS_SWEETEDITOR {
 
     if (!validateTransaction(transaction)) {
       return result;
+    }
+
+    const bool entering_composition = !had_composition && transaction.update_composition
+                                      && transaction.composition_after.has_value();
+    if (entering_composition) {
+      // Hide virtual rows before the first preedit mutation so layout never observes stale diff coordinates.
+      setDiffPresentationVisible(false);
     }
 
     result = applyEditBatch(transaction.document_edits);
@@ -1636,6 +1644,26 @@ namespace NS_SWEETEDITOR {
     }
     if (result.contentChanged() || !transaction.history_changes.empty() || transaction.break_history_merge) {
       ensureCursorVisible();
+    }
+
+    const bool has_composition = compositionState().has_value();
+    const bool committed_text = !transaction.history_changes.empty();
+    if (!had_composition && has_composition) {
+      m_diff_snapshot_stale_during_composition_ = committed_text && !m_diff_.empty();
+    } else if (has_composition) {
+      m_diff_snapshot_stale_during_composition_ =
+          m_diff_snapshot_stale_during_composition_ || (committed_text && !m_diff_.empty());
+    } else if (had_composition) {
+      m_diff_snapshot_stale_during_composition_ =
+          m_diff_snapshot_stale_during_composition_ || (committed_text && !m_diff_.empty());
+      if (m_diff_snapshot_stale_during_composition_) {
+        clearDiffState();
+      } else {
+        setDiffPresentationVisible(true);
+      }
+      m_diff_snapshot_stale_during_composition_ = false;
+    } else if (committed_text) {
+      clearDiffState();
     }
     return result;
   }

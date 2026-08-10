@@ -121,7 +121,11 @@ namespace NS_SWEETEDITOR {
   bool EditorRenderColors::operator==(const EditorRenderColors& other) const {
     return text_foreground == other.text_foreground && link_foreground == other.link_foreground
            && active_link_foreground == other.active_link_foreground && codelens_foreground == other.codelens_foreground
-           && active_codelens_foreground == other.active_codelens_foreground;
+           && active_codelens_foreground == other.active_codelens_foreground
+           && diff_added_line_background == other.diff_added_line_background
+           && diff_removed_line_background == other.diff_removed_line_background
+           && diff_added_gutter_background == other.diff_added_gutter_background
+           && diff_removed_gutter_background == other.diff_removed_gutter_background;
   }
 
   bool EditorRenderColors::operator!=(const EditorRenderColors& other) const {

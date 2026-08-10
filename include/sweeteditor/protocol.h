@@ -3,6 +3,7 @@
 
 #include <utility>
 #include <sweeteditor/editor_core.h>
+#include <sweeteditor/diff.h>
 
 namespace NS_SWEETEDITOR {
 namespace protocol {
@@ -32,6 +33,18 @@ namespace protocol {
     SE_PROTOCOL_WIRE(enum_i32)
     SpanLayer layer {SpanLayer::SYNTAX};
     SE_PROTOCOL_MAP_ENTRY(line, spans)
+    SE_PROTOCOL_KEY_WIRE(size_as_u32)
+    Vector<std::pair<size_t, Vector<StyleSpan>>> entries;
+  };
+
+  struct SE_PROTOCOL_IN(adornment) SetDiffChangesPayload {
+    Vector<DiffChange> changes;
+  };
+
+  struct SE_PROTOCOL_IN(adornment) SetBatchDiffLineSpansPayload {
+    SE_PROTOCOL_WIRE(enum_i32)
+    SpanLayer layer {SpanLayer::SYNTAX};
+    SE_PROTOCOL_MAP_ENTRY(original_line, spans)
     SE_PROTOCOL_KEY_WIRE(size_as_u32)
     Vector<std::pair<size_t, Vector<StyleSpan>>> entries;
   };

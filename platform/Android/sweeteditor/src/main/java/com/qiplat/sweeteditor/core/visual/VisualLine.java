@@ -11,11 +11,14 @@ public final class VisualLine {
     public VisualLineKind kind = VisualLineKind.CONTENT;
     public boolean ownsGutterSemantics = false;
     public FoldState foldState = FoldState.NONE;
+    public int lineNumber = -1;
+    public int lineBackgroundColor = 0;
+    public int gutterBackgroundColor = 0;
 
     public VisualLine() {
     }
 
-    public VisualLine(int logicalLine, int wrapIndex, PointF lineNumberPosition, java.util.List<VisualRun> runs, VisualLineKind kind, boolean ownsGutterSemantics, FoldState foldState) {
+    public VisualLine(int logicalLine, int wrapIndex, PointF lineNumberPosition, java.util.List<VisualRun> runs, VisualLineKind kind, boolean ownsGutterSemantics, FoldState foldState, int lineNumber, int lineBackgroundColor, int gutterBackgroundColor) {
         this.logicalLine = logicalLine;
         this.wrapIndex = wrapIndex;
         this.lineNumberPosition = lineNumberPosition;
@@ -23,5 +26,8 @@ public final class VisualLine {
         this.kind = kind;
         this.ownsGutterSemantics = ownsGutterSemantics;
         this.foldState = foldState;
+        this.lineNumber = lineNumber;
+        this.lineBackgroundColor = lineBackgroundColor;
+        this.gutterBackgroundColor = gutterBackgroundColor;
     }
 }

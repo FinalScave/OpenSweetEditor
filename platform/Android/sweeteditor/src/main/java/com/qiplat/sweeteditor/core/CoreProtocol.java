@@ -10,6 +10,7 @@ import com.qiplat.sweeteditor.core.adornment.BracketGuide;
 import com.qiplat.sweeteditor.core.adornment.CodeLensItem;
 import com.qiplat.sweeteditor.core.adornment.Diagnostic;
 import com.qiplat.sweeteditor.core.adornment.DiagnosticSeverity;
+import com.qiplat.sweeteditor.core.adornment.DiffChange;
 import com.qiplat.sweeteditor.core.adornment.DocumentHighlight;
 import com.qiplat.sweeteditor.core.adornment.DocumentHighlightKind;
 import com.qiplat.sweeteditor.core.adornment.FlowGuide;
@@ -200,6 +201,24 @@ public final class CoreProtocol {
         if (values != null) {
             for (int i = 0; i < values.size(); i++) {
                 size += sizeOfDiagnostic(values.get(i));
+            }
+        }
+        return size;
+    }
+
+    private static void writeDiffChangeList(ByteBuffer data, java.util.List<? extends DiffChange> values) {
+        int count = values == null ? 0 : values.size();
+        data.putInt(count);
+        for (int i = 0; i < count; i++) {
+            writeDiffChangeFields(data, values.get(i));
+        }
+    }
+
+    private static int sizeOfDiffChangeList(java.util.List<? extends DiffChange> values) {
+        int size = 4;
+        if (values != null) {
+            for (int i = 0; i < values.size(); i++) {
+                size += sizeOfDiffChange(values.get(i));
             }
         }
         return size;
@@ -661,6 +680,36 @@ public final class CoreProtocol {
         return size;
     }
 
+    private static ArrayList<String> readU8StringList(ByteBuffer data) {
+        int count = data.getInt();
+        if (count < 0 || count > data.remaining()) {
+            throw new IllegalArgumentException("Invalid protocol length.");
+        }
+        ArrayList<String> values = new ArrayList<>(count);
+        for (int i = 0; i < count; i++) {
+            values.add(readUtf8String(data));
+        }
+        return values;
+    }
+
+    private static void writeU8StringList(ByteBuffer data, java.util.List<? extends String> values) {
+        int count = values == null ? 0 : values.size();
+        data.putInt(count);
+        for (int i = 0; i < count; i++) {
+            writeUtf8String(data, values.get(i));
+        }
+    }
+
+    private static int sizeOfU8StringList(java.util.List<? extends String> values) {
+        int size = 4;
+        if (values != null) {
+            for (int i = 0; i < values.size(); i++) {
+                size += sizeOfUtf8String(values.get(i));
+            }
+        }
+        return size;
+    }
+
     private static ArrayList<VisualLine> readVisualLineList(ByteBuffer data) {
         int count = data.getInt();
         if (count < 0 || count > data.remaining()) {
@@ -786,6 +835,27 @@ public final class CoreProtocol {
         size += 4;
         size += 4;
         size += 4;
+        return size;
+    }
+
+    private static void writeDiffChangeFields(ByteBuffer data, DiffChange value) {
+        data.putInt(value.currentStartLine);
+        data.putInt(value.currentLineCount);
+        data.putInt(value.originalStartLine);
+        writeU8StringList(data, value.removedLines);
+    }
+
+    public static void writeDiffChange(ByteBuffer data, DiffChange value) {
+        prepare(data);
+        writeDiffChangeFields(data, value);
+    }
+
+    public static int sizeOfDiffChange(DiffChange value) {
+        int size = 0;
+        size += 4;
+        size += 4;
+        size += 4;
+        size += sizeOfU8StringList(value.removedLines);
         return size;
     }
 
@@ -1096,6 +1166,10 @@ public final class CoreProtocol {
         data.putInt(value.activeLinkForeground);
         data.putInt(value.codelensForeground);
         data.putInt(value.activeCodelensForeground);
+        data.putInt(value.diffAddedLineBackground);
+        data.putInt(value.diffRemovedLineBackground);
+        data.putInt(value.diffAddedGutterBackground);
+        data.putInt(value.diffRemovedGutterBackground);
     }
 
     public static void writeEditorRenderColors(ByteBuffer data, EditorRenderColors value) {
@@ -1105,6 +1179,10 @@ public final class CoreProtocol {
 
     public static int sizeOfEditorRenderColors(EditorRenderColors value) {
         int size = 0;
+        size += 4;
+        size += 4;
+        size += 4;
+        size += 4;
         size += 4;
         size += 4;
         size += 4;
@@ -2043,6 +2121,9 @@ public final class CoreProtocol {
         value.kind = VisualLineKind.fromValue(data.getInt());
         value.ownsGutterSemantics = data.getInt() != 0;
         value.foldState = FoldState.fromValue(data.getInt());
+        value.lineNumber = data.getInt();
+        value.lineBackgroundColor = data.getInt();
+        value.gutterBackgroundColor = data.getInt();
         return value;
     }
 
@@ -2096,6 +2177,13 @@ public final class CoreProtocol {
     public static ByteBuffer encodeDiagnostic(Diagnostic value) {
         ByteBuffer data = ByteBuffer.allocateDirect(sizeOfDiagnostic(value)).order(ByteOrder.LITTLE_ENDIAN);
         writeDiagnosticFields(data, value);
+        data.flip();
+        return data;
+    }
+
+    public static ByteBuffer encodeDiffChange(DiffChange value) {
+        ByteBuffer data = ByteBuffer.allocateDirect(sizeOfDiffChange(value)).order(ByteOrder.LITTLE_ENDIAN);
+        writeDiffChangeFields(data, value);
         data.flip();
         return data;
     }
@@ -2213,6 +2301,41 @@ public final class CoreProtocol {
     public static ByteBuffer encodeSeparatorGuide(SeparatorGuide value) {
         ByteBuffer data = ByteBuffer.allocateDirect(sizeOfSeparatorGuide(value)).order(ByteOrder.LITTLE_ENDIAN);
         writeSeparatorGuideFields(data, value);
+        data.flip();
+        return data;
+    }
+
+    private static void writeSetBatchDiffLineSpansPayloadWire(ByteBuffer data, SpanLayer layer, java.util.Map<Integer, ? extends java.util.List<? extends StyleSpan>> spansByOriginalLine) {
+        data.putInt(layer.value);
+        java.util.TreeMap<Integer, java.util.List<? extends StyleSpan>> sortedSpansByOriginalLine = new java.util.TreeMap<>();
+        if (spansByOriginalLine != null) {
+            for (java.util.Map.Entry<Integer, ? extends java.util.List<? extends StyleSpan>> entry : spansByOriginalLine.entrySet()) {
+                sortedSpansByOriginalLine.put(entry.getKey(), entry.getValue());
+            }
+        }
+        data.putInt(sortedSpansByOriginalLine.size());
+        for (java.util.Map.Entry<Integer, java.util.List<? extends StyleSpan>> entry : sortedSpansByOriginalLine.entrySet()) {
+            data.putInt(entry.getKey());
+            writeStyleSpanList(data, entry.getValue());
+        }
+    }
+
+    private static int sizeOfSetBatchDiffLineSpansPayloadWire(SpanLayer layer, java.util.Map<Integer, ? extends java.util.List<? extends StyleSpan>> spansByOriginalLine) {
+        int size = 0;
+        size += 4;
+        size += 4;
+        if (spansByOriginalLine != null) {
+            for (java.util.Map.Entry<Integer, ? extends java.util.List<? extends StyleSpan>> entry : spansByOriginalLine.entrySet()) {
+                size += 4;
+                size += sizeOfStyleSpanList(entry.getValue());
+            }
+        }
+        return size;
+    }
+
+    public static ByteBuffer encodeSetBatchDiffLineSpansPayload(SpanLayer layer, java.util.Map<Integer, ? extends java.util.List<? extends StyleSpan>> spansByOriginalLine) {
+        ByteBuffer data = ByteBuffer.allocateDirect(sizeOfSetBatchDiffLineSpansPayloadWire(layer, spansByOriginalLine)).order(ByteOrder.LITTLE_ENDIAN);
+        writeSetBatchDiffLineSpansPayloadWire(data, layer, spansByOriginalLine);
         data.flip();
         return data;
     }
@@ -2532,6 +2655,23 @@ public final class CoreProtocol {
     public static ByteBuffer encodeSetBracketGuidesPayload(java.util.List<? extends BracketGuide> guides) {
         ByteBuffer data = ByteBuffer.allocateDirect(sizeOfSetBracketGuidesPayloadWire(guides)).order(ByteOrder.LITTLE_ENDIAN);
         writeSetBracketGuidesPayloadWire(data, guides);
+        data.flip();
+        return data;
+    }
+
+    private static void writeSetDiffChangesPayloadWire(ByteBuffer data, java.util.List<? extends DiffChange> changes) {
+        writeDiffChangeList(data, changes);
+    }
+
+    private static int sizeOfSetDiffChangesPayloadWire(java.util.List<? extends DiffChange> changes) {
+        int size = 0;
+        size += sizeOfDiffChangeList(changes);
+        return size;
+    }
+
+    public static ByteBuffer encodeSetDiffChangesPayload(java.util.List<? extends DiffChange> changes) {
+        ByteBuffer data = ByteBuffer.allocateDirect(sizeOfSetDiffChangesPayloadWire(changes)).order(ByteOrder.LITTLE_ENDIAN);
+        writeSetDiffChangesPayloadWire(data, changes);
         data.flip();
         return data;
     }

@@ -33,6 +33,7 @@ export 'event/editor_event.dart';
 export 'keymap/editor_keymap.dart';
 export 'newline/newline_types.dart';
 export 'selection/selection_types.dart';
+export 'core/editor_core.dart' show DiffChange, SpanLayer, StyleSpan;
 
 part 'editor_settings.dart';
 part 'widget/sweet_editor_controller.dart';

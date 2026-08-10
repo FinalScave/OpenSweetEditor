@@ -54,7 +54,8 @@ namespace SweetEditor {
     public enum VisualLineKind {
         CONTENT = 0,
         PHANTOM = 1,
-        CODELENS = 2
+        CODELENS = 2,
+        REMOVED = 3
     }
 
     public enum VisualRunType {
@@ -187,6 +188,9 @@ namespace SweetEditor {
         public VisualLineKind Kind { get; set; } = VisualLineKind.CONTENT;
         public bool OwnsGutterSemantics { get; set; } = false;
         public FoldState FoldState { get; set; } = FoldState.NONE;
+        public int LineNumber { get; set; } = -1;
+        public int LineBackgroundColor { get; set; } = 0;
+        public int GutterBackgroundColor { get; set; } = 0;
     }
 
     public sealed partial class VisualRun {

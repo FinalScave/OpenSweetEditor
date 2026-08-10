@@ -66,6 +66,8 @@ public class MainActivity extends AppCompatActivity {
     private static final int STYLE_LINK = DemoDecorationProvider.STYLE_LINK;
     private static final String DEMO_FILES_ASSET_DIR = "files";
     private static final String FALLBACK_FILE_NAME = "sample.cpp";
+    private static final String DIFF_SAMPLE_LABEL = "diff: example.java";
+    private static final String DIFF_SAMPLE_FILE_NAME = "example.java";
 
     private static final int DARK_BG = 0xFF1B1E24;
     private static final int DARK_FG = 0xFFD7DEE9;
@@ -369,6 +371,9 @@ public class MainActivity extends AppCompatActivity {
         if (mDemoFiles.isEmpty()) {
             mDemoFiles.add(FALLBACK_FILE_NAME);
         }
+        if (mDemoFiles.contains(DIFF_SAMPLE_FILE_NAME)) {
+            mDemoFiles.add(DIFF_SAMPLE_LABEL);
+        }
 
         mFileSpinner.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener() {
             @Override
@@ -410,13 +415,26 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private void loadDemoFile(String fileName) {
-        String assetPath = DEMO_FILES_ASSET_DIR + "/" + fileName;
-        String code = loadAsset(assetPath);
+        boolean diffSample = DIFF_SAMPLE_LABEL.equals(fileName);
+        String sourceFileName = diffSample ? DIFF_SAMPLE_FILE_NAME : fileName;
+        String assetPath = DEMO_FILES_ASSET_DIR + "/" + sourceFileName;
+        String originalText = loadAsset(assetPath);
+        String code = diffSample ? createDiffSample(originalText) : originalText;
         mSearchPanel.resetForDocument();
         mEditor.loadDocument(new Document(code));
-        mEditor.setMetadata(new DemoFileMetadata(fileName));
+        mEditor.setMetadata(new DemoFileMetadata(sourceFileName));
+        if (diffSample) {
+            mEditor.computeDiff(originalText);
+        }
         mEditor.post(mEditor::requestDecorationRefresh);
         updateStatus("Loaded: " + fileName);
+    }
+
+    private static String createDiffSample(String originalText) {
+        return originalText
+                .replace("import java.util.Map;", "import java.util.Map;\nimport java.util.Set;")
+                .replace("import java.io.*;\n", "")
+                .replace("private static final int MAX_SIZE = 100;", "private static final int MAX_SIZE = 256;");
     }
 
     private String loadAsset(String fileName) {

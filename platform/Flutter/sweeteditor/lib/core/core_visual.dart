@@ -135,7 +135,8 @@ enum RangeEffectKind {
 enum VisualLineKind {
   content(0),
   phantom(1),
-  codelens(2);
+  codelens(2),
+  removed(3);
 
   const VisualLineKind(this.value);
   final int value;
@@ -145,6 +146,7 @@ enum VisualLineKind {
       case 0: return content;
       case 1: return phantom;
       case 2: return codelens;
+      case 3: return removed;
       default: throw ArgumentError.value(value, 'value', 'Unknown VisualLineKind value');
     }
   }
@@ -409,6 +411,9 @@ class VisualLine {
     this.kind = VisualLineKind.content,
     this.ownsGutterSemantics = false,
     this.foldState = FoldState.none,
+    this.lineNumber = -1,
+    this.lineBackgroundColor = 0,
+    this.gutterBackgroundColor = 0,
   });
 
   final int logicalLine;
@@ -418,6 +423,9 @@ class VisualLine {
   final VisualLineKind kind;
   final bool ownsGutterSemantics;
   final FoldState foldState;
+  final int lineNumber;
+  final int lineBackgroundColor;
+  final int gutterBackgroundColor;
 }
 
 class VisualRun {

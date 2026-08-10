@@ -351,6 +351,30 @@ TEST_CASE("C API basic edit, composition and linked editing flow") {
   REQUIRE(action_payload != nullptr);
   free_binary_data(reinterpret_cast<intptr_t>(action_payload));
 
+  // computeDiff intentionally accepts the original UTF-8 text directly instead of a protocol payload.
+  action_payload = editor_compute_diff(editor, "old\nabc", &action_size);
+  REQUIRE(action_payload != nullptr);
+  ActionPayloadData diff_action = parseActionPayload(action_payload, action_size);
+  free_binary_data(reinterpret_cast<intptr_t>(action_payload));
+  CHECK(diff_action.source == static_cast<int32_t>(EditorActionSource::DIFF));
+  CHECK(diff_action.handled == 1);
+  action_payload = editor_clear_diff(editor, &action_size);
+  REQUIRE(action_payload != nullptr);
+  free_binary_data(reinterpret_cast<intptr_t>(action_payload));
+
+  protocol::SetDiffChangesPayload external_diff;
+  external_diff.changes.push_back({0, 0, 0, {"\xE6\x97\xA7\xE8\xA1\x8C"}});
+  Vector<uint8_t> external_diff_data = protocol::ProtocolWriter::encode(external_diff);
+  action_payload = editor_set_diff_changes(editor, external_diff_data.data(), external_diff_data.size(), &action_size);
+  REQUIRE(action_payload != nullptr);
+  diff_action = parseActionPayload(action_payload, action_size);
+  free_binary_data(reinterpret_cast<intptr_t>(action_payload));
+  CHECK(diff_action.source == static_cast<int32_t>(EditorActionSource::DIFF));
+  CHECK(diff_action.handled == 1);
+  action_payload = editor_clear_diff(editor, &action_size);
+  REQUIRE(action_payload != nullptr);
+  free_binary_data(reinterpret_cast<intptr_t>(action_payload));
+
   size_t scroll_metrics_size = 0;
   const uint8_t* scroll_metrics_payload = editor_get_scroll_metrics(editor, &scroll_metrics_size);
   REQUIRE(scroll_metrics_payload != nullptr);

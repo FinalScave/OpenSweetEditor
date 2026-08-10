@@ -62,6 +62,10 @@ class EditorTheme {
   int lineNumberColor = 0xFF5E6778;
   int currentLineNumberColor = 0xFF9CB3D6;
   int currentLineColor = 0x503A4A66;
+  int diffAddedLineBackgroundColor = 0xFF1B3025;
+  int diffRemovedLineBackgroundColor = 0xFF342126;
+  int diffAddedGutterBackgroundColor = 0xFF1B3025;
+  int diffRemovedGutterBackgroundColor = 0xFF342126;
   int guideColor = 0x8056617A;
   int separatorLineColor = 0xFF4A8F7A;
   int splitLineColor = 0x3356617A;
@@ -148,6 +152,10 @@ class EditorTheme {
       ..lineNumberColor = 0xFF8A94A6
       ..currentLineNumberColor = 0xFF3A5FA0
       ..currentLineColor = 0x1A0D3B66
+      ..diffAddedLineBackgroundColor = 0x1F68B76B
+      ..diffRemovedLineBackgroundColor = 0x1FE5534B
+      ..diffAddedGutterBackgroundColor = 0x2E68B76B
+      ..diffRemovedGutterBackgroundColor = 0x2EE5534B
       ..guideColor = 0x4029426B
       ..separatorLineColor = 0xFF2F855A
       ..splitLineColor = 0x1F29426B

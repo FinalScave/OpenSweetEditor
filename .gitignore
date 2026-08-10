@@ -15,6 +15,7 @@ obj
 tests/output
 tests/build
 tools/se_protocol_gen/generated/
+__pycache__/
 CMakeSettings.json
 *.csproj.user
 *.DotSettings.user

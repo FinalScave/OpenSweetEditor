@@ -213,6 +213,10 @@ class EditorRenderColors {
     this.activeLinkForeground = 0,
     this.codelensForeground = 0,
     this.activeCodelensForeground = 0,
+    this.diffAddedLineBackground = 0,
+    this.diffRemovedLineBackground = 0,
+    this.diffAddedGutterBackground = 0,
+    this.diffRemovedGutterBackground = 0,
   });
 
   final int textForeground;
@@ -220,6 +224,10 @@ class EditorRenderColors {
   final int activeLinkForeground;
   final int codelensForeground;
   final int activeCodelensForeground;
+  final int diffAddedLineBackground;
+  final int diffRemovedLineBackground;
+  final int diffAddedGutterBackground;
+  final int diffRemovedGutterBackground;
 }
 
 class HandleConfig {

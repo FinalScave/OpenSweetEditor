@@ -199,6 +199,24 @@ int _sizeOfDiagnosticList(List<Diagnostic>? values) {
   return size;
 }
 
+void _writeDiffChangeList(_BinaryWriter writer, List<DiffChange>? values) {
+  final count = values == null ? 0 : values.length;
+  writer.writeInt32(count);
+  for (var i = 0; i < count; i++) {
+    _writeDiffChange(writer, values![i]);
+  }
+}
+
+int _sizeOfDiffChangeList(List<DiffChange>? values) {
+  var size = 4;
+  if (values != null) {
+    for (final value in values) {
+      size += _sizeOfDiffChange(value);
+    }
+  }
+  return size;
+}
+
 void _writeDocumentHighlightList(_BinaryWriter writer, List<DocumentHighlight>? values) {
   final count = values == null ? 0 : values.length;
   writer.writeInt32(count);
@@ -655,6 +673,36 @@ int _sizeOfTextRangeList(List<TextRange>? values) {
   return size;
 }
 
+List<String> _readU8StringList(_BinaryReader reader) {
+  final count = reader.readInt32();
+  if (count < 0 || count > reader.remaining) {
+    throw RangeError('Invalid protocol length.');
+  }
+  final values = <String>[];
+  for (var i = 0; i < count; i++) {
+    values.add(_readUtf8String(reader));
+  }
+  return values;
+}
+
+void _writeU8StringList(_BinaryWriter writer, List<String>? values) {
+  final count = values == null ? 0 : values.length;
+  writer.writeInt32(count);
+  for (var i = 0; i < count; i++) {
+    _writeUtf8String(writer, values![i]);
+  }
+}
+
+int _sizeOfU8StringList(List<String>? values) {
+  var size = 4;
+  if (values != null) {
+    for (final value in values) {
+      size += _sizeOfUtf8String(value);
+    }
+  }
+  return size;
+}
+
 List<VisualLine> _readVisualLineList(_BinaryReader reader) {
   final count = reader.readInt32();
   if (count < 0 || count > reader.remaining) {
@@ -760,6 +808,22 @@ int _sizeOfDiagnostic(Diagnostic value) {
   size += 4;
   size += 4;
   size += 4;
+  return size;
+}
+
+void _writeDiffChange(_BinaryWriter writer, DiffChange value) {
+  writer.writeUint32(value.currentStartLine);
+  writer.writeUint32(value.currentLineCount);
+  writer.writeUint32(value.originalStartLine);
+  _writeU8StringList(writer, value.removedLines);
+}
+
+int _sizeOfDiffChange(DiffChange value) {
+  var size = 0;
+  size += 4;
+  size += 4;
+  size += 4;
+  size += _sizeOfU8StringList(value.removedLines);
   return size;
 }
 
@@ -995,10 +1059,18 @@ void _writeEditorRenderColors(_BinaryWriter writer, EditorRenderColors value) {
   writer.writeInt32(value.activeLinkForeground);
   writer.writeInt32(value.codelensForeground);
   writer.writeInt32(value.activeCodelensForeground);
+  writer.writeInt32(value.diffAddedLineBackground);
+  writer.writeInt32(value.diffRemovedLineBackground);
+  writer.writeInt32(value.diffAddedGutterBackground);
+  writer.writeInt32(value.diffRemovedGutterBackground);
 }
 
 int _sizeOfEditorRenderColors(EditorRenderColors value) {
   var size = 0;
+  size += 4;
+  size += 4;
+  size += 4;
+  size += 4;
   size += 4;
   size += 4;
   size += 4;
@@ -1667,6 +1739,9 @@ VisualLine _readVisualLine(_BinaryReader reader) {
     kind: VisualLineKind.fromValue(reader.readInt32()),
     ownsGutterSemantics: reader.readBoolI32(),
     foldState: FoldState.fromValue(reader.readInt32()),
+    lineNumber: reader.readInt32(),
+    lineBackgroundColor: reader.readInt32(),
+    gutterBackgroundColor: reader.readInt32(),
   );
 }
 
@@ -1888,6 +1963,12 @@ class CoreProtocol {
     return writer.toBytes();
   }
 
+  static Uint8List encodeDiffChange(DiffChange value) {
+    final writer = _BinaryWriter(_sizeOfDiffChange(value));
+    _writeDiffChange(writer, value);
+    return writer.toBytes();
+  }
+
   static Uint8List encodeDocumentHighlight(DocumentHighlight value) {
     final writer = _BinaryWriter(_sizeOfDocumentHighlight(value));
     _writeDocumentHighlight(writer, value);
@@ -1969,6 +2050,38 @@ class CoreProtocol {
   static Uint8List encodeSeparatorGuide(SeparatorGuide value) {
     final writer = _BinaryWriter(_sizeOfSeparatorGuide(value));
     _writeSeparatorGuide(writer, value);
+    return writer.toBytes();
+  }
+
+  static void _writeSetBatchDiffLineSpansPayloadWire(_BinaryWriter writer, SpanLayer layer, Map<int, List<StyleSpan>>? spansByOriginalLine) {
+    writer.writeInt32(layer.value);
+    final keys = spansByOriginalLine == null ? <int>[] : (spansByOriginalLine.keys.toList()..sort());
+    writer.writeInt32(keys.length);
+    for (final key in keys) {
+      final value = spansByOriginalLine![key]!;
+      writer.writeUint32(key);
+      _writeStyleSpanList(writer, value);
+    }
+  }
+
+  static int _sizeOfSetBatchDiffLineSpansPayloadWire(SpanLayer layer, Map<int, List<StyleSpan>>? spansByOriginalLine) {
+    var size = 0;
+    size += 4;
+    size += 4;
+    if (spansByOriginalLine != null) {
+      final keys = spansByOriginalLine.keys.toList()..sort();
+      for (final key in keys) {
+        final value = spansByOriginalLine[key]!;
+        size += 4;
+        size += _sizeOfStyleSpanList(value);
+      }
+    }
+    return size;
+  }
+
+  static Uint8List encodeSetBatchDiffLineSpansPayload(SpanLayer layer, Map<int, List<StyleSpan>>? spansByOriginalLine) {
+    final writer = _BinaryWriter(_sizeOfSetBatchDiffLineSpansPayloadWire(layer, spansByOriginalLine));
+    _writeSetBatchDiffLineSpansPayloadWire(writer, layer, spansByOriginalLine);
     return writer.toBytes();
   }
 
@@ -2227,6 +2340,22 @@ class CoreProtocol {
   static Uint8List encodeSetBracketGuidesPayload(List<BracketGuide>? guides) {
     final writer = _BinaryWriter(_sizeOfSetBracketGuidesPayloadWire(guides));
     _writeSetBracketGuidesPayloadWire(writer, guides);
+    return writer.toBytes();
+  }
+
+  static void _writeSetDiffChangesPayloadWire(_BinaryWriter writer, List<DiffChange>? changes) {
+    _writeDiffChangeList(writer, changes);
+  }
+
+  static int _sizeOfSetDiffChangesPayloadWire(List<DiffChange>? changes) {
+    var size = 0;
+    size += _sizeOfDiffChangeList(changes);
+    return size;
+  }
+
+  static Uint8List encodeSetDiffChangesPayload(List<DiffChange>? changes) {
+    final writer = _BinaryWriter(_sizeOfSetDiffChangesPayloadWire(changes));
+    _writeSetDiffChangesPayloadWire(writer, changes);
     return writer.toBytes();
   }
 

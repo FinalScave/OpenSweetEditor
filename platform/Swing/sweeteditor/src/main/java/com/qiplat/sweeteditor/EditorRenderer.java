@@ -224,6 +224,7 @@ final class EditorRenderer implements EditorCore.TextMeasurer {
             return;
         }
 
+        drawDiffLineBackgrounds(g2, model, 0f, viewWidth, false);
         drawCurrentLineDecoration(g2, model, 0f, viewWidth);
         if (drawPerf != null) drawPerf.mark(PerfStepRecorder.STEP_CURRENT);
         drawRangeEffectBackgrounds(g2, model);
@@ -494,9 +495,11 @@ final class EditorRenderer implements EditorCore.TextMeasurer {
         g.setColor(theme.backgroundColor);
         if (animatedSplitX <= 0) {
             g.fillRect(0, 0, (int) model.splitX, viewHeight);
+            drawDiffLineBackgrounds(g, model, 0f, model.splitX, true);
             drawCurrentLineDecoration(g, model, 0f, model.splitX);
         } else {
             g.fillRect(0, 0, (int) animatedSplitX, viewHeight);
+            drawDiffLineBackgrounds(g, model, 0f, animatedSplitX, true);
             drawCurrentLineDecoration(g, model, 0f, animatedSplitX);
         }
 
@@ -523,7 +526,13 @@ final class EditorRenderer implements EditorCore.TextMeasurer {
         Color activeLineColor = getCurrentLineAccentColor();
         currentDrawingLineNumber = -1;
         for (VisualLine line : model.lines) {
-            if (!line.ownsGutterSemantics) continue;
+            if (line.lineNumber < 0 || line.lineNumberPosition == null) continue;
+            if (!line.ownsGutterSemantics) {
+                g.setColor(theme.lineNumberColor);
+                g.setFont(regularFont);
+                g.drawString(String.valueOf(line.lineNumber), line.lineNumberPosition.x, line.lineNumberPosition.y);
+                continue;
+            }
             int logicalLine = line.logicalLine;
 
             while (iconCursor < iconCount && gutterIcons.get(iconCursor).logicalLine < logicalLine) {
@@ -565,7 +574,7 @@ final class EditorRenderer implements EditorCore.TextMeasurer {
                                 boolean isCurrentLine,
                                 Color activeLineColor) {
         PointF pos = vl.lineNumberPosition;
-        int newLineNumber = vl.logicalLine + 1;
+        int newLineNumber = vl.lineNumber;
         boolean overlayMode = model.maxGutterIcons == 0;
         boolean hasIcons = editorIconProvider != null && iconEnd > iconStart;
 
@@ -616,6 +625,25 @@ final class EditorRenderer implements EditorCore.TextMeasurer {
     private int getActiveLogicalLine(EditorRenderModel model) {
         if (model.cursor == null || model.cursor.textPosition == null) return -1;
         return model.cursor.textPosition.line;
+    }
+
+    private void drawDiffLineBackgrounds(Graphics2D g, EditorRenderModel model,
+                                         float left, float width, boolean gutter) {
+        if (model.lines == null || width <= 0f) return;
+        float lineHeight = model.cursor != null && model.cursor.height > 0
+                ? model.cursor.height : getFontHeight(g, regularFont);
+        FontMetrics metrics = g.getFontMetrics(regularFont);
+        float fontHeight = metrics.getAscent() + metrics.getDescent();
+        float topPadding = (lineHeight - fontHeight) * 0.5f;
+        Color oldColor = g.getColor();
+        for (VisualLine line : model.lines) {
+            int color = gutter ? line.gutterBackgroundColor : line.lineBackgroundColor;
+            if (color == 0 || line.lineNumberPosition == null) continue;
+            float top = line.lineNumberPosition.y - metrics.getAscent() - topPadding;
+            g.setColor(argbToColor(color));
+            g.fill(new Rectangle2D.Float(left, top, width, lineHeight));
+        }
+        g.setColor(oldColor);
     }
 
     private Color getCurrentLineAccentColor() {

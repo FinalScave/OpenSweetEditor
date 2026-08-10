@@ -317,6 +317,7 @@ final class EditorRenderer {
         canvas.drawColor(mTheme.backgroundColor);
         if (drawPerf != null) drawPerf.mark(PerfStepRecorder.STEP_CLEAR);
 
+        drawDiffLineBackgrounds(canvas, model, 0f, viewWidth, false);
         drawCurrentLineDecoration(canvas, model, 0f, viewWidth);
         if (drawPerf != null) drawPerf.mark(PerfStepRecorder.STEP_CURRENT);
 
@@ -337,6 +338,7 @@ final class EditorRenderer {
 
         if (model.splitX > 0) {
             canvas.drawRect(0, 0, model.splitX, viewHeight, mBackgroundPaint);
+            drawDiffLineBackgrounds(canvas, model, 0f, model.splitX, true);
             drawCurrentLineDecoration(canvas, model, 0f, model.splitX);
 
             if (model.splitLineVisible) {
@@ -609,9 +611,17 @@ final class EditorRenderer {
         final int activeLineNumberColor = getActiveLineNumberColor();
         Path arrowPath = new Path();
         for (VisualLine line : model.lines) {
-            if (line.ownsGutterSemantics && line.lineNumberPosition != null) {
+            if (line.lineNumberPosition != null && line.lineNumber >= 0) {
                 final int logicalLine = line.logicalLine;
-                final boolean isCurrentLine = logicalLine == activeLogicalLine;
+                final boolean isCurrentLine = line.ownsGutterSemantics && logicalLine == activeLogicalLine;
+
+                if (!line.ownsGutterSemantics) {
+                    mLineNumberPaint.setColor(normalLineNumberColor);
+                    canvas.drawText(String.valueOf(line.lineNumber),
+                            line.lineNumberPosition.x, line.lineNumberPosition.y,
+                            mLineNumberPaint);
+                    continue;
+                }
 
                 while (iconCursor < iconCount && gutterIcons.get(iconCursor).logicalLine < logicalLine) {
                     iconCursor++;
@@ -627,7 +637,7 @@ final class EditorRenderer {
                     drawGutterIconItem(canvas, gutterIcons.get(iconStart));
                 } else {
                     mLineNumberPaint.setColor(isCurrentLine ? activeLineNumberColor : normalLineNumberColor);
-                    String lineNumStr = String.valueOf(line.logicalLine + 1);
+                    String lineNumStr = String.valueOf(line.lineNumber);
                     canvas.drawText(lineNumStr,
                             line.lineNumberPosition.x, line.lineNumberPosition.y,
                             mLineNumberPaint);
@@ -720,6 +730,27 @@ final class EditorRenderer {
         mCurrentLinePaint.setColor(mTheme.currentLineColor);
         mCurrentLinePaint.setStyle(Paint.Style.FILL);
         canvas.drawRect(left, top, right, bottom, mCurrentLinePaint);
+    }
+
+    private void drawDiffLineBackgrounds(@NonNull Canvas canvas, @NonNull EditorRenderModel model,
+                                         float left, float right, boolean gutter) {
+        if (model.lines == null || right <= left) return;
+        float lineHeight = model.cursor != null && model.cursor.height > 0f ? model.cursor.height : 20f;
+        Paint.FontMetrics metrics = mTextPaint.getFontMetrics();
+        float fontHeight = metrics.descent - metrics.ascent;
+        float topPadding = (lineHeight - fontHeight) * 0.5f;
+        Paint.Style oldStyle = mCurrentLinePaint.getStyle();
+        int oldColor = mCurrentLinePaint.getColor();
+        mCurrentLinePaint.setStyle(Paint.Style.FILL);
+        for (VisualLine line : model.lines) {
+            int color = gutter ? line.gutterBackgroundColor : line.lineBackgroundColor;
+            if (color == 0 || line.lineNumberPosition == null) continue;
+            float top = line.lineNumberPosition.y + metrics.ascent - topPadding;
+            mCurrentLinePaint.setColor(color);
+            canvas.drawRect(left, top, right, top + lineHeight, mCurrentLinePaint);
+        }
+        mCurrentLinePaint.setStyle(oldStyle);
+        mCurrentLinePaint.setColor(oldColor);
     }
 
     private int getActiveLogicalLine(@NonNull EditorRenderModel model) {

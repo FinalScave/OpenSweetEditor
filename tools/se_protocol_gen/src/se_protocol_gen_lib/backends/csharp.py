@@ -10,7 +10,8 @@ def csharp_member_name(field):
 def csharp_type(field, schema_types, schema_enums):
     inner = vector_inner(field["cpp_type"])
     if inner is not None:
-        return f"List<{inner}>"
+        inner_type = "string" if infer_wire_type(inner) == "utf8_string" else inner
+        return f"List<{inner_type}>"
     wire = field["wire"]
     if wire == "enum_i32" and field["cpp_type"] in schema_enums:
         return field["cpp_type"]
@@ -453,15 +454,19 @@ def generate_csharp_codec(schema, target=None):
         "        }",
     ]
     for inner in list_inner_names(schema):
+        inner_type = "string" if infer_wire_type(inner) == "utf8_string" else inner
+        read_value = "ReadUtf8String(ref reader)" if inner_type == "string" else f"Read{inner}(ref reader)"
+        write_value = "WriteUtf8String(writer, values![i]);" if inner_type == "string" else f"Write{inner}(writer, values![i]);"
+        size_value = "SizeOfUtf8String(values[i])" if inner_type == "string" else f"SizeOf{inner}(values[i])"
         if inner_needs_reader(schema, inner):
             lines.extend([
                 "",
-                f"        private static List<{inner}> Read{inner}List(ref BinaryReader reader) {{",
+                f"        private static List<{inner_type}> Read{inner}List(ref BinaryReader reader) {{",
                 "            var count = reader.ReadInt32();",
                 "            if (count < 0 || count > reader.Remaining) throw new InvalidOperationException(\"Invalid protocol length.\");",
-                f"            var values = new List<{inner}>(count);",
+                f"            var values = new List<{inner_type}>(count);",
                 "            for (var i = 0; i < count; i++) {",
-                f"                values.Add(Read{inner}(ref reader));",
+                f"                values.Add({read_value});",
                 "            }",
                 "            return values;",
                 "        }",
@@ -469,19 +474,19 @@ def generate_csharp_codec(schema, target=None):
         if inner_needs_writer(schema, inner):
             lines.extend([
                 "",
-                f"        private static void Write{inner}List(BinaryWriter writer, IReadOnlyList<{inner}>? values) {{",
+                f"        private static void Write{inner}List(BinaryWriter writer, IReadOnlyList<{inner_type}>? values) {{",
                 "            var count = values == null ? 0 : values.Count;",
                 "            writer.WriteInt32(count);",
                 "            for (var i = 0; i < count; i++) {",
-                f"                Write{inner}(writer, values![i]);",
+                f"                {write_value}",
                 "            }",
                 "        }",
                 "",
-                f"        private static int SizeOf{inner}List(IReadOnlyList<{inner}>? values) {{",
+                f"        private static int SizeOf{inner}List(IReadOnlyList<{inner_type}>? values) {{",
                 "            var size = 4;",
                 "            if (values != null) {",
                 "                for (var i = 0; i < values.Count; i++) {",
-                f"                    size += SizeOf{inner}(values[i]);",
+                f"                    size += {size_value};",
                 "                }",
                 "            }",
                 "            return size;",

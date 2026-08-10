@@ -717,6 +717,21 @@ namespace SweetEditor {
 		[DllImport(LibraryName, EntryPoint = "editor_clear_all_decorations", CallingConvention = CallingConvention.Cdecl)]
 		internal static extern IntPtr ClearAllDecorations(IntPtr handle, out UIntPtr outSize);
 
+		// Diff.
+
+		[DllImport(LibraryName, EntryPoint = "editor_set_diff_changes", CallingConvention = CallingConvention.Cdecl)]
+		internal static extern IntPtr SetDiffChanges(IntPtr handle, byte[] data, nuint size, out UIntPtr outSize);
+
+		[DllImport(LibraryName, EntryPoint = "editor_compute_diff", CallingConvention = CallingConvention.Cdecl)]
+		internal static extern IntPtr ComputeDiff(IntPtr handle,
+			[MarshalAs(UnmanagedType.LPUTF8Str)] string originalText, out UIntPtr outSize);
+
+		[DllImport(LibraryName, EntryPoint = "editor_set_batch_diff_line_spans", CallingConvention = CallingConvention.Cdecl)]
+		internal static extern IntPtr SetBatchDiffLineSpans(IntPtr handle, byte[] data, nuint size, out UIntPtr outSize);
+
+		[DllImport(LibraryName, EntryPoint = "editor_clear_diff", CallingConvention = CallingConvention.Cdecl)]
+		internal static extern IntPtr ClearDiff(IntPtr handle, out UIntPtr outSize);
+
 		// ===================== BracketHighlight =====================
 
 		[DllImport(LibraryName, EntryPoint = "editor_set_bracket_pairs", CallingConvention = CallingConvention.Cdecl)]
@@ -2157,6 +2172,40 @@ namespace SweetEditor {
 		public EditorActionResult ClearAllDecorations() {
 			if (IsReleased) return EditorActionResult.Empty;
 			IntPtr payloadPtr = NativeMethods.ClearAllDecorations(nativeHandle, out UIntPtr payloadSize);
+			return DecodeAction(payloadPtr, payloadSize);
+		}
+
+		#endregion
+
+		#region Diff
+
+		public EditorActionResult SetDiffChanges(IReadOnlyList<DiffChange> changes) {
+			if (IsReleased) return EditorActionResult.Empty;
+			byte[] payload = CoreProtocol.EncodeSetDiffChangesPayload(changes);
+			IntPtr payloadPtr = NativeMethods.SetDiffChanges(nativeHandle, payload, (nuint)payload.Length,
+				out UIntPtr payloadSize);
+			return DecodeAction(payloadPtr, payloadSize);
+		}
+
+		public EditorActionResult ComputeDiff(string originalText) {
+			if (IsReleased) return EditorActionResult.Empty;
+			IntPtr payloadPtr = NativeMethods.ComputeDiff(nativeHandle, originalText ?? string.Empty,
+				out UIntPtr payloadSize);
+			return DecodeAction(payloadPtr, payloadSize);
+		}
+
+		public EditorActionResult SetBatchDiffLineSpans(SpanLayer layer,
+			IReadOnlyDictionary<int, IReadOnlyList<StyleSpan>> spansByOriginalLine) {
+			if (IsReleased) return EditorActionResult.Empty;
+			byte[] payload = CoreProtocol.EncodeSetBatchDiffLineSpansPayload(layer, spansByOriginalLine);
+			IntPtr payloadPtr = NativeMethods.SetBatchDiffLineSpans(nativeHandle, payload, (nuint)payload.Length,
+				out UIntPtr payloadSize);
+			return DecodeAction(payloadPtr, payloadSize);
+		}
+
+		public EditorActionResult ClearDiff() {
+			if (IsReleased) return EditorActionResult.Empty;
+			IntPtr payloadPtr = NativeMethods.ClearDiff(nativeHandle, out UIntPtr payloadSize);
 			return DecodeAction(payloadPtr, payloadSize);
 		}
 

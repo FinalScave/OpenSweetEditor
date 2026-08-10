@@ -10,6 +10,7 @@ import com.qiplat.sweeteditor.core.adornment.BracketGuide;
 import com.qiplat.sweeteditor.core.adornment.CodeLensItem;
 import com.qiplat.sweeteditor.core.adornment.Diagnostic;
 import com.qiplat.sweeteditor.core.adornment.DiagnosticSeverity;
+import com.qiplat.sweeteditor.core.adornment.DiffChange;
 import com.qiplat.sweeteditor.core.adornment.DocumentHighlight;
 import com.qiplat.sweeteditor.core.adornment.DocumentHighlightKind;
 import com.qiplat.sweeteditor.core.adornment.FlowGuide;
@@ -297,6 +298,24 @@ public final class CoreProtocol {
         if (values != null) {
             for (int i = 0; i < values.size(); i++) {
                 size += sizeOfDiagnostic(values.get(i));
+            }
+        }
+        return size;
+    }
+
+    private static void writeDiffChangeList(BinaryWriter writer, java.util.List<? extends DiffChange> values) {
+        int count = values == null ? 0 : values.size();
+        writer.writeInt32(count);
+        for (int i = 0; i < count; i++) {
+            writeDiffChange(writer, values.get(i));
+        }
+    }
+
+    private static int sizeOfDiffChangeList(java.util.List<? extends DiffChange> values) {
+        int size = 4;
+        if (values != null) {
+            for (int i = 0; i < values.size(); i++) {
+                size += sizeOfDiffChange(values.get(i));
             }
         }
         return size;
@@ -758,6 +777,36 @@ public final class CoreProtocol {
         return size;
     }
 
+    private static ArrayList<String> readU8StringList(BinaryReader reader) {
+        int count = reader.readInt32();
+        if (count < 0 || count > reader.remaining()) {
+            throw new IllegalArgumentException("Invalid protocol length.");
+        }
+        ArrayList<String> values = new ArrayList<>(count);
+        for (int i = 0; i < count; i++) {
+            values.add(reader.readUtf8String());
+        }
+        return values;
+    }
+
+    private static void writeU8StringList(BinaryWriter writer, java.util.List<? extends String> values) {
+        int count = values == null ? 0 : values.size();
+        writer.writeInt32(count);
+        for (int i = 0; i < count; i++) {
+            writer.writeUtf8String(values.get(i));
+        }
+    }
+
+    private static int sizeOfU8StringList(java.util.List<? extends String> values) {
+        int size = 4;
+        if (values != null) {
+            for (int i = 0; i < values.size(); i++) {
+                size += sizeOfUtf8String(values.get(i));
+            }
+        }
+        return size;
+    }
+
     private static ArrayList<VisualLine> readVisualLineList(BinaryReader reader) {
         int count = reader.readInt32();
         if (count < 0 || count > reader.remaining()) {
@@ -867,6 +916,22 @@ public final class CoreProtocol {
         size += 4;
         size += 4;
         size += 4;
+        return size;
+    }
+
+    private static void writeDiffChange(BinaryWriter writer, DiffChange value) {
+        writer.writeInt32(value.currentStartLine);
+        writer.writeInt32(value.currentLineCount);
+        writer.writeInt32(value.originalStartLine);
+        writeU8StringList(writer, value.removedLines);
+    }
+
+    public static int sizeOfDiffChange(DiffChange value) {
+        int size = 0;
+        size += 4;
+        size += 4;
+        size += 4;
+        size += sizeOfU8StringList(value.removedLines);
         return size;
     }
 
@@ -1110,10 +1175,18 @@ public final class CoreProtocol {
         writer.writeInt32(value.activeLinkForeground);
         writer.writeInt32(value.codelensForeground);
         writer.writeInt32(value.activeCodelensForeground);
+        writer.writeInt32(value.diffAddedLineBackground);
+        writer.writeInt32(value.diffRemovedLineBackground);
+        writer.writeInt32(value.diffAddedGutterBackground);
+        writer.writeInt32(value.diffRemovedGutterBackground);
     }
 
     public static int sizeOfEditorRenderColors(EditorRenderColors value) {
         int size = 0;
+        size += 4;
+        size += 4;
+        size += 4;
+        size += 4;
         size += 4;
         size += 4;
         size += 4;
@@ -1902,6 +1975,9 @@ public final class CoreProtocol {
         value.kind = VisualLineKind.fromValue(reader.readInt32());
         value.ownsGutterSemantics = reader.readInt32() != 0;
         value.foldState = FoldState.fromValue(reader.readInt32());
+        value.lineNumber = reader.readInt32();
+        value.lineBackgroundColor = reader.readInt32();
+        value.gutterBackgroundColor = reader.readInt32();
         return value;
     }
 
@@ -1951,6 +2027,12 @@ public final class CoreProtocol {
     public static MemorySegment encodeDiagnostic(Arena arena, Diagnostic value) {
         BinaryWriter writer = new BinaryWriter(arena, sizeOfDiagnostic(value));
         writeDiagnostic(writer, value);
+        return writer.segment();
+    }
+
+    public static MemorySegment encodeDiffChange(Arena arena, DiffChange value) {
+        BinaryWriter writer = new BinaryWriter(arena, sizeOfDiffChange(value));
+        writeDiffChange(writer, value);
         return writer.segment();
     }
 
@@ -2058,6 +2140,40 @@ public final class CoreProtocol {
     public static MemorySegment encodeSeparatorGuide(Arena arena, SeparatorGuide value) {
         BinaryWriter writer = new BinaryWriter(arena, sizeOfSeparatorGuide(value));
         writeSeparatorGuide(writer, value);
+        return writer.segment();
+    }
+
+    private static void writeSetBatchDiffLineSpansPayloadWire(BinaryWriter writer, SpanLayer layer, java.util.Map<Integer, ? extends java.util.List<? extends StyleSpan>> spansByOriginalLine) {
+        writer.writeInt32(layer.value);
+        java.util.TreeMap<Integer, java.util.List<? extends StyleSpan>> sortedSpansByOriginalLine = new java.util.TreeMap<>();
+        if (spansByOriginalLine != null) {
+            for (java.util.Map.Entry<Integer, ? extends java.util.List<? extends StyleSpan>> entry : spansByOriginalLine.entrySet()) {
+                sortedSpansByOriginalLine.put(entry.getKey(), entry.getValue());
+            }
+        }
+        writer.writeInt32(sortedSpansByOriginalLine.size());
+        for (java.util.Map.Entry<Integer, java.util.List<? extends StyleSpan>> entry : sortedSpansByOriginalLine.entrySet()) {
+            writer.writeInt32(entry.getKey());
+            writeStyleSpanList(writer, entry.getValue());
+        }
+    }
+
+    private static int sizeOfSetBatchDiffLineSpansPayloadWire(SpanLayer layer, java.util.Map<Integer, ? extends java.util.List<? extends StyleSpan>> spansByOriginalLine) {
+        int size = 0;
+        size += 4;
+        size += 4;
+        if (spansByOriginalLine != null) {
+            for (java.util.Map.Entry<Integer, ? extends java.util.List<? extends StyleSpan>> entry : spansByOriginalLine.entrySet()) {
+                size += 4;
+                size += sizeOfStyleSpanList(entry.getValue());
+            }
+        }
+        return size;
+    }
+
+    public static MemorySegment encodeSetBatchDiffLineSpansPayload(Arena arena, SpanLayer layer, java.util.Map<Integer, ? extends java.util.List<? extends StyleSpan>> spansByOriginalLine) {
+        BinaryWriter writer = new BinaryWriter(arena, sizeOfSetBatchDiffLineSpansPayloadWire(layer, spansByOriginalLine));
+        writeSetBatchDiffLineSpansPayloadWire(writer, layer, spansByOriginalLine);
         return writer.segment();
     }
 
@@ -2412,6 +2528,22 @@ public final class CoreProtocol {
     public static MemorySegment encodeSetBracketGuidesPayload(Arena arena, java.util.List<? extends BracketGuide> guides) {
         BinaryWriter writer = new BinaryWriter(arena, sizeOfSetBracketGuidesPayloadWire(guides));
         writeSetBracketGuidesPayloadWire(writer, guides);
+        return writer.segment();
+    }
+
+    private static void writeSetDiffChangesPayloadWire(BinaryWriter writer, java.util.List<? extends DiffChange> changes) {
+        writeDiffChangeList(writer, changes);
+    }
+
+    private static int sizeOfSetDiffChangesPayloadWire(java.util.List<? extends DiffChange> changes) {
+        int size = 0;
+        size += sizeOfDiffChangeList(changes);
+        return size;
+    }
+
+    public static MemorySegment encodeSetDiffChangesPayload(Arena arena, java.util.List<? extends DiffChange> changes) {
+        BinaryWriter writer = new BinaryWriter(arena, sizeOfSetDiffChangesPayloadWire(changes));
+        writeSetDiffChangesPayloadWire(writer, changes);
         return writer.segment();
     }
 

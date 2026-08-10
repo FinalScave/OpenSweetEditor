@@ -47,7 +47,7 @@ The layers below are listed bottom-up. Complete them in this order to ensure eac
 
 - Add a value to `VisualRunType` enum.
 - In `buildLineRuns()`: fetch the decoration data, insert split points, and assign the new `VisualRunType` to affected text segments. For inline decorations (LinkSpan), this means splitting existing TEXT runs at decoration boundaries. For block-level decorations (CodeLens), this means inserting a dedicated run that occupies an entire virtual line. For gutter-only decorations (GutterIcon), layout changes may not be needed at all.
-- Update `dumpEnum()` in `visual.cpp` and the JSON mapping in `json_serde.hpp`.
+- Update `dumpEnum()` in `visual.cpp` and the JSON mapping in `src/internal/json_serde.hpp`.
 
 **Only if the decoration is interactive (clickable):**
 
@@ -182,7 +182,7 @@ LINK runs participate in `getPositionScreenCoord()` / `columnToX()` the same way
 |-------|---------------|
 | C++ Data | `decoration.h`, `decoration.cpp` |
 | C++ Core | `editor_core.h`, `editor_core.cpp` |
-| C++ Layout | `visual.h`, `gesture.h`, `layout.h`, `layout.cpp`, `visual.cpp`, `json_serde.hpp` |
+| C++ Layout | `visual.h`, `gesture.h`, `layout.h`, `layout.cpp`, `visual.cpp`, `src/internal/json_serde.hpp` |
 | C API | `c_api.h`, `c_api.cpp` |
 | JNI Bridge | `jeditor.hpp` (JNI wrappers + `kJMethods[]` table) |
 | Java Core | `<Type>.java`, `VisualRunType.java`, `HitTargetType`, `EditorCore.java`, `CoreProtocol.java` |

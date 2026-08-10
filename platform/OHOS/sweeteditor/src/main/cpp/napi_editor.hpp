@@ -977,6 +977,39 @@ public:
       &out_size), out_size);
   }
 
+  static napi_value setDiffChanges(napi_env env, napi_callback_info info) {
+    return setBinaryData(env, info, editor_set_diff_changes);
+  }
+
+  static napi_value computeDiff(napi_env env, napi_callback_info info) {
+    size_t argc = 2;
+    napi_value args[2];
+    napi_get_cb_info(env, info, &argc, args, nullptr, nullptr);
+    const int64_t handle = napi_get_handle(env, args[0]);
+    if (handle == 0) {
+      napi_value undefined;
+      napi_get_undefined(env, &undefined);
+      return undefined;
+    }
+    const std::string original_text = napi_get_utf8_string(env, args[1]);
+    size_t out_size = 0;
+    return wrap_binary_payload(env, editor_compute_diff(
+      static_cast<intptr_t>(handle), original_text.c_str(), &out_size), out_size);
+  }
+
+  static napi_value setBatchDiffLineSpans(napi_env env, napi_callback_info info) {
+    return setBinaryData(env, info, editor_set_batch_diff_line_spans);
+  }
+
+  static napi_value clearDiff(napi_env env, napi_callback_info info) {
+    size_t argc = 1;
+    napi_value args[1];
+    napi_get_cb_info(env, info, &argc, args, nullptr, nullptr);
+    size_t out_size = 0;
+    return wrap_binary_payload(env, editor_clear_diff(
+      static_cast<intptr_t>(napi_get_handle(env, args[0])), &out_size), out_size);
+  }
+
   static napi_value setBracketPairs(napi_env env, napi_callback_info info) {
     size_t argc = 3;
     napi_value args[3];

@@ -13,8 +13,8 @@
 #include <sweeteditor/utility.h>
 #include <sweeteditor/editor_core.h>
 #include <sweeteditor/document.h>
-#include "c_wrapper.hpp"
-#include "logging.h"
+#include "internal/c_wrapper.hpp"
+#include "internal/logging.hpp"
 
 using namespace NS_SWEETEDITOR;
 
@@ -1266,6 +1266,43 @@ const uint8_t* editor_clear_all_decorations(intptr_t editor_handle, size_t* out_
   SharedPtr<EditorCore> editor_core = getCPtrHolderValue<EditorCore>(editor_handle);
   if (editor_core == nullptr) return nullBinaryPayload(out_size);
   return editorActionResultToBinary(editor_core->clearAllDecorations(), out_size);
+}
+
+#pragma endregion
+
+#pragma region [Diff]
+
+const uint8_t* editor_set_diff_changes(intptr_t editor_handle, const uint8_t* data, size_t size,
+                                       size_t* out_size) {
+  SharedPtr<EditorCore> editor_core = getCPtrHolderValue<EditorCore>(editor_handle);
+  protocol::SetDiffChangesPayload payload;
+  if (editor_core == nullptr || !protocol::ProtocolReader::decode(data, size, payload)) {
+    return nullBinaryPayload(out_size);
+  }
+  return editorActionResultToBinary(editor_core->setDiffChanges(std::move(payload.changes)), out_size);
+}
+
+const uint8_t* editor_compute_diff(intptr_t editor_handle, const char* original_text, size_t* out_size) {
+  SharedPtr<EditorCore> editor_core = getCPtrHolderValue<EditorCore>(editor_handle);
+  if (editor_core == nullptr || original_text == nullptr) return nullBinaryPayload(out_size);
+  return editorActionResultToBinary(editor_core->computeDiff(U8String(original_text)), out_size);
+}
+
+const uint8_t* editor_set_batch_diff_line_spans(intptr_t editor_handle, const uint8_t* data, size_t size,
+                                                size_t* out_size) {
+  SharedPtr<EditorCore> editor_core = getCPtrHolderValue<EditorCore>(editor_handle);
+  protocol::SetBatchDiffLineSpansPayload payload;
+  if (editor_core == nullptr || !protocol::ProtocolReader::decode(data, size, payload)) {
+    return nullBinaryPayload(out_size);
+  }
+  return editorActionResultToBinary(
+      editor_core->setBatchDiffLineSpans(payload.layer, std::move(payload.entries)), out_size);
+}
+
+const uint8_t* editor_clear_diff(intptr_t editor_handle, size_t* out_size) {
+  SharedPtr<EditorCore> editor_core = getCPtrHolderValue<EditorCore>(editor_handle);
+  if (editor_core == nullptr) return nullBinaryPayload(out_size);
+  return editorActionResultToBinary(editor_core->clearDiff(), out_size);
 }
 
 #pragma endregion

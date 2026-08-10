@@ -2,8 +2,8 @@
 // Created by Scave on 2025/12/7.
 //
 
-#ifndef SWEETEDITOR_LOGGING_H
-#define SWEETEDITOR_LOGGING_H
+#ifndef SWEETEDITOR_LOGGING_HPP
+#define SWEETEDITOR_LOGGING_HPP
 
 #if defined(_MSC_VER) && !defined(__FILE_NAME__)
 #define __FILE_NAME__ (strrchr("\\" __FILE__, '\\') + 1)
@@ -140,4 +140,4 @@
   #define PERF_END(name, label)
 #endif
 
-#endif //SWEETEDITOR_LOGGING_H
+#endif //SWEETEDITOR_LOGGING_HPP

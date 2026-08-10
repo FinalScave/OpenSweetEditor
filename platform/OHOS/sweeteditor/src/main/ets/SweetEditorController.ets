@@ -6,6 +6,7 @@ import { SearchRequest, SearchState, createEmptySearchState } from './core/CoreS
 import {
   BracketGuide,
   Diagnostic,
+  DiffChange,
   DocumentHighlight,
   FlowGuide,
   FoldRegion,
@@ -562,6 +563,26 @@ export class SweetEditorController {
 
   clearAllDecorations(): void {
     this.run((api) => api.clearAllDecorations());
+  }
+
+  /** Installs an externally computed line-level diff. */
+  setDiffChanges(changes: DiffChange[]): void {
+    this.run((api) => api.setDiffChanges(changes));
+  }
+
+  /** Computes a line-level diff against the supplied original document text. */
+  computeDiff(originalText: string): void {
+    this.run((api) => api.computeDiff(originalText));
+  }
+
+  /** Sets layered style spans for removed original lines. */
+  setBatchDiffLineSpans(layer: SpanLayer, spansByOriginalLine: Map<number, StyleSpan[]>): void {
+    this.run((api) => api.setBatchDiffLineSpans(layer, spansByOriginalLine));
+  }
+
+  /** Clears the current diff snapshot. */
+  clearDiff(): void {
+    this.run((api) => api.clearDiff());
   }
 
   copyToClipboard(): void {

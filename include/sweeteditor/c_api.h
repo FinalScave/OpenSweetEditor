@@ -224,6 +224,10 @@ EDITOR_API const uint8_t* editor_set_scrollbar_config(intptr_t editor_handle, co
 ///        i32 active_link_foreground
 ///        i32 codelens_foreground
 ///        i32 active_codelens_foreground
+///        i32 diff_added_line_background
+///        i32 diff_removed_line_background
+///        i32 diff_added_gutter_background
+///        i32 diff_removed_gutter_background
 /// @param size payload byte length
 /// @param out_size Output: payload byte length (bytes, excluding extra '\0' terminator)
 /// @return EditorActionResult binary payload encoded by CoreProtocol
@@ -261,7 +265,7 @@ EDITOR_API const uint8_t* editor_set_editor_range_effect_styles(intptr_t editor_
 ///         bool_i32 gutter_sticky
 ///         bool_i32 gutter_visible
 ///         enum_i32 pointer_cursor_type
-///         VisualLine is i32 logical_line, i32 wrap_index, PointF line_number_position, List<VisualRun> runs, enum_i32 kind, bool_i32 owns_gutter_semantics, enum_i32 fold_state
+///         VisualLine is i32 logical_line, i32 wrap_index, PointF line_number_position, List<VisualRun> runs, enum_i32 kind, bool_i32 owns_gutter_semantics, enum_i32 fold_state, i32 line_number, i32 line_background_color, i32 gutter_background_color
 ///         VisualRun is enum_i32 type, f32 x, f32 y, U8String text, TextStyle style, i32 icon_id, i32 color_value, f32 width, f32 padding, f32 margin, bool_i32 active
 ///         TextStyle is i32 color, i32 background_color, i32 font_style
 ///         Cursor is TextPosition text_position, PointF position, f32 height, bool_i32 visible, bool_i32 show_dragger
@@ -930,6 +934,39 @@ EDITOR_API const uint8_t* editor_clear_phantom_texts(intptr_t editor_handle, siz
 
 /// Clear all decoration data
 EDITOR_API const uint8_t* editor_clear_all_decorations(intptr_t editor_handle, size_t* out_size);
+
+#pragma endregion
+
+#pragma region [Diff]
+
+/// Set an externally computed line-level diff.
+/// @param data SetDiffChangesPayload binary payload encoded by CoreProtocol:
+///        u32 change_count
+///        Repeated DiffChange is u32 current_start_line, u32 current_line_count, u32 original_start_line,
+///        followed by List<U8String> removed_lines
+/// @param size payload byte length
+/// @return EditorActionResult binary payload, returns NULL on failure
+EDITOR_API const uint8_t* editor_set_diff_changes(intptr_t editor_handle, const uint8_t* data, size_t size,
+                                                  size_t* out_size);
+
+/// Compute a line-level diff against original UTF-8 text.
+/// @param original_text Null-terminated original document text
+/// @return EditorActionResult binary payload, returns NULL on failure
+EDITOR_API const uint8_t* editor_compute_diff(intptr_t editor_handle, const char* original_text, size_t* out_size);
+
+/// Set layered style spans for removed original lines.
+/// @param data SetBatchDiffLineSpansPayload binary payload encoded by CoreProtocol:
+///        enum_i32 layer
+///        u32 entry_count
+///        Repeated entry is u32 original_line followed by List<StyleSpan> spans
+///        StyleSpan is u32 column, u32 length, u32 style_id
+/// @param size payload byte length
+/// @return EditorActionResult binary payload, returns NULL on failure
+EDITOR_API const uint8_t* editor_set_batch_diff_line_spans(intptr_t editor_handle, const uint8_t* data, size_t size,
+                                                           size_t* out_size);
+
+/// Clear all diff state.
+EDITOR_API const uint8_t* editor_clear_diff(intptr_t editor_handle, size_t* out_size);
 
 #pragma endregion
 

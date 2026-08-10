@@ -1587,6 +1587,48 @@ public final class EditorCore {
         }
     }
 
+    // MARK: - Diff
+
+    @discardableResult
+    public func setDiffChanges(_ changes: [DiffChange]) -> EditorActionResult {
+        let payload = CoreProtocol.encodeSetDiffChangesPayload(changes: changes)
+        return performPayloadEditorAction(payload) { ptr, size, outSize in
+            editor_set_diff_changes(handle, ptr, size, &outSize)
+        }
+    }
+
+    @discardableResult
+    public func computeDiff(originalText: String) -> EditorActionResult {
+        return performCoreCall {
+            var size: Int = 0
+            let ptr = originalText.withCString { text in
+                editor_compute_diff(handle, text, &size)
+            }
+            return decodeEditorActionPayload(ptr, size: size)
+        }
+    }
+
+    @discardableResult
+    public func setBatchDiffLineSpans(layer: SpanLayer,
+                                      spansByOriginalLine: [Int: [StyleSpan]]) -> EditorActionResult {
+        let payload = CoreProtocol.encodeSetBatchDiffLineSpansPayload(
+            layer: layer,
+            spansByOriginalLine: int32Keyed(spansByOriginalLine)
+        )
+        return performPayloadEditorAction(payload) { ptr, size, outSize in
+            editor_set_batch_diff_line_spans(handle, ptr, size, &outSize)
+        }
+    }
+
+    @discardableResult
+    public func clearDiff() -> EditorActionResult {
+        return performCoreCall {
+            var size: Int = 0
+            let ptr = editor_clear_diff(handle, &size)
+            return decodeEditorActionPayload(ptr, size: size)
+        }
+    }
+
     // MARK: - LinkedEditing
 
     /// Inserts a VSCode snippet template and enters linked-editing mode.

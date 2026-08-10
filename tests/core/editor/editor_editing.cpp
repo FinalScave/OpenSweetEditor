@@ -4,6 +4,39 @@
 
 using namespace NS_SWEETEDITOR;
 
+TEST_CASE("EditorCore refreshes cached visual line numbers after line shifts") {
+  EditorOptions options;
+  EditorCore editor(makeShared<FixedWidthTextMeasurer>(), options);
+  SharedPtr<Document> document = makeShared<LineArrayDocument>("a\nb\nc");
+  editor.loadDocument(document);
+  editor.setViewport({800, 600});
+
+  const auto content_line_numbers = [](const EditorRenderModel& model) {
+    Vector<int32_t> numbers;
+    for (const VisualLine& line : model.lines) {
+      if (line.kind == VisualLineKind::CONTENT && line.wrap_index == 0) {
+        numbers.push_back(line.line_number);
+      }
+    }
+    return numbers;
+  };
+
+  EditorRenderModel initial_model;
+  editor.buildRenderModel(initial_model);
+  CHECK(content_line_numbers(initial_model) == Vector<int32_t>{1, 2, 3});
+
+  editor.setCursorPosition({0, 0});
+  REQUIRE(editor.insertText("x\n").handled);
+  EditorRenderModel inserted_model;
+  editor.buildRenderModel(inserted_model);
+  CHECK(content_line_numbers(inserted_model) == Vector<int32_t>{1, 2, 3, 4});
+
+  REQUIRE(editor.deleteText({{0, 0}, {1, 0}}).handled);
+  EditorRenderModel deleted_model;
+  editor.buildRenderModel(deleted_model);
+  CHECK(content_line_numbers(deleted_model) == Vector<int32_t>{1, 2, 3});
+}
+
 TEST_CASE("EditorCore normalizes selection before insert replacement") {
   EditorOptions options;
   EditorCore editor(makeShared<FixedWidthTextMeasurer>(), options);

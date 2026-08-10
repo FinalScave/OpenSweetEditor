@@ -46,6 +46,7 @@ import com.qiplat.sweeteditor.core.keymap.KeyBinding;
 import com.qiplat.sweeteditor.core.keymap.KeyCode;
 import com.qiplat.sweeteditor.core.keymap.KeyModifier;
 import com.qiplat.sweeteditor.core.adornment.Diagnostic;
+import com.qiplat.sweeteditor.core.adornment.DiffChange;
 import com.qiplat.sweeteditor.core.adornment.DocumentHighlight;
 import com.qiplat.sweeteditor.core.adornment.FoldRegion;
 
@@ -604,7 +605,11 @@ public class SweetEditor extends View {
                 linkForeground,
                 activeLinkForeground,
                 codeLensForeground,
-                activeCodeLensForeground);
+                activeCodeLensForeground,
+                theme.diffAddedLineBackgroundColor,
+                theme.diffRemovedLineBackgroundColor,
+                theme.diffAddedGutterBackgroundColor,
+                theme.diffRemovedGutterBackgroundColor);
     }
 
     private EditorRangeEffectStyles buildEditorRangeEffectStyles(@NonNull EditorTheme theme) {
@@ -1707,6 +1712,29 @@ public class SweetEditor extends View {
     public void clearAllDecorations() {
         EditorActionResult result = mEditorCore.clearAllDecorations();
         dispatchEditorActionResult(result);
+    }
+
+    // Diff
+
+    /** Install an externally computed line-level diff. */
+    public void setDiffChanges(@Nullable List<? extends DiffChange> changes) {
+        dispatchEditorActionResult(mEditorCore.setDiffChanges(changes));
+    }
+
+    /** Compute a line-level diff against the supplied original document text. */
+    public void computeDiff(@NonNull String originalText) {
+        dispatchEditorActionResult(mEditorCore.computeDiff(originalText));
+    }
+
+    /** Set layered style spans for removed original lines. */
+    public void setBatchDiffLineSpans(@NonNull SpanLayer layer,
+            @Nullable Map<Integer, ? extends List<? extends StyleSpan>> spansByOriginalLine) {
+        dispatchEditorActionResult(mEditorCore.setBatchDiffLineSpans(layer, spansByOriginalLine));
+    }
+
+    /** Clear the current diff snapshot. */
+    public void clearDiff() {
+        dispatchEditorActionResult(mEditorCore.clearDiff());
     }
 
     /**

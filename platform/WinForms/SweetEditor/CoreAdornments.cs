@@ -52,6 +52,13 @@ namespace SweetEditor {
         public DiagnosticSeverity Severity { get; set; } = DiagnosticSeverity.DIAG_ERROR;
     }
 
+    public sealed partial class DiffChange {
+        public int CurrentStartLine { get; set; } = 0;
+        public int CurrentLineCount { get; set; } = 0;
+        public int OriginalStartLine { get; set; } = 0;
+        public List<string> RemovedLines { get; set; } = new();
+    }
+
     public sealed partial class DocumentHighlight {
         public int Column { get; set; } = 0;
         public int Length { get; set; } = 0;

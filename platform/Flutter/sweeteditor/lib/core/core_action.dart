@@ -21,7 +21,8 @@ enum EditorActionSource {
   decoration(7),
   folding(8),
   search(9),
-  linkedEditing(10);
+  linkedEditing(10),
+  diff(11);
 
   const EditorActionSource(this.value);
   final int value;
@@ -39,6 +40,7 @@ enum EditorActionSource {
       case 8: return folding;
       case 9: return search;
       case 10: return linkedEditing;
+      case 11: return diff;
       default: throw ArgumentError.value(value, 'value', 'Unknown EditorActionSource value');
     }
   }

@@ -93,6 +93,10 @@ public:
     return true;
   }
 
+  inline bool read(U8String& out) {
+    return readUtf8String(out);
+  }
+
   inline bool done() const {
     return cur_ == end_;
   }
@@ -129,6 +133,20 @@ public:
     int32_t out_severity_value{};
     if (!readI32(out_severity_value)) return false;
     out.severity = static_cast<DiagnosticSeverity>(out_severity_value);
+    return true;
+  }
+
+  inline bool read(DiffChange& out) {
+    uint32_t out_current_start_line_value{};
+    if (!readU32(out_current_start_line_value)) return false;
+    out.current_start_line = static_cast<size_t>(out_current_start_line_value);
+    uint32_t out_current_line_count_value{};
+    if (!readU32(out_current_line_count_value)) return false;
+    out.current_line_count = static_cast<size_t>(out_current_line_count_value);
+    uint32_t out_original_start_line_value{};
+    if (!readU32(out_original_start_line_value)) return false;
+    out.original_start_line = static_cast<size_t>(out_original_start_line_value);
+    if (!readList(out.removed_lines)) return false;
     return true;
   }
 
@@ -241,6 +259,27 @@ public:
     uint32_t out_text_end_column_value{};
     if (!readU32(out_text_end_column_value)) return false;
     out.text_end_column = static_cast<uint32_t>(out_text_end_column_value);
+    return true;
+  }
+
+  inline bool read(SetBatchDiffLineSpansPayload& out) {
+    int32_t out_layer_value{};
+    if (!readI32(out_layer_value)) return false;
+    out.layer = static_cast<SpanLayer>(out_layer_value);
+    uint32_t count{};
+    if (!readU32(count)) return false;
+    if (count > remaining()) return false;
+    out.entries.clear();
+    out.entries.reserve(count);
+    for (uint32_t index = 0; index < count; ++index) {
+      size_t key{};
+      Vector<StyleSpan> value{};
+      uint32_t key_value{};
+      if (!readU32(key_value)) return false;
+      key = static_cast<size_t>(key_value);
+      if (!readList(value)) return false;
+      out.entries.emplace_back(std::move(key), std::move(value));
+    }
     return true;
   }
 
@@ -393,6 +432,11 @@ public:
 
   inline bool read(SetBracketGuidesPayload& out) {
     if (!readList(out.guides)) return false;
+    return true;
+  }
+
+  inline bool read(SetDiffChangesPayload& out) {
+    if (!readList(out.changes)) return false;
     return true;
   }
 
@@ -574,6 +618,18 @@ public:
     int32_t out_active_codelens_foreground_value{};
     if (!readI32(out_active_codelens_foreground_value)) return false;
     out.active_codelens_foreground = static_cast<int32_t>(out_active_codelens_foreground_value);
+    int32_t out_diff_added_line_background_value{};
+    if (!readI32(out_diff_added_line_background_value)) return false;
+    out.diff_added_line_background = static_cast<int32_t>(out_diff_added_line_background_value);
+    int32_t out_diff_removed_line_background_value{};
+    if (!readI32(out_diff_removed_line_background_value)) return false;
+    out.diff_removed_line_background = static_cast<int32_t>(out_diff_removed_line_background_value);
+    int32_t out_diff_added_gutter_background_value{};
+    if (!readI32(out_diff_added_gutter_background_value)) return false;
+    out.diff_added_gutter_background = static_cast<int32_t>(out_diff_added_gutter_background_value);
+    int32_t out_diff_removed_gutter_background_value{};
+    if (!readI32(out_diff_removed_gutter_background_value)) return false;
+    out.diff_removed_gutter_background = static_cast<int32_t>(out_diff_removed_gutter_background_value);
     return true;
   }
 
@@ -992,6 +1048,10 @@ public:
     return writeBytes(reinterpret_cast<const uint8_t*>(value.data()), value.size());
   }
 
+  inline bool write(const U8String& value) {
+    return writeUtf8String(value);
+  }
+
   inline bool writeU16AsUtf8String(const U16String& value) {
     U8String utf8;
     if (!value.empty()) {
@@ -1059,6 +1119,14 @@ public:
     if (!writeU32(static_cast<uint32_t>(value.column))) return false;
     if (!writeU32(static_cast<uint32_t>(value.length))) return false;
     if (!writeI32(static_cast<int32_t>(value.severity))) return false;
+    return true;
+  }
+
+  inline bool write(const DiffChange& value) {
+    if (!writeU32(static_cast<uint32_t>(value.current_start_line))) return false;
+    if (!writeU32(static_cast<uint32_t>(value.current_line_count))) return false;
+    if (!writeU32(static_cast<uint32_t>(value.original_start_line))) return false;
+    if (!writeList(value.removed_lines)) return false;
     return true;
   }
 
@@ -1131,6 +1199,19 @@ public:
     if (!writeI32(static_cast<int32_t>(value.style))) return false;
     if (!writeI32(static_cast<int32_t>(value.count))) return false;
     if (!writeU32(static_cast<uint32_t>(value.text_end_column))) return false;
+    return true;
+  }
+
+  inline bool write(const SetBatchDiffLineSpansPayload& value) {
+    if (!writeI32(static_cast<int32_t>(value.layer))) return false;
+    if (value.entries.size() > std::numeric_limits<uint32_t>::max()) return false;
+    if (!writeU32(static_cast<uint32_t>(value.entries.size()))) return false;
+    for (const auto& entry : value.entries) {
+      const auto& key = entry.first;
+      const auto& value = entry.second;
+      if (!writeU32(static_cast<uint32_t>(key))) return false;
+      if (!writeList(value)) return false;
+    }
     return true;
   }
 
@@ -1233,6 +1314,11 @@ public:
 
   inline bool write(const SetBracketGuidesPayload& value) {
     if (!writeList(value.guides)) return false;
+    return true;
+  }
+
+  inline bool write(const SetDiffChangesPayload& value) {
+    if (!writeList(value.changes)) return false;
     return true;
   }
 
@@ -1356,6 +1442,10 @@ public:
     if (!writeI32(static_cast<int32_t>(value.active_link_foreground))) return false;
     if (!writeI32(static_cast<int32_t>(value.codelens_foreground))) return false;
     if (!writeI32(static_cast<int32_t>(value.active_codelens_foreground))) return false;
+    if (!writeI32(static_cast<int32_t>(value.diff_added_line_background))) return false;
+    if (!writeI32(static_cast<int32_t>(value.diff_removed_line_background))) return false;
+    if (!writeI32(static_cast<int32_t>(value.diff_added_gutter_background))) return false;
+    if (!writeI32(static_cast<int32_t>(value.diff_removed_gutter_background))) return false;
     return true;
   }
 
@@ -1721,6 +1811,9 @@ public:
     if (!writeI32(static_cast<int32_t>(value.kind))) return false;
     if (!writeI32(value.owns_gutter_semantics ? 1 : 0)) return false;
     if (!writeI32(static_cast<int32_t>(value.fold_state))) return false;
+    if (!writeI32(static_cast<int32_t>(value.line_number))) return false;
+    if (!writeI32(static_cast<int32_t>(value.line_background_color))) return false;
+    if (!writeI32(static_cast<int32_t>(value.gutter_background_color))) return false;
     return true;
   }
 

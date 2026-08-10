@@ -186,13 +186,21 @@ public struct EditorRenderColors {
     public var active_link_foreground: Int32 = 0
     public var codelens_foreground: Int32 = 0
     public var active_codelens_foreground: Int32 = 0
+    public var diff_added_line_background: Int32 = 0
+    public var diff_removed_line_background: Int32 = 0
+    public var diff_added_gutter_background: Int32 = 0
+    public var diff_removed_gutter_background: Int32 = 0
 
-    public init(text_foreground: Int32 = 0, link_foreground: Int32 = 0, active_link_foreground: Int32 = 0, codelens_foreground: Int32 = 0, active_codelens_foreground: Int32 = 0) {
+    public init(text_foreground: Int32 = 0, link_foreground: Int32 = 0, active_link_foreground: Int32 = 0, codelens_foreground: Int32 = 0, active_codelens_foreground: Int32 = 0, diff_added_line_background: Int32 = 0, diff_removed_line_background: Int32 = 0, diff_added_gutter_background: Int32 = 0, diff_removed_gutter_background: Int32 = 0) {
         self.text_foreground = text_foreground
         self.link_foreground = link_foreground
         self.active_link_foreground = active_link_foreground
         self.codelens_foreground = codelens_foreground
         self.active_codelens_foreground = active_codelens_foreground
+        self.diff_added_line_background = diff_added_line_background
+        self.diff_removed_line_background = diff_removed_line_background
+        self.diff_added_gutter_background = diff_added_gutter_background
+        self.diff_removed_gutter_background = diff_removed_gutter_background
     }
 }
 

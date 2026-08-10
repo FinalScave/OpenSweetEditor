@@ -290,6 +290,7 @@ namespace SweetEditor {
 			g.TextRenderingHint = TextRenderingHint.ClearTypeGridFit;
 			g.SmoothingMode = SmoothingMode.AntiAlias;
 
+			DrawDiffLineBackgrounds(g, modelValue, 0f, clientSize.Width, false);
 			DrawCurrentLineDecoration(g, modelValue, 0f, clientSize.Width);
 			perf.Mark(PerfStepRecorder.StepCurrent);
 			DrawRangeEffectBackgrounds(g, modelValue);
@@ -331,6 +332,7 @@ namespace SweetEditor {
 			if (model.SplitX <= 0) return;
 			SolidBrush brush = GetOrCreateBrush(currentTheme.BackgroundColor);
 			g.FillRectangle(brush, 0, 0, model.SplitX, clientHeight);
+			DrawDiffLineBackgrounds(g, model, 0f, model.SplitX, true);
 			DrawCurrentLineDecoration(g, model, 0f, model.SplitX);
 			if (model.SplitLineVisible) {
 				DrawLineSplit(g, model.SplitX, clientHeight);
@@ -351,7 +353,11 @@ namespace SweetEditor {
 			Color activeLineColor = GetCurrentLineAccentColor();
 			currentDrawingLineNumber = -1;
 			foreach (var line in lines) {
-				if (!line.OwnsGutterSemantics) continue;
+				if (line.LineNumber < 0) continue;
+				if (!line.OwnsGutterSemantics) {
+					DrawPlainLineNumber(g, line, currentTheme.LineNumberColor);
+					continue;
+				}
 				int logicalLine = line.LogicalLine;
 
 				while (iconCursor < iconCount && gutterIcons![iconCursor].LogicalLine < logicalLine) {
@@ -443,7 +449,7 @@ namespace SweetEditor {
 			float topY = position.Y - metrics.Ascent;
 			bool overlayMode = model.MaxGutterIcons == 0;
 			bool hasIcons = editorIconProvider != null && iconEnd > iconStart;
-			int newLineNumber = visualLine.LogicalLine + 1;
+			int newLineNumber = visualLine.LineNumber;
 			if (overlayMode && hasIcons) {
 				DrawOverlayGutterIcon(g, gutterIcons![iconStart]);
 				currentDrawingLineNumber = newLineNumber;
@@ -717,6 +723,28 @@ namespace SweetEditor {
 			}
 			SolidBrush brush = GetOrCreateBrush(currentTheme.CurrentLineColor);
 			g.FillRectangle(brush, left, model.CurrentLine.Y, width, lineH);
+		}
+
+		private void DrawDiffLineBackgrounds(Graphics g, EditorRenderModel model,
+			float left, float width, bool gutter) {
+			if (width <= 0f || model.Lines == null) return;
+			float lineHeight = model.Cursor.Height > 0 ? model.Cursor.Height : regularFont.GetHeight(g);
+			FontMetricsInfo metrics = GetTextFontMetrics(0, g);
+			float topPadding = (lineHeight - metrics.LineHeight) * 0.5f;
+			foreach (VisualLine line in model.Lines) {
+				int color = gutter ? line.GutterBackgroundColor : line.LineBackgroundColor;
+				if (color == 0) continue;
+				float top = line.LineNumberPosition.Y - metrics.Ascent - topPadding;
+				g.FillRectangle(GetOrCreateBrush(color), left, top, width, lineHeight);
+			}
+		}
+
+		private void DrawPlainLineNumber(Graphics g, VisualLine line, Color color) {
+			FontMetricsInfo metrics = GetTextFontMetrics(0, g);
+			var rect = new Rectangle((int)line.LineNumberPosition.X,
+				(int)(line.LineNumberPosition.Y - metrics.Ascent), 120,
+				(int)Math.Ceiling(metrics.LineHeight));
+			TextRenderer.DrawText(g, line.LineNumber.ToString(), regularFont, rect, color, TextMeasureDrawFlags);
 		}
 
 		private int GetActiveLogicalLine(EditorRenderModel model) => model.Cursor.TextPosition.Line;

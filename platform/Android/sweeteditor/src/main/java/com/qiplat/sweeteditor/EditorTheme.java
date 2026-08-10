@@ -48,6 +48,14 @@ public class EditorTheme {
     public int currentLineNumberColor;
     /** Current line highlight background color (ARGB, recommended to include transparency). */
     public int currentLineColor;
+    /** Added or modified line background color (ARGB). */
+    public int diffAddedLineBackgroundColor;
+    /** Removed line background color (ARGB). */
+    public int diffRemovedLineBackgroundColor;
+    /** Added or modified gutter background color (ARGB). */
+    public int diffAddedGutterBackgroundColor;
+    /** Removed gutter background color (ARGB). */
+    public int diffRemovedGutterBackgroundColor;
 
     /** Code structure line color (indent/bracket/flow guide, ARGB). */
     public int guideColor;
@@ -194,6 +202,10 @@ public class EditorTheme {
         t.lineNumberColor           = 0xFF5E6778;
         t.currentLineNumberColor    = 0xFF9CB3D6;
         t.currentLineColor          = 0x503A4A66;
+        t.diffAddedLineBackgroundColor = 0xFF1B3025;
+        t.diffRemovedLineBackgroundColor = 0xFF342126;
+        t.diffAddedGutterBackgroundColor = 0xFF1B3025;
+        t.diffRemovedGutterBackgroundColor = 0xFF342126;
         t.guideColor                = 0x8056617A;
         t.separatorLineColor        = 0xFF4A8F7A;
         t.splitLineColor            = 0x3356617A;
@@ -271,6 +283,10 @@ public class EditorTheme {
         t.lineNumberColor           = 0xFF8A94A6;
         t.currentLineNumberColor    = 0xFF3A5FA0;
         t.currentLineColor          = 0x1A0D3B66;
+        t.diffAddedLineBackgroundColor = 0x1F68B76B;
+        t.diffRemovedLineBackgroundColor = 0x1FE5534B;
+        t.diffAddedGutterBackgroundColor = 0x2E68B76B;
+        t.diffRemovedGutterBackgroundColor = 0x2EE5534B;
         t.guideColor                = 0x4029426B;
         t.separatorLineColor        = 0xFF2F855A;
         t.splitLineColor            = 0x1F29426B;
